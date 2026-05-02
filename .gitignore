@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.env
+*.egg-info/
+
+# Temp Office lock files
+~$*
+
+# Old pptx versions (keep only v4)
+outputs/presentation/Marketing_Analytics_Executive_Deck.pptx
+outputs/presentation/Marketing_Analytics_Executive_Deck_v2.pptx
+outputs/presentation/Marketing_Analytics_Executive_Deck_v3.pptx
+
+# Original briefing deck (large, not needed)
+Analytics - Case Study.pptx

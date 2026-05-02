@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: marketing-analytics-dashboard
+    runtime: static
+    staticPublishPath: public
+    buildCommand: ""
+    pullRequestPreviewsEnabled: false
