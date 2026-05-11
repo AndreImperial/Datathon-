@@ -658,6 +658,37 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .section-desc {{
     font-size:14px; color:var(--muted); margin-bottom:15px; padding-left:0; max-width:900px;
   }}
+  .story-strip {{
+    display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px;
+    padding:14px 32px 0;
+  }}
+  .story-card {{
+    background:#FFFFFF; border:1px solid var(--border); border-radius:8px;
+    padding:14px 15px; min-width:0; position:relative;
+  }}
+  .story-card::before {{
+    content:""; position:absolute; left:0; top:14px; bottom:14px; width:3px;
+    background:var(--primary); border-radius:0 3px 3px 0;
+  }}
+  .story-card h2 {{ margin:0 0 7px 0; font-size:13px; color:var(--midnight); font-weight:800; }}
+  .story-card p {{ margin:0; color:#475569; font-size:12px; line-height:1.55; }}
+  .story-card.coverage::before {{ background:var(--accent); }}
+  .story-card.quality::before {{ background:var(--danger); }}
+  .section-takeaway {{
+    display:flex; flex-wrap:wrap; align-items:center; gap:8px;
+    background:#F8FAFC; border:1px solid var(--border); border-left:3px solid var(--accent);
+    border-radius:8px; padding:10px 12px; margin:-2px 0 15px;
+    color:#243449; font-size:13px; line-height:1.45;
+  }}
+  .section-takeaway strong {{ color:var(--midnight); }}
+  .evidence-badge {{
+    display:inline-flex; align-items:center; white-space:nowrap;
+    padding:3px 8px; border-radius:999px; background:#EAF2FF; color:#1E40AF;
+    border:1px solid #C9D7EA; font-size:11px; font-weight:800;
+  }}
+  .evidence-badge.orange {{ background:#FFF7ED; color:#9A3412; border-color:#FED7AA; }}
+  .evidence-badge.green {{ background:#ECFDF5; color:#047857; border-color:#A7F3D0; }}
+  .evidence-badge.red {{ background:#FEF2F2; color:#991B1B; border-color:#FECACA; }}
 
   /* Chart cards */
   .chart-grid {{ display:grid; gap:14px; align-items:start; }}
@@ -749,7 +780,25 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .priority-tag.p1 {{ background:#FEF2F2; color:#991B1B; }}
   .priority-tag.p2 {{ background:#FFF7ED; color:#9A3412; }}
   .priority-tag.p3 {{ background:#ECFDF5; color:#065F46; }}
-  .recommendation-table td {{ vertical-align:top; line-height:1.55; }}
+  .recommendation-table th {{ font-size:12px; }}
+  .recommendation-table td {{ vertical-align:top; line-height:1.45; padding-top:9px; padding-bottom:9px; }}
+  .conclusion-hero {{
+    background:linear-gradient(135deg,var(--midnight),var(--midnight-2));
+    color:#FFFFFF; border-radius:10px; padding:18px 20px; margin-bottom:16px;
+    border:1px solid rgba(255,255,255,.08);
+  }}
+  .conclusion-hero .eyebrow {{
+    font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:#AFC4E4; font-weight:800;
+    margin-bottom:7px;
+  }}
+  .conclusion-hero h3 {{ margin:0 0 8px; font-size:20px; line-height:1.25; }}
+  .conclusion-hero p {{ margin:0; max-width:980px; color:#D7E2F3; line-height:1.55; font-size:13px; }}
+  .priority-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:16px; }}
+  .priority-card {{
+    border:1px solid var(--border); border-radius:8px; padding:13px; background:#FFFFFF;
+  }}
+  .priority-card h3 {{ margin:0 0 8px; font-size:13px; color:var(--midnight); }}
+  .priority-card p {{ margin:0; color:#475569; font-size:12px; line-height:1.55; }}
   .next-step-row {{
     display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:start;
     padding:10px 0; border-bottom:1px solid var(--border); font-size:12px;
@@ -757,14 +806,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .next-step-row:last-child {{ border-bottom:0; }}
   .next-step-row strong {{ color:var(--midnight); }}
   @media(max-width:900px){{
-    .chart-grid.cols-2,.chart-grid.cols-3,.kpi-row {{ grid-template-columns:1fr; }}
-    .conclusion-grid {{ grid-template-columns:1fr; }}
+    .chart-grid.cols-2,.chart-grid.cols-3,.kpi-row,.story-strip {{ grid-template-columns:1fr; }}
+    .conclusion-grid,.priority-grid {{ grid-template-columns:1fr; }}
     .next-step-row {{ grid-template-columns:1fr; gap:4px; }}
     #sidebar {{ width:64px; }}
     #main   {{ margin-left:64px; }}
     .sidebar-brand,.nav-link span {{ display:none; }}
     .top-bar {{ align-items:flex-start; gap:8px; flex-direction:column; padding:14px 18px; }}
-    .section,.kpi-row {{ padding-left:18px; padding-right:18px; }}
+    .section,.kpi-row,.story-strip {{ padding-left:18px; padding-right:18px; }}
   }}
 </style>
 </head>
@@ -806,10 +855,26 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="kpi-card purple"><div class="kpi-label">Influenced Pipeline</div><div class="kpi-value">{influenced_pipeline}</div><div class="kpi-sub">Accounts with any mktg touch</div></div>
   </div>
 
+  <div class="story-strip">
+    <div class="story-card">
+      <h2>Marketing influence is bigger than source credit</h2>
+      <p><span class="evidence-badge">$6.5M influenced</span> vs. <span class="evidence-badge orange">$4.2M sourced</span> shows why the dashboard reports both views.</p>
+    </div>
+    <div class="story-card coverage">
+      <h2>Coverage is the clearest growth lever</h2>
+      <p><span class="evidence-badge orange">67.9% unreached</span> target accounts have no email or 6sense touch yet.</p>
+    </div>
+    <div class="story-card quality">
+      <h2>Pipeline quality needs executive attention</h2>
+      <p><span class="evidence-badge red">37% → 15% win rate</span> means pipeline growth must be checked against conversion quality.</p>
+    </div>
+  </div>
+
   <!-- ── 1. Executive Summary ─────────────── -->
   <div id="s-exec" class="section active">
     <div class="section-title">Executive Summary</div>
     <div class="section-desc">High-level pipeline, revenue, and channel overview for a B2B ABM company targeting specific accounts with 6sense display ads, email, and events.</div>
+    <div class="section-takeaway"><strong>Executive takeaway:</strong> The business has meaningful pipeline volume, but the strongest story is how marketing supports future revenue beyond direct source credit. <span class="evidence-badge">$25.0M pipeline</span><span class="evidence-badge green">$5.4M won</span></div>
     <div class="context-box">
       <strong>How to read this dashboard:</strong> This company uses Account-Based Marketing (ABM) — instead of advertising to everyone, they pick specific companies ("target accounts") and run coordinated campaigns at those companies. A deal is born when a target account agrees to a sales conversation and eventually signs a contract. The job of this dashboard is to answer: <em>which marketing activities led to those deals?</em>
     </div>
@@ -848,6 +913,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div id="s-attrib" class="section">
     <div class="section-title">Attribution Analysis</div>
     <div class="section-desc">How different models split deal credit across marketing touchpoints — the core of understanding marketing ROI.</div>
+    <div class="section-takeaway"><strong>Attribution takeaway:</strong> Sourced pipeline is the conservative number; influenced pipeline is the fuller account-journey story. <span class="evidence-badge orange">$4.2M sourced</span><span class="evidence-badge">$6.5M influenced</span></div>
     <div class="context-box">
       <strong>The core concept:</strong> Every won deal has a trail of marketing touchpoints — ads seen, emails opened, website visits — that happened before the deal was created. Attribution models answer the question: <em>how much of this deal's dollar value should each marketing channel get credit for?</em>
       <br><br>
@@ -918,6 +984,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div id="s-channel" class="section">
     <div class="section-title">Channel Performance</div>
     <div class="section-desc">ROI, win rate, and funnel conversion by marketing channel — the efficiency scorecard.</div>
+    <div class="section-takeaway"><strong>Channel takeaway:</strong> Relationship channels close best, while marketing channels build the net-new funnel that needs time to mature. <span class="evidence-badge green">54.3% existing-client win rate</span><span class="evidence-badge">net-new pipeline</span></div>
     <div class="context-box">
       <strong>What "ROI" means here:</strong> Pipeline ROI = pipeline generated ÷ dollars spent. A Pipeline ROI of 5x means every $1 in ad spend generated $5 in deal pipeline. This is different from Revenue ROI (only counting won deals) — both matter. Pipeline ROI tells you if you're building a healthy funnel. Revenue ROI tells you if it's converting.
     </div>
@@ -967,6 +1034,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div id="s-segment" class="section">
     <div class="section-title">Segment & ICP Analysis</div>
     <div class="section-desc">Which account segments and industries have the most pipeline and highest win rates — your best ABM targeting zones.</div>
+    <div class="section-takeaway"><strong>Segment takeaway:</strong> The best targeting decision balances revenue potential with win probability, not just the largest deal size. <span class="evidence-badge green">Commercial + Strong Fit wins most often</span></div>
     <div class="context-box">
       <strong>What is a "Segment" in ABM?</strong> In 6sense, accounts are grouped into buying stage segments based on their digital behavior: how much content they're consuming, what keywords they're searching, how often they visit competitor websites. Common stages: <em>Awareness</em> (just starting to research), <em>Consideration</em> (evaluating options), <em>Decision</em> (ready to buy). Targeting companies in the Decision stage with the right industry profile is how ABM maximizes efficiency.
     </div>
@@ -1004,6 +1072,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div id="s-creative" class="section">
     <div class="section-title">Creative & Email Performance</div>
     <div class="section-desc">Which ad creatives and email campaigns drive the highest engagement — tells you what messaging resonates with your target accounts.</div>
+    <div class="section-takeaway"><strong>Creative takeaway:</strong> Creative performance is an efficiency lever: better messages improve account engagement before opportunities appear in CRM. <span class="evidence-badge">CTR and form fills</span><span class="evidence-badge orange">seniority engagement</span></div>
     <div class="context-box">
       <strong>Why creative matters in ABM:</strong> In ABM, you're showing ads specifically to people at your target accounts — they'll see your ads repeatedly. If your creative is bad, they'll tune it out. If it's good, it builds brand recognition so when sales calls, the prospect already knows who you are. CTR (click-through rate) is the primary measure of creative effectiveness for display ads.
     </div>
@@ -1051,6 +1120,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div id="s-budget" class="section">
     <div class="section-title">Budget Recommendation & Scenarios</div>
     <div class="section-desc">Three scenarios showing what happens to projected pipeline if you reallocate the marketing budget based on ROI data.</div>
+    <div class="section-takeaway"><strong>Budget takeaway:</strong> Use scenarios as directional planning, not exact forecasting; the safest move is to shift spend toward channels with proven late-stage influence. <span class="evidence-badge">time-decay credit</span><span class="evidence-badge orange">diminishing returns risk</span></div>
     <div class="context-box">
       <strong>How scenario modelling works:</strong> We take each channel's current "pipeline per dollar spent" efficiency rate (observed from real data) and apply it to different spending levels. If 6sense historically generates $5 of pipeline for every $1 spent, doubling the 6sense budget should generate roughly twice the pipeline (holding all other variables equal — which is a simplification, but useful for directional planning).
       <br><br>
@@ -1078,6 +1148,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div id="s-advanced" class="section">
     <div class="section-title">Advanced Analytics</div>
     <div class="section-desc">ML win probability model, account coverage gap, deal velocity, journey sequences, and targeting matrix — datathon-level depth.</div>
+    <div class="section-takeaway"><strong>Advanced takeaway:</strong> The predictive model and coverage analysis point to the same action: focus sales and marketing on high-fit accounts that are not yet fully activated. <span class="evidence-badge">AUC 0.807</span><span class="evidence-badge orange">67.9% unreached</span></div>
     <div class="context-box">
       <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section predicts what will happen and tells you where to focus. The win probability model (Random Forest, AUC = 0.807) scores every open deal. The coverage analysis reveals that 68% of your target accounts have never seen a single marketing touchpoint — that is your biggest growth opportunity.
     </div>
@@ -1171,8 +1242,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div id="s-conclusion" class="section">
     <div class="section-title">Conclusion</div>
     <div class="section-desc">The practical readout: what the analysis says, what risks matter, and what the next actions should be.</div>
-    <div class="context-box">
-      <strong>Bottom line:</strong> Marketing is not just a source channel. It influenced $6.5M of pipeline and $830K of won revenue, but the largest growth lever is coverage: 3,256 target accounts, or 67.9%, have not been reached by email or 6sense.
+    <div class="section-takeaway"><strong>Final takeaway:</strong> The recommendation is targeted growth, not blanket budget expansion. <span class="evidence-badge">$6.5M influenced</span><span class="evidence-badge orange">67.9% unreached</span><span class="evidence-badge red">37% → 15% win rate</span></div>
+    <div class="conclusion-hero">
+      <div class="eyebrow">Bottom-line recommendation</div>
+      <h3>Reach the right unreached accounts, coordinate email-to-6sense journeys, and protect win rate as pipeline grows.</h3>
+      <p>Marketing is not just a source channel. It influenced $6.5M of pipeline and $830K of won revenue, but the largest growth lever is coverage: 3,256 target accounts, or 67.9%, have not been reached by email or 6sense.</p>
     </div>
 
     <div class="conclusion-grid">
@@ -1199,6 +1273,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <li>Trigger 6sense display when an account shows email engagement, matching the winning journey pattern.</li>
           <li>Review ICP and qualification each quarter until win rate stabilizes.</li>
         </ul>
+      </div>
+    </div>
+
+    <div class="priority-grid">
+      <div class="priority-card">
+        <h3><span class="priority-tag p1">P1</span> Fix coverage and quality first</h3>
+        <p>Activate unreached target accounts and tighten ICP qualification before chasing more broad top-of-funnel volume.</p>
+      </div>
+      <div class="priority-card">
+        <h3><span class="priority-tag p2">P2</span> Operationalize the evidence</h3>
+        <p>Report sourced plus influenced metrics together, and use win probability bands in weekly sales reviews.</p>
+      </div>
+      <div class="priority-card">
+        <h3><span class="priority-tag p3">P3</span> Improve message efficiency</h3>
+        <p>Scale the creative patterns that earn engagement and retire ads that do not move accounts forward.</p>
       </div>
     </div>
 
