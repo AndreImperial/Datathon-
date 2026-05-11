@@ -69,14 +69,14 @@ def fmt(v, m="$"):
     return f"{m}{v:.0f}"
 
 LAYOUT = dict(
-    font=dict(family="Inter, Arial, sans-serif", size=12, color="#333"),
-    plot_bgcolor="#FAFBFD", paper_bgcolor="#FAFBFD",
+    font=dict(family="Inter, Arial, sans-serif", size=12, color="#111827"),
+    plot_bgcolor="#FFFFFF", paper_bgcolor="#FFFFFF",
     margin=dict(l=40, r=20, t=50, b=40),
     legend=dict(bgcolor="rgba(0,0,0,0)", font_size=11),
 )
 
-COLORS = ["#2563EB","#F59E0B","#10B981","#EF4444","#8B5CF6",
-          "#EC4899","#14B8A6","#F97316","#6366F1","#84CC16"]
+COLORS = ["#2563EB","#059669","#D97706","#7C3AED","#DC2626",
+          "#0891B2","#4B5563","#0F766E","#9333EA","#65A30D"]
 
 # ─────────────────────────────────────────────
 # Chart builders
@@ -91,7 +91,7 @@ def channel_bar():
         orientation="h",
         marker_color=colors,
         text=[fmt(v) for v in df["total_pipeline"]],
-        textposition="outside",
+        textposition="auto",
         hovertemplate="<b>%{y}</b><br>Pipeline: $%{x:,.0f}<extra></extra>",
     ))
     fig.update_layout(title="Pipeline by Channel", xaxis_title="", **LAYOUT)
@@ -106,8 +106,7 @@ def channel_donut():
         values=df_d["won_pipeline"],
         hole=0.5, marker_colors=COLORS,
         hovertemplate="<b>%{label}</b><br>Won: $%{value:,.0f}<br>%{percent}<extra></extra>",
-        textinfo="label+value",
-        texttemplate="%{label}<br>$%{value:,.0f}",
+        textinfo="none",
     ))
     fig.update_layout(title="Won Revenue by Channel", **LAYOUT)
     return fig
@@ -583,111 +582,117 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Marketing Analytics Dashboard</title>
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="https://unpkg.com/lucide@latest"></script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
   :root{{
-    --primary:#2563EB; --primary-dark:#1E40AF; --accent:#F59E0B;
-    --success:#10B981; --danger:#EF4444; --bg:#F1F5F9; --card:#FFFFFF;
-    --sidebar:#1E293B; --sidebar-active:#2563EB; --text:#1E293B; --muted:#64748B;
+    --primary:#2563EB; --primary-dark:#1E40AF; --accent:#D97706;
+    --success:#059669; --danger:#DC2626; --bg:#F6F7F9; --card:#FFFFFF;
+    --border:#E5E7EB; --text:#111827; --muted:#6B7280; --muted-2:#9CA3AF;
+    --nav:#FFFFFF; --nav-hover:#F3F4F6; --nav-active:#EFF6FF;
   }}
   * {{ box-sizing:border-box; margin:0; padding:0; }}
-  body {{ font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); display:flex; }}
+  html {{ scroll-behavior:smooth; }}
+  body {{ font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; font-size:13px; letter-spacing:0; }}
 
   /* Sidebar */
   #sidebar {{
-    width:220px; min-height:100vh; background:var(--sidebar);
+    width:248px; min-height:100vh; background:var(--nav);
     display:flex; flex-direction:column; flex-shrink:0; position:fixed; z-index:100;
+    border-right:1px solid var(--border);
   }}
   .sidebar-brand {{
-    padding:20px 16px; color:#fff; font-size:15px; font-weight:700;
-    border-bottom:1px solid rgba(255,255,255,.1);
+    padding:22px 22px 18px; color:var(--text); font-size:14px; font-weight:700;
+    border-bottom:1px solid var(--border);
     line-height:1.4;
   }}
-  .sidebar-brand small {{ display:block; font-size:10px; font-weight:400; color:#94A3B8; margin-top:2px; }}
+  .sidebar-brand small {{ display:block; font-size:11px; font-weight:500; color:var(--muted); margin-top:3px; }}
   .nav-item {{ list-style:none; }}
   .nav-link {{
-    display:flex; align-items:center; gap:10px; padding:11px 18px;
-    color:#94A3B8; text-decoration:none; font-size:13px; font-weight:500;
-    border-left:3px solid transparent; transition:all .2s;
+    display:flex; align-items:center; gap:11px; margin:3px 12px; padding:10px 12px;
+    color:#4B5563; text-decoration:none; font-size:13px; font-weight:600;
+    border-radius:7px; border-left:0; transition:all .16s ease;
     cursor:pointer;
   }}
-  .nav-link:hover {{ color:#fff; background:rgba(255,255,255,.06); }}
-  .nav-link.active {{ color:#fff; background:rgba(37,99,235,.25); border-left-color:var(--primary); }}
-  .nav-icon {{ font-size:16px; width:20px; text-align:center; }}
+  .nav-link:hover {{ color:var(--text); background:var(--nav-hover); }}
+  .nav-link.active {{ color:var(--primary-dark); background:var(--nav-active); }}
+  .nav-icon {{ width:18px; height:18px; flex:0 0 18px; stroke-width:2; }}
 
   /* Main */
-  #main {{ margin-left:220px; flex:1; padding:0; }}
+  #main {{ margin-left:248px; flex:1; padding:0; min-width:0; }}
   .top-bar {{
-    background:#fff; padding:14px 28px; border-bottom:1px solid #E2E8F0;
+    background:rgba(255,255,255,.92); backdrop-filter:blur(10px);
+    padding:16px 32px; border-bottom:1px solid var(--border);
     display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50;
   }}
-  .top-bar h1 {{ font-size:17px; font-weight:700; color:var(--text); }}
+  .top-bar h1 {{ font-size:18px; font-weight:700; color:var(--text); margin:0; }}
+  .top-meta {{ display:flex; gap:10px; align-items:center; color:var(--muted); font-size:12px; }}
   .badge-pill {{
-    background:var(--primary); color:#fff; padding:3px 10px;
-    border-radius:999px; font-size:11px; font-weight:600;
+    background:#ECFDF5; color:#047857; padding:4px 10px;
+    border-radius:999px; font-size:11px; font-weight:700; border:1px solid #A7F3D0;
   }}
 
   /* KPI cards */
-  .kpi-row {{ display:flex; gap:16px; flex-wrap:wrap; padding:20px 28px 0; }}
+  .kpi-row {{ display:grid; grid-template-columns:repeat(4,minmax(170px,1fr)); gap:14px; padding:22px 32px 0; }}
   .kpi-card {{
-    background:var(--card); border-radius:10px; padding:16px 20px;
-    flex:1; min-width:160px; border-left:4px solid var(--primary);
-    box-shadow:0 1px 4px rgba(0,0,0,.07);
+    background:var(--card); border-radius:8px; padding:15px 16px 14px;
+    min-width:0; border:1px solid var(--border); box-shadow:none;
   }}
-  .kpi-card.green  {{ border-left-color:var(--success); }}
-  .kpi-card.orange {{ border-left-color:var(--accent); }}
-  .kpi-card.purple {{ border-left-color:#8B5CF6; }}
-  .kpi-label {{ font-size:11px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }}
-  .kpi-value {{ font-size:22px; font-weight:700; color:var(--text); margin-top:4px; }}
-  .kpi-sub   {{ font-size:11px; color:var(--muted); margin-top:2px; }}
+  .kpi-card::before {{ content:""; display:block; width:28px; height:3px; border-radius:999px; background:var(--primary); margin-bottom:11px; }}
+  .kpi-card.green::before  {{ background:var(--success); }}
+  .kpi-card.orange::before {{ background:var(--accent); }}
+  .kpi-card.purple::before {{ background:#7C3AED; }}
+  .kpi-label {{ font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }}
+  .kpi-value {{ font-size:24px; font-weight:700; color:var(--text); margin-top:5px; line-height:1.1; }}
+  .kpi-sub   {{ font-size:12px; color:var(--muted); margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
 
   /* Sections */
-  .section {{ display:none; padding:20px 28px 40px; }}
+  .section {{ display:none; padding:22px 32px 42px; }}
   .section.active {{ display:block; }}
   .section-title {{
-    font-size:16px; font-weight:700; color:var(--text);
-    margin-bottom:6px; border-left:3px solid var(--primary); padding-left:10px;
+    font-size:17px; font-weight:700; color:var(--text);
+    margin-bottom:4px; border-left:0; padding-left:0;
   }}
   .section-desc {{
-    font-size:12px; color:var(--muted); margin-bottom:16px; padding-left:13px;
+    font-size:13px; color:var(--muted); margin-bottom:14px; padding-left:0; max-width:840px;
   }}
 
   /* Chart cards */
-  .chart-grid {{ display:grid; gap:16px; }}
+  .chart-grid {{ display:grid; gap:14px; align-items:start; }}
   .chart-grid.cols-2 {{ grid-template-columns:1fr 1fr; }}
   .chart-grid.cols-3 {{ grid-template-columns:1fr 1fr 1fr; }}
   .chart-card {{
-    background:var(--card); border-radius:10px; padding:16px;
-    box-shadow:0 1px 4px rgba(0,0,0,.06);
+    background:var(--card); border-radius:8px; padding:14px;
+    border:1px solid var(--border); box-shadow:none; min-width:0;
   }}
   .chart-card.full {{ grid-column:1/-1; }}
 
   /* Context box */
   .context-box {{
-    background:#EFF6FF; border:1px solid #BFDBFE; border-radius:8px;
-    padding:12px 16px; margin-bottom:16px; font-size:12px; color:#1E40AF; line-height:1.6;
+    background:#FFFFFF; border:1px solid var(--border); border-left:3px solid var(--primary);
+    border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:12px; color:#374151; line-height:1.55;
   }}
   .context-box strong {{ font-weight:600; }}
 
   /* Per-chart explanation box */
   .chart-explain {{
-    background:#F8FAFC; border-top:1px solid #E2E8F0;
-    padding:10px 14px; margin-top:8px; border-radius:0 0 8px 8px;
-    font-size:12px; color:#475569; line-height:1.65;
+    background:#F9FAFB; border:1px solid #EEF0F3;
+    padding:10px 12px; margin-top:10px; border-radius:7px;
+    font-size:11px; color:#4B5563; line-height:1.45;
   }}
   .chart-explain .ex-title {{
-    font-weight:700; color:#1E293B; font-size:12px; margin-bottom:3px;
+    font-weight:700; color:#111827; font-size:11px; margin-bottom:4px;
     display:flex; align-items:center; gap:6px;
   }}
   .chart-explain .ex-title::before {{
-    content:""; display:inline-block; width:10px; height:10px;
-    background:var(--primary); border-radius:2px; flex-shrink:0;
+    content:""; display:inline-block; width:6px; height:6px;
+    background:var(--primary); border-radius:999px; flex-shrink:0;
   }}
   .chart-explain .ex-insight {{
-    margin-top:5px; padding:5px 10px;
-    background:#ECFDF5; border-left:3px solid var(--success);
-    border-radius:4px; font-size:11px; color:#065F46; font-weight:500;
+    margin-top:7px; padding:7px 9px;
+    background:#F0FDF4; border-left:2px solid var(--success);
+    border-radius:5px; font-size:11px; color:#166534; font-weight:600;
   }}
 
   /* Attribution model pills */
@@ -703,20 +708,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   /* Table */
   .dash-table {{ width:100%; border-collapse:collapse; font-size:12px; }}
   .dash-table th {{
-    background:var(--primary); color:#fff; padding:8px 12px;
-    text-align:left; font-weight:600; white-space:nowrap;
+    background:#F9FAFB; color:#374151; padding:9px 12px;
+    text-align:left; font-weight:700; white-space:nowrap; border-bottom:1px solid var(--border);
   }}
-  .dash-table td {{ padding:7px 12px; border-bottom:1px solid #F1F5F9; }}
-  .dash-table tr:nth-child(even) {{ background:#F8FAFC; }}
-  .dash-table tr:hover {{ background:#EFF6FF; }}
+  .dash-table td {{ padding:8px 12px; border-bottom:1px solid #F3F4F6; }}
+  .dash-table tr:nth-child(even) {{ background:#FCFCFD; }}
+  .dash-table tr:hover {{ background:#F9FAFB; }}
   .green-text  {{ color:var(--success); font-weight:600; }}
   .red-text    {{ color:var(--danger);  font-weight:600; }}
-  .badge-ch    {{ background:#EFF6FF; color:var(--primary); padding:2px 8px; border-radius:4px; font-size:11px; }}
+  .badge-ch    {{ background:#F3F4F6; color:#374151; padding:3px 7px; border-radius:5px; font-size:11px; font-weight:600; }}
+  .js-plotly-plot, .plot-container {{ min-height:360px; }}
   @media(max-width:900px){{
-    .chart-grid.cols-2,.chart-grid.cols-3 {{ grid-template-columns:1fr; }}
-    #sidebar {{ width:60px; }}
-    #main   {{ margin-left:60px; }}
+    .chart-grid.cols-2,.chart-grid.cols-3,.kpi-row {{ grid-template-columns:1fr; }}
+    #sidebar {{ width:64px; }}
+    #main   {{ margin-left:64px; }}
     .sidebar-brand,.nav-link span {{ display:none; }}
+    .top-bar {{ align-items:flex-start; gap:8px; flex-direction:column; padding:14px 18px; }}
+    .section,.kpi-row {{ padding-left:18px; padding-right:18px; }}
   }}
 </style>
 </head>
@@ -729,13 +737,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <small>B2B SaaS &nbsp;|&nbsp; 2023-2024</small>
   </div>
   <ul class="nav flex-column mt-2" id="navMenu">
-    <li class="nav-item"><a class="nav-link active" data-section="s-exec" onclick="showSection(this,'s-exec')"><span class="nav-icon">📊</span><span>Executive Summary</span></a></li>
-    <li class="nav-item"><a class="nav-link" data-section="s-attrib" onclick="showSection(this,'s-attrib')"><span class="nav-icon">🔗</span><span>Attribution Models</span></a></li>
-    <li class="nav-item"><a class="nav-link" data-section="s-channel" onclick="showSection(this,'s-channel')"><span class="nav-icon">📈</span><span>Channel Performance</span></a></li>
-    <li class="nav-item"><a class="nav-link" data-section="s-segment" onclick="showSection(this,'s-segment')"><span class="nav-icon">🏢</span><span>Segment Analysis</span></a></li>
-    <li class="nav-item"><a class="nav-link" data-section="s-creative" onclick="showSection(this,'s-creative')"><span class="nav-icon">✉️</span><span>Creative & Email</span></a></li>
-    <li class="nav-item"><a class="nav-link" data-section="s-budget" onclick="showSection(this,'s-budget')"><span class="nav-icon">💰</span><span>Budget Scenarios</span></a></li>
-    <li class="nav-item"><a class="nav-link" data-section="s-advanced" onclick="showSection(this,'s-advanced')"><span class="nav-icon">🤖</span><span>Advanced Analytics</span></a></li>
+    <li class="nav-item"><a class="nav-link active" data-section="s-exec" onclick="showSection(this,'s-exec')"><i class="nav-icon" data-lucide="layout-dashboard"></i><span>Executive Summary</span></a></li>
+    <li class="nav-item"><a class="nav-link" data-section="s-attrib" onclick="showSection(this,'s-attrib')"><i class="nav-icon" data-lucide="git-branch"></i><span>Attribution Models</span></a></li>
+    <li class="nav-item"><a class="nav-link" data-section="s-channel" onclick="showSection(this,'s-channel')"><i class="nav-icon" data-lucide="trending-up"></i><span>Channel Performance</span></a></li>
+    <li class="nav-item"><a class="nav-link" data-section="s-segment" onclick="showSection(this,'s-segment')"><i class="nav-icon" data-lucide="building-2"></i><span>Segment Analysis</span></a></li>
+    <li class="nav-item"><a class="nav-link" data-section="s-creative" onclick="showSection(this,'s-creative')"><i class="nav-icon" data-lucide="mail"></i><span>Creative & Email</span></a></li>
+    <li class="nav-item"><a class="nav-link" data-section="s-budget" onclick="showSection(this,'s-budget')"><i class="nav-icon" data-lucide="circle-dollar-sign"></i><span>Budget Scenarios</span></a></li>
+    <li class="nav-item"><a class="nav-link" data-section="s-advanced" onclick="showSection(this,'s-advanced')"><i class="nav-icon" data-lucide="brain-circuit"></i><span>Advanced Analytics</span></a></li>
   </ul>
 </nav>
 
@@ -743,9 +751,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <div id="main">
   <div class="top-bar">
     <h1>Marketing Analytics Dashboard</h1>
-    <div style="display:flex;gap:10px;align-items:center">
+    <div class="top-meta">
       <span style="font-size:12px;color:#64748B;">Data: 2021–2024 &nbsp;|&nbsp; {total_deals} Opportunities &nbsp;|&nbsp; 8 Datasets</span>
-      <span class="badge-pill">Live Analysis</span>
+      <span class="badge-pill">Validated</span>
     </div>
   </div>
 
@@ -1131,6 +1139,17 @@ function showSection(link, sectionId) {{
   // Trigger resize so Plotly charts re-fit
   setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
 }}
+
+if (window.lucide) {{
+  lucide.createIcons();
+}}
+
+document.querySelectorAll('.chart-explain').forEach(box => {{
+  const title = box.querySelector('.ex-title')?.outerHTML || '';
+  const insight = box.querySelector('.ex-insight')?.outerHTML || '';
+  if (title || insight) box.innerHTML = title + insight;
+}}
+);
 
 // ── Chart data (injected by Python) ─────────
 const CHARTS = {{
