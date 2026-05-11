@@ -730,8 +730,36 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .red-text    {{ color:var(--danger);  font-weight:600; }}
   .badge-ch    {{ background:#F3F4F6; color:#374151; padding:3px 7px; border-radius:5px; font-size:11px; font-weight:600; }}
   .js-plotly-plot, .plot-container {{ min-height:360px; }}
+  .conclusion-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:16px; }}
+  .conclusion-card {{
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:16px; box-shadow:0 1px 4px rgba(0,0,0,.05);
+  }}
+  .conclusion-card h3 {{
+    font-size:13px; color:var(--midnight); margin:0 0 10px; font-weight:800;
+    display:flex; align-items:center; gap:8px;
+  }}
+  .finding-list {{ margin:0; padding-left:18px; color:#334155; font-size:12px; line-height:1.7; }}
+  .finding-list li {{ margin-bottom:6px; }}
+  .priority-tag {{
+    display:inline-flex; align-items:center; justify-content:center; min-width:34px;
+    padding:3px 8px; border-radius:999px; background:#DBEAFE; color:#1E40AF;
+    font-size:11px; font-weight:800;
+  }}
+  .priority-tag.p1 {{ background:#FEF2F2; color:#991B1B; }}
+  .priority-tag.p2 {{ background:#FFF7ED; color:#9A3412; }}
+  .priority-tag.p3 {{ background:#ECFDF5; color:#065F46; }}
+  .recommendation-table td {{ vertical-align:top; line-height:1.55; }}
+  .next-step-row {{
+    display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:start;
+    padding:10px 0; border-bottom:1px solid var(--border); font-size:12px;
+  }}
+  .next-step-row:last-child {{ border-bottom:0; }}
+  .next-step-row strong {{ color:var(--midnight); }}
   @media(max-width:900px){{
     .chart-grid.cols-2,.chart-grid.cols-3,.kpi-row {{ grid-template-columns:1fr; }}
+    .conclusion-grid {{ grid-template-columns:1fr; }}
+    .next-step-row {{ grid-template-columns:1fr; gap:4px; }}
     #sidebar {{ width:64px; }}
     #main   {{ margin-left:64px; }}
     .sidebar-brand,.nav-link span {{ display:none; }}
@@ -756,6 +784,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <li class="nav-item"><a class="nav-link" data-section="s-creative" onclick="showSection(this,'s-creative')"><i class="nav-icon" data-lucide="mail"></i><span>Creative & Email</span></a></li>
     <li class="nav-item"><a class="nav-link" data-section="s-budget" onclick="showSection(this,'s-budget')"><i class="nav-icon" data-lucide="circle-dollar-sign"></i><span>Budget Scenarios</span></a></li>
     <li class="nav-item"><a class="nav-link" data-section="s-advanced" onclick="showSection(this,'s-advanced')"><i class="nav-icon" data-lucide="brain-circuit"></i><span>Advanced Analytics</span></a></li>
+    <li class="nav-item"><a class="nav-link" data-section="s-conclusion" onclick="showSection(this,'s-conclusion')"><i class="nav-icon" data-lucide="check-circle-2"></i><span>Conclusion</span></a></li>
   </ul>
 </nav>
 
@@ -1134,6 +1163,105 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <strong>The critical trend:</strong> Pipeline is growing every quarter (good). But win rate has dropped from 37% in 2022Q1 to 15% in 2024Q4 (bad). Marketing's share peaked at 38% in 2023Q1 but dropped to 7% in 2024Q4. This means the pipeline is growing but quality is declining — either ICP targeting is drifting or deals are being rushed into the funnel without proper qualification.
           <div class="ex-insight">Key insight: This is the most important strategic signal in the entire dataset. Investigate why win rates are declining as pipeline grows. Is the ICP expanding too broadly? Are marketing-sourced deals being counted less? This needs executive attention.</div>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── 8. Conclusion ───────────────── -->
+  <div id="s-conclusion" class="section">
+    <div class="section-title">Conclusion</div>
+    <div class="section-desc">The practical readout: what the analysis says, what risks matter, and what the next actions should be.</div>
+    <div class="context-box">
+      <strong>Bottom line:</strong> Marketing is not just a source channel. It influenced $6.5M of pipeline and $830K of won revenue, but the largest growth lever is coverage: 3,256 target accounts, or 67.9%, have not been reached by email or 6sense.
+    </div>
+
+    <div class="conclusion-grid">
+      <div class="conclusion-card">
+        <h3>What is working</h3>
+        <ul class="finding-list">
+          <li>Relationship-led channels close strongest: existing clients win at 54.3% and referrals at 28.9%.</li>
+          <li>Email starts journeys, while 6sense Display gains credit in last-touch and time-decay models.</li>
+          <li>The win model is useful enough for prioritization: AUC is 0.807 across closed deals.</li>
+        </ul>
+      </div>
+      <div class="conclusion-card">
+        <h3>What is at risk</h3>
+        <ul class="finding-list">
+          <li>Pipeline volume is growing, but cohort win rate fell from 37% in 2022Q1 to 15% in 2024Q4.</li>
+          <li>Marketing-sourced share fell to 7% in 2024Q4, so the funnel may be drifting away from the best-fit audience.</li>
+          <li>Most target accounts are unreached, which limits ABM learning and leaves pipeline potential untouched.</li>
+        </ul>
+      </div>
+      <div class="conclusion-card">
+        <h3>What to do next</h3>
+        <ul class="finding-list">
+          <li>Expand coverage to unreached strong-fit accounts before increasing broad demand generation spend.</li>
+          <li>Trigger 6sense display when an account shows email engagement, matching the winning journey pattern.</li>
+          <li>Review ICP and qualification each quarter until win rate stabilizes.</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="chart-card full">
+      <div class="section-title" style="font-size:13px;margin-bottom:6px">Recommended Action Plan</div>
+      <div style="font-size:11px;color:#64748B;margin-bottom:10px">Each row connects the dashboard evidence to a business action, so the analysis can be defended in a presentation.</div>
+      <div style="overflow-x:auto">
+        <table class="dash-table recommendation-table">
+          <thead><tr><th>Priority</th><th>Action</th><th>Why</th><th>Measure Success With</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="priority-tag p1">P1</span></td>
+              <td><strong>Coverage:</strong> reach unreached target accounts with email plus 6sense.</td>
+              <td>Both-channel accounts show a 42.6% opportunity rate, compared with 17.5% for unreached accounts.</td>
+              <td>Target account coverage, opportunity rate, pipeline created.</td>
+            </tr>
+            <tr>
+              <td><span class="priority-tag p1">P1</span></td>
+              <td><strong>Pipeline quality:</strong> tighten ICP and qualification criteria.</td>
+              <td>Quarterly pipeline is rising while win rate dropped from 37% to 15%.</td>
+              <td>Win rate, stage conversion, disqualification reasons.</td>
+            </tr>
+            <tr>
+              <td><span class="priority-tag p2">P2</span></td>
+              <td><strong>Attribution reporting:</strong> report sourced and influenced side by side.</td>
+              <td>Sourced pipeline is $4.2M, while influenced pipeline is $6.5M. Both answer different executive questions.</td>
+              <td>Sourced pipeline, influenced pipeline, influenced won revenue.</td>
+            </tr>
+            <tr>
+              <td><span class="priority-tag p2">P2</span></td>
+              <td><strong>Sales prioritization:</strong> use win probability bands in weekly pipeline review.</td>
+              <td>The model scored 545 open deals and uses ABM signals that sellers may not see in CRM.</td>
+              <td>Close rate by probability band, sales follow-up SLA.</td>
+            </tr>
+            <tr>
+              <td><span class="priority-tag p3">P3</span></td>
+              <td><strong>Creative:</strong> scale high-CTR creative patterns and retire weak ads.</td>
+              <td>Creative quality improves click efficiency before accounts ever become opportunities.</td>
+              <td>CTR, CPC, form fills, account engagement.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="chart-card full" style="margin-top:16px">
+      <div class="section-title" style="font-size:13px;margin-bottom:8px">How to Present the Conclusion</div>
+      <div class="next-step-row">
+        <strong>1. Start with contribution</strong>
+        <span>Marketing created measurable pipeline directly, but the stronger story is influence across the account journey.</span>
+      </div>
+      <div class="next-step-row">
+        <strong>2. Name the tension</strong>
+        <span>The business is creating more pipeline, but lower recent win rates mean growth is not automatically healthy.</span>
+      </div>
+      <div class="next-step-row">
+        <strong>3. Recommend the move</strong>
+        <span>Prioritize strong-fit account coverage and coordinated email-to-6sense journeys before simply adding budget.</span>
+      </div>
+      <div class="chart-explain">
+        <div class="ex-title">How to read this conclusion</div>
+        The conclusion combines three signals: attribution tells us where marketing contributes, coverage tells us where growth is still available, and cohort analysis tells us whether pipeline quality is improving or declining.
+        <div class="ex-insight">Key takeaway: The best recommendation is not "spend more everywhere." It is to reach the right unreached accounts, coordinate channels, and protect win rate as pipeline grows.</div>
       </div>
     </div>
   </div>
