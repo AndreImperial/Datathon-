@@ -695,6 +695,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     background:#F0FDF4; border-left:2px solid var(--success);
     border-radius:5px; font-size:12px; color:#155E43; font-weight:600;
   }}
+  .ex-body {{ margin-top:8px; color:#4B5C70; }}
+  .learn-toggle {{
+    margin-top:8px; display:inline-flex; align-items:center; gap:6px;
+    border:1px solid #C9D7EA; background:#FFFFFF; color:var(--primary-dark);
+    border-radius:6px; padding:5px 9px; font-size:12px; font-weight:700;
+    cursor:pointer;
+  }}
+  .learn-toggle:hover {{ background:#F2F7FE; }}
+  .learn-toggle i {{ width:14px; height:14px; transition:transform .16s ease; }}
+  .chart-explain.open .learn-toggle i {{ transform:rotate(180deg); }}
+  .chart-explain.collapsed .ex-body {{ display:none; }}
 
   /* Attribution model pills */
   .model-legend {{ display:flex; gap:10px; flex-wrap:wrap; margin-bottom:10px; }}
@@ -1145,14 +1156,47 @@ if (window.lucide) {{
   lucide.createIcons();
 }}
 
-document.querySelectorAll('.chart-explain').forEach(box => {{
-  const title = box.querySelector('.ex-title')?.outerHTML || '';
-  const insight = box.querySelector('.ex-insight')?.outerHTML || '';
-  if (title || insight) box.innerHTML = title + insight;
-}}
-);
+document.querySelectorAll('.chart-explain').forEach((box, idx) => {{
+  const title = box.querySelector('.ex-title');
+  const insight = box.querySelector('.ex-insight');
+  const bodyNodes = [];
+  Array.from(box.childNodes).forEach(node => {{
+    if (node !== title && node !== insight) bodyNodes.push(node);
+  }});
+
+  const body = document.createElement('div');
+  body.className = 'ex-body';
+  body.id = `learn-${{idx}}`;
+  bodyNodes.forEach(node => body.appendChild(node));
+
+  const toggle = document.createElement('button');
+  toggle.className = 'learn-toggle';
+  toggle.type = 'button';
+  toggle.setAttribute('aria-expanded', 'false');
+  toggle.setAttribute('aria-controls', body.id);
+  toggle.innerHTML = '<i data-lucide="chevron-down"></i><span>How to read this</span>';
+  toggle.addEventListener('click', () => {{
+    const open = box.classList.toggle('open');
+    box.classList.toggle('collapsed', !open);
+    toggle.setAttribute('aria-expanded', String(open));
+  }});
+
+  box.innerHTML = '';
+  if (title) box.appendChild(title);
+  if (insight) box.appendChild(insight);
+  if (body.textContent.trim()) {{
+    box.classList.add('collapsed');
+    box.appendChild(toggle);
+    box.appendChild(body);
+  }}
+}});
 
 // ── Chart data (injected by Python) ─────────
+if (window.lucide) {{
+  lucide.createIcons();
+}}
+
+// Chart data (injected by Python)
 const CHARTS = {{
   "c-bar-channel":       {bar_channel},
   "c-donut-won":         {donut_won},
