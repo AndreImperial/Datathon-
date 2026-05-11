@@ -149,7 +149,9 @@ def link_touchpoints_to_opps(tp_df: pd.DataFrame) -> pd.DataFrame:
     print(f"  Opportunities with domain + create date: {len(opps_with_domain):,}")
 
     # Merge touchpoints into opportunities via domain
-    iswon_col = "iswon" if "iswon" in opps_with_domain.columns else (None)
+    iswon_col = "iswon" if "iswon" in opps_with_domain.columns else (
+        "_iswon" if "_iswon" in opps_with_domain.columns else None
+    )
     select_cols = ["_opportunity_id", "opp_domain", "_opp_create_date", "_amount", "channel_category", "is_marketing_sourced"]
     if iswon_col:
         select_cols.append(iswon_col)
@@ -181,8 +183,12 @@ def apply_attribution_models(linked: pd.DataFrame, opps_full: pd.DataFrame) -> d
     Each DataFrame has: channel | attributed_pipeline | attributed_won | deal_count
     """
     results = {}
-    iswon_col = "iswon" if "iswon" in opps_full.columns else None
-    iswon_linked = "iswon" if "iswon" in linked.columns else None
+    iswon_col = "iswon" if "iswon" in opps_full.columns else (
+        "_iswon" if "_iswon" in opps_full.columns else None
+    )
+    iswon_linked = "iswon" if "iswon" in linked.columns else (
+        "_iswon" if "_iswon" in linked.columns else None
+    )
 
     def _won_sum(df, amount_col="_amount"):
         if iswon_col and iswon_col in df.columns:
@@ -214,7 +220,9 @@ def apply_attribution_models(linked: pd.DataFrame, opps_full: pd.DataFrame) -> d
                 attributed_pipeline=("_amount", "sum"),
                 deal_count=("_opportunity_id", "count"),
             ).reset_index().rename(columns={"channel_category": "channel"})
-            ig["attributed_won"] = 0
+            ig["attributed_won"] = influenced.groupby("channel_category").apply(
+                lambda g: _won_sum(g)
+            ).reindex(ig["channel"]).fillna(0).values
             ig["attribution_model"] = "Marketing Influenced"
             results["Marketing Influenced"] = ig
 
@@ -255,6 +263,7 @@ def apply_attribution_models(linked: pd.DataFrame, opps_full: pd.DataFrame) -> d
         for ch in unique_channels:
             linear_rows.append({
                 "channel": ch,
+                "_opportunity_id": opp_id,
                 "attributed_pipeline": credit,
                 "attributed_won": credit if is_won else 0,
             })
@@ -263,8 +272,8 @@ def apply_attribution_models(linked: pd.DataFrame, opps_full: pd.DataFrame) -> d
         lin = lin_df.groupby("channel").agg(
             attributed_pipeline=("attributed_pipeline", "sum"),
             attributed_won=("attributed_won", "sum"),
+            deal_count=("_opportunity_id", "nunique"),
         ).reset_index()
-        lin["deal_count"] = linked.groupby("_opportunity_id").ngroups
         lin["attribution_model"] = "Linear"
         results["Linear"] = lin
 
@@ -284,6 +293,7 @@ def apply_attribution_models(linked: pd.DataFrame, opps_full: pd.DataFrame) -> d
             credit = (w / grand_total) * opp_amount
             decay_rows.append({
                 "channel": ch,
+                "_opportunity_id": opp_id,
                 "attributed_pipeline": credit,
                 "attributed_won": credit if is_won else 0,
             })
@@ -292,8 +302,8 @@ def apply_attribution_models(linked: pd.DataFrame, opps_full: pd.DataFrame) -> d
         dec = dec_df.groupby("channel").agg(
             attributed_pipeline=("attributed_pipeline", "sum"),
             attributed_won=("attributed_won", "sum"),
+            deal_count=("_opportunity_id", "nunique"),
         ).reset_index()
-        dec["deal_count"] = 0
         dec["attribution_model"] = "Time-Decay"
         results["Time-Decay"] = dec
 

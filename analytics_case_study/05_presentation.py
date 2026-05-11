@@ -785,7 +785,7 @@ def main():
             fn(prs); print("OK")
         except Exception as e:
             print(f"! {e}")
-    out=os.path.join(PRESENTATION_DIR,"Marketing_Analytics_Executive_Deck_v4.pptx")
+    out=os.path.join(PRESENTATION_DIR,"Analytics_Slides.pptx")
     prs.save(out)
     print(f"\nOK Saved -> {out}")
     print(f"   {os.path.getsize(out)/1024:.0f} KB, {len(prs.slides)} slides")
