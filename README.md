@@ -67,6 +67,62 @@ public/index.html
 
 The Render deployment is configured as a static web service that publishes the `public` folder.
 
+## Deploy
+
+This repo is ready for static deployment. The dashboard entrypoint is:
+
+```text
+public/index.html
+```
+
+### Render
+
+`render.yaml` is included. To deploy on Render:
+
+1. Connect this GitHub repository to Render.
+2. Create a Blueprint or static web service from the repo.
+3. Render will publish the `public` folder.
+
+Expected settings:
+
+```text
+Runtime: Static
+Publish directory: public
+Build command: empty
+```
+
+### GitHub Pages
+
+A GitHub Pages workflow is included at `.github/workflows/deploy-pages.yml`.
+
+To enable it:
+
+1. Go to the repository on GitHub.
+2. Open Settings > Pages.
+3. Set Source to `GitHub Actions`.
+4. Push to `main` or run the workflow manually.
+
+## Validate Before Deployment
+
+Before deploying a regenerated dashboard, run:
+
+```bash
+python analytics_case_study/04_html_dashboard.py
+python analytics_case_study/06_validate_metrics.py
+```
+
+Then copy the generated dashboard into the static publish folder:
+
+```bash
+cp outputs/dashboard/Marketing_Analytics_Dashboard.html public/index.html
+```
+
+On Windows PowerShell:
+
+```powershell
+Copy-Item outputs\dashboard\Marketing_Analytics_Dashboard.html public\index.html -Force
+```
+
 There is also a local Dash app:
 
 ```bash

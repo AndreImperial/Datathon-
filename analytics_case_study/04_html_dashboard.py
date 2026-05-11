@@ -1213,7 +1213,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="evidence-card">
         <h3><span class="confidence-pill directional">Next test</span> Validate causality</h3>
-        <p>Run a holdout or phased rollout so the team can measure incremental lift from email plus 6sense coverage.</p>
+        <p>Run a holdout or phased rollout so the team can measure incremental lift from email-first outreach and a tested 6sense overlay.</p>
       </div>
     </div>
 
@@ -1309,7 +1309,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="section-takeaway"><strong>Final takeaway:</strong> The recommendation is targeted growth, not blanket budget expansion. <span class="evidence-badge">$6.5M influenced</span><span class="evidence-badge orange">67.9% unreached</span><span class="evidence-badge red">37% → 15% win rate</span></div>
     <div class="conclusion-hero">
       <div class="eyebrow">Bottom-line recommendation</div>
-      <h3>Reach the right unreached accounts, coordinate email-to-6sense journeys, and protect win rate as pipeline grows.</h3>
+      <h3>Reach the right unreached accounts, start with email, test 6sense overlay, and protect win rate as pipeline grows.</h3>
       <p>Marketing is not just a source channel. It influenced $6.5M of pipeline and $830K of won revenue, but the largest growth lever is coverage: 3,256 target accounts, or 67.9%, have not been reached by email or 6sense.</p>
     </div>
 
@@ -1398,7 +1398,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="evidence-card">
         <h3><span class="confidence-pill medium">What the data suggests</span></h3>
-        <p>Coordinated email plus 6sense coverage is associated with better account movement and should be the primary growth play.</p>
+        <p>Email coverage is the strongest observed reach signal, and 6sense should be tested as an overlay for engaged target accounts.</p>
       </div>
       <div class="evidence-card">
         <h3><span class="confidence-pill directional">What needs testing</span></h3>
@@ -1415,9 +1415,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <tbody>
             <tr>
               <td><span class="priority-tag p1">P1</span></td>
-              <td><strong>Coverage:</strong> reach unreached target accounts with email plus 6sense.</td>
-              <td>Both-channel accounts show a 42.6% opportunity rate, compared with 17.5% for unreached accounts.</td>
-              <td>Target account coverage, opportunity rate, pipeline created.</td>
+              <td><strong>Coverage:</strong> reach unreached target accounts with email first, then test 6sense overlay.</td>
+              <td>Email-only accounts show a 45.9% opportunity rate and both-channel accounts show 42.6%, compared with 17.5% for unreached accounts.</td>
+              <td>Target account coverage, opportunity rate, incremental lift, pipeline created.</td>
             </tr>
             <tr>
               <td><span class="priority-tag p1">P1</span></td>
@@ -1460,7 +1460,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="next-step-row">
         <strong>3. Recommend the move</strong>
-        <span>Prioritize strong-fit account coverage and coordinated email-to-6sense journeys before simply adding budget.</span>
+        <span>Prioritize strong-fit account coverage, lead with email, and test 6sense overlay before simply adding budget.</span>
       </div>
       <div class="next-step-row">
         <strong>4. State confidence</strong>
@@ -1469,7 +1469,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-explain">
         <div class="ex-title">How to read this conclusion</div>
         The conclusion combines three signals: attribution tells us where marketing contributes, coverage tells us where growth is still available, and cohort analysis tells us whether pipeline quality is improving or declining.
-        <div class="ex-insight">Key takeaway: The best recommendation is not "spend more everywhere." It is to reach the right unreached accounts, coordinate channels, and protect win rate as pipeline grows.</div>
+        <div class="ex-insight">Key takeaway: The best recommendation is not "spend more everywhere." It is to reach the right unreached accounts, test channel overlays carefully, and protect win rate as pipeline grows.</div>
       </div>
     </div>
   </div>
@@ -1572,9 +1572,9 @@ const channelRows = {channel_rows};
 const ctbody = document.getElementById('channel-tbody');
 if(ctbody && channelRows) {{
   channelRows.forEach(r => {{
-    const roi = r.pipeline_roi ? r.pipeline_roi.toFixed(1)+'x' : '—';
-    const rroi = r.revenue_roi ? r.revenue_roi.toFixed(1)+'x' : '—';
-    const wr = r.win_rate ? (r.win_rate*100).toFixed(1)+'%' : '—';
+    const roi = r.pipeline_roi === null || r.pipeline_roi === undefined ? '—' : r.pipeline_roi.toFixed(1)+'x';
+    const rroi = r.revenue_roi === null || r.revenue_roi === undefined ? '—' : r.revenue_roi.toFixed(1)+'x';
+    const wr = r.win_rate === null || r.win_rate === undefined ? '—' : (r.win_rate*100).toFixed(1)+'%';
     const cls = r.pipeline_roi && r.pipeline_roi > 5 ? 'green-text' : (r.pipeline_roi && r.pipeline_roi < 2 ? 'red-text' : '');
     ctbody.innerHTML += `<tr>
       <td><span class="badge-ch">${{r.channel_category}}</span></td>
