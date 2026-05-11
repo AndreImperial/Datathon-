@@ -52,6 +52,7 @@ python analytics_case_study/03b_attribution.py
 python analytics_case_study/03c_advanced_analytics.py
 python analytics_case_study/04_html_dashboard.py
 python analytics_case_study/05_presentation.py
+python analytics_case_study/06_validate_metrics.py
 ```
 
 The project uses relative paths from the repo root, so it can be cloned and run without editing local machine-specific paths.

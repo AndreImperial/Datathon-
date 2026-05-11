@@ -112,6 +112,21 @@ def build_master_account(accounts, segments, campaign6s, email, web, opps, icp) 
                    .rename(columns={"_account_id": "accountid"}))
         base = base.merge(opp_agg, on="accountid", how="left")
 
+        missing_opps = opp_agg[~opp_agg["accountid"].isin(base["accountid"])].copy()
+        if not missing_opps.empty:
+            missing_names = (opps.dropna(subset=["_account_id"])
+                             .sort_values("_opportunity_id")
+                             .groupby("_account_id")["_account_name"]
+                             .first()
+                             .reset_index()
+                             .rename(columns={"_account_id": "accountid", "_account_name": "account_name"}))
+            missing_opps = missing_opps.merge(missing_names, on="accountid", how="left")
+            for col in base.columns:
+                if col not in missing_opps.columns:
+                    missing_opps[col] = np.nan
+            base = pd.concat([base, missing_opps[base.columns]], ignore_index=True)
+            print(f"  Added {len(missing_opps):,} opportunity-only accounts missing from account log")
+
     # --- ICP contacts by account ---
     icp_col = None
     for c in ["_sfdcaccountid", "_accountid", "accountid"]:

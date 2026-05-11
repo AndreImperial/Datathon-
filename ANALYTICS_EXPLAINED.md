@@ -70,11 +70,11 @@ Attribution models answer this question differently:
 
 ### Marketing Sourced
 **Simple answer:** The CRM says the lead originally came from marketing. Only counts deals where the `LeadSource` field is a marketing channel.
-- **Our number:** $4.16M pipeline, 511 deals
+- **Our number:** $4.20M pipeline, $636K won revenue, 511 deals
 
 ### Marketing Influenced
 **Simple answer:** Marketing touched this account BEFORE the deal was created, even if sales ultimately sourced it. Includes any deal where marketing had contact with that company within 365 days of the deal being created.
-- **Our number:** $6.29M pipeline, 708 deals influenced
+- **Our number:** $6.49M pipeline, $830K won revenue, 708 deals influenced
 - This is always bigger than Sourced because it captures deals where marketing "warmed up" an account that sales then closed
 
 ### First-Touch
@@ -106,7 +106,7 @@ Attribution models answer this question differently:
 
 **2. 6sense Display is strong at the end of the funnel** — 6sense gets more credit in Last-Touch and Time-Decay models than First-Touch. This means display ads are keeping the brand visible when accounts are actively evaluating options.
 
-**3. Existing clients and referrals dominate pipeline** — 1,366 deals from existing clients (42% of all deals) and 291 from referrals (9%). Together they account for $6M in pipeline. This is normal for B2B companies — expand and refer is the most efficient growth engine.
+**3. Existing clients and referrals are the strongest relationship-driven motions** — 1,366 deals from existing clients (42% of all deals) and 291 from referrals (9%). Together they account for $6.0M in pipeline and $2.3M in won revenue. This is normal for B2B companies: expand and refer is often the most efficient growth engine.
 
 **4. Marketing-sourced deals have a lower win rate (10%) but that's expected** — Marketing finds prospects earlier in their journey. They're not ready to buy yet. Sales-sourced deals (especially referrals) close at 29% because those people are already warm. Don't judge marketing by the same win rate standard as referrals.
 

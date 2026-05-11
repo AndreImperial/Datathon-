@@ -1,5 +1,5 @@
 """
-Phase 5 (revised): Executive Presentation — 17 slides with context backgrounds and attribution analysis.
+Phase 5: Executive Presentation with context, attribution, and advanced analytics.
 Run: python analytics_case_study/05_presentation.py
 """
 import os, sys, io
@@ -69,11 +69,12 @@ c6    = _lc("6sense_campaign")
 ad    = _lc("ad_metrics")
 
 total_pipeline = opps["_amount"].sum() if "_amount" in opps.columns else 0
-won_pipeline   = opps.loc[opps["iswon"]==True,"_amount"].sum() if "iswon" in opps.columns else 0
+won_col = "iswon" if "iswon" in opps.columns else ("_iswon" if "_iswon" in opps.columns else None)
+won_pipeline   = opps.loc[opps[won_col]==True,"_amount"].sum() if won_col else 0
 mktg_pipeline  = opps.loc[opps["is_marketing_sourced"]==True,"_amount"].sum() if "is_marketing_sourced" in opps.columns else 0
 influenced_pl  = attribution[attribution["attribution_model"]=="Marketing Influenced"]["attributed_pipeline"].sum() if not attribution.empty else 0
 total_deals    = len(opps)
-won_deals      = (opps["iswon"]==True).sum() if "iswon" in opps.columns else 0
+won_deals      = (opps[won_col]==True).sum() if won_col else 0
 win_rate_all   = won_deals/total_deals if total_deals else 0
 mktg_pct       = mktg_pipeline/total_pipeline if total_pipeline else 0
 
@@ -171,7 +172,7 @@ def s2_exec(prs):
         box.fill.solid(); box.fill.fore_color.rgb=LIGHT_BG; box.line.fill.background()
         _txt(slide,f"> {b}",Inches(0.35),top+Inches(0.06),Inches(12.65),Inches(0.42),size=10.5)
         top += Inches(0.55)
-    _context(slide,"WHAT THIS SHOWS: Top-line numbers for the whole marketing program. Pipeline = all deal value in the funnel. Won Revenue = deals actually closed and signed. HOW TO READ: Compare Sourced vs Influenced — Sourced ($4.2M) means marketing is listed as the CRM origin; Influenced ($6.3M) means marketing touched the account at any point before the deal, even if sales sourced it officially. INSIGHT: Win rate across all channels is 33% (1 in 3 deals closes). Marketing-sourced deals close at ~10% because marketing finds prospects earlier in their journey — they need longer nurture before they're ready to buy.")
+    _context(slide,"WHAT THIS SHOWS: Top-line numbers for the whole marketing program. Pipeline = all deal value in the funnel. Won Revenue = deals actually closed and signed. HOW TO READ: Compare Sourced vs Influenced — Sourced ($4.2M) means marketing is listed as the CRM origin; Influenced ($6.5M) means marketing touched the account at any point before the deal, even if sales sourced it officially. INSIGHT: Win rate across all channels is 33% (1 in 3 deals closes). Marketing-sourced deals close at ~10% because marketing finds prospects earlier in their journey — they need longer nurture before they're ready to buy.")
 
 
 def s3_methodology(prs):

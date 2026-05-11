@@ -2,7 +2,7 @@
 
 **Project:** B2B ABM Marketing Attribution & Budget Optimization  
 **Datasets:** 8 raw Excel files | **Deliverables:** Interactive Dashboard + 21-Slide Deck  
-**Pipeline:** $25M won revenue analyzed across 3,288 unique deals
+**Pipeline:** $25.0M total pipeline and $5.4M won revenue analyzed across 3,288 unique deals
 
 ---
 
@@ -36,7 +36,7 @@ After fix:    3,288 unique deals (kept only the latest stage snapshot per deal)
 
 **Critical Bug — iswon stored as text strings**
 
-The column marking a deal as won or lost was stored as the text `"True"` and `"False"` instead of real boolean values. In Python, the string `"False"` evaluates as truthy (non-empty string), so every "won deal" calculation was returning 0. This broke all won revenue, win rate, and won pipeline metrics across the entire analysis.
+The column marking a deal as won or lost was stored as the text `"True"` and `"False"` instead of real boolean values. Comparing those strings to the boolean value `True` produced no matches, so won revenue, win rate, and won pipeline metrics showed as zero until the field was normalized.
 
 ```
 Before fix:  Won revenue = $0, Win rate = 0%
@@ -50,7 +50,7 @@ After fix:   Won revenue = $5.4M, Win rate = 33%
 | Web sessions 99.1% anonymous | Only 330 of 36,931 sessions had a matched company domain |
 | 40+ raw lead source values in CRM | "6sense Channel", "6Sense - Channel", "6SENSE CHANNEL" all mean the same thing |
 | 701 won deals with $0 amount | Real CRM hygiene issue — deals marked Closed Won with no dollar value entered |
-| 7 orphaned opportunities | Deals in the pipeline with no matching account in the accounts table |
+| 7 orphaned opportunities | Deals in the pipeline with no matching account in the accounts table; retained as opportunity-only account rows so account-level pipeline reconciles |
 
 ---
 
@@ -225,7 +225,7 @@ Result: 3 touchpoints across 3 channels in the attribution window
 - Did marketing touch this account *at any point* in the 365-day window before the deal?
 - If yes, the deal is "influenced" regardless of what the CRM says
 - Always larger than Sourced — captures deals where marketing warmed up an account that sales then closed
-- Result: $6.3M pipeline, 708 deals
+- Result: $6.5M pipeline, $830K won revenue, 708 deals
 
 **First-Touch**
 - 100% of the deal's dollar value goes to the *very first* touchpoint
@@ -295,9 +295,9 @@ Features:     deal amount, channel category, segment, tier, industry,
 Training process:
   1. Merge opportunities with master_account data
   2. Encode categorical features (channel, segment, industry)
-  3. Split: 80% train, 20% test
-  4. Train Random Forest (100 trees)
-  5. Evaluate on test set → AUC = 0.807
+  3. Evaluate with 5-fold cross-validation
+  4. Train Random Forest (200 trees, max depth 8)
+  5. Cross-validated AUC = 0.807
 
 Scoring:
   Apply trained model to 545 currently open deals
@@ -578,7 +578,7 @@ Raw Excel Files (8 datasets, ~145,000 total rows)
 | Won revenue | $5.4M |
 | Win rate (all channels) | 33% |
 | Marketing-sourced pipeline | $4.2M (16% of total) |
-| Marketing-influenced pipeline | $6.3M (28% of total) |
+| Marketing-influenced pipeline | $6.5M (26% of total) |
 | Total ad impressions | 135M |
 | Total ad spend | $1.22M |
 | Email engagements | 17,130 |

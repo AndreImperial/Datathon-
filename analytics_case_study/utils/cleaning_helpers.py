@@ -31,6 +31,13 @@ def safe_datetime(series: pd.Series) -> pd.Series:
     return pd.to_datetime(series, errors="coerce", format="mixed", dayfirst=False)
 
 
+def month_period(series: pd.Series) -> pd.Series:
+    s = series
+    if getattr(s.dt, "tz", None) is not None:
+        s = s.dt.tz_convert(None)
+    return s.dt.to_period("M").astype(str)
+
+
 def normalize_country(series: pd.Series) -> pd.Series:
     mapping = {
         "usa": "United States", "us": "United States",

@@ -805,7 +805,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       We traced 80,500 touchpoints across 3,570 companies and linked them to 3,166 opportunities within a 365-day window before deal creation. Here are the 6 models:
       <br><br>
       <span class="model-pill">Sourced</span>&nbsp; CRM says marketing was the origin. Hard credit, no sharing. ($4.2M)
-      &nbsp;<span class="model-pill lt">Influenced</span>&nbsp; Marketing touched the account at any point before the deal. Measures reach. ($6.3M)
+      &nbsp;<span class="model-pill lt">Influenced</span>&nbsp; Marketing touched the account at any point before the deal. Measures reach. ($6.5M)
       &nbsp;<span class="model-pill">First-Touch</span>&nbsp; 100% credit to the <em>first</em> marketing touch — finds who starts conversations.
       &nbsp;<span class="model-pill lt">Last-Touch</span>&nbsp; 100% credit to the <em>last</em> touch before the deal — finds who closes conversations.
       &nbsp;<span class="model-pill lin">Linear</span>&nbsp; Equal split across ALL channels that touched the account — fairest view.
@@ -837,7 +837,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <strong>RIGHT — Influenced (28%):</strong> Marketing touched this account (any ad, email, or web visit) within 365 days before the deal was created — even if sales "sourced" the deal officially.
           <br><br>
           The gap between Sourced and Influenced is the "shadow credit" — marketing's work that doesn't show up in traditional CRM reporting.
-          <div class="ex-insight">Key takeaway: If you only report on Sourced, you're attributing $4.2M to marketing. If you use Influenced, it's $6.3M. Both are true — they just answer different questions.</div>
+          <div class="ex-insight">Key takeaway: If you only report on Sourced, you're attributing $4.2M to marketing. If you use Influenced, it's $6.5M. Both are true — they just answer different questions.</div>
         </div>
       </div>
       <div class="chart-card">

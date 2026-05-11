@@ -79,7 +79,7 @@ This slide explains the 6 ways to answer that question:
 - **Rule:** Marketing touched this company *at any point* in the 365 days before the deal was created, even if sales officially sourced it
 - **Think of it as:** Shadow credit — marketing warmed up accounts that sales then closed
 - **Best for:** Showing marketing's total footprint
-- **Result:** $6.3M, 708 deals (always bigger than Sourced)
+- **Result:** $6.5M pipeline, $830K won revenue, 708 deals (larger than Sourced because it captures warmed-up sales/referral/client deals)
 
 ### Model 3: First-Touch
 - **Rule:** 100% of credit goes to the VERY FIRST marketing touch
@@ -124,20 +124,20 @@ This slide explains the 6 ways to answer that question:
 
 ## SLIDE 6 — Sourced vs Influenced (Two Pie Charts)
 
-**Two circles that tell different stories about the same $6.3M.**
+**Two circles that show two different attribution lenses.**
 
 **Left pie — Marketing Sourced ($4.2M):**
 - Breakdown of the 511 deals marketing officially originated
 - Which channels started those deals
 - This is the conservative, defensible number
 
-**Right pie — Marketing Influenced ($6.3M):**
+**Right pie — Marketing Influenced ($6.5M):**
 - Breakdown of the 708 deals marketing touched (even if it didn't officially start them)
 - This is the broader case for marketing's value
 
 **Why this matters for budget conversations:**
 - If marketing only gets credit for Sourced: "We generated $4.2M"
-- If marketing gets credit for Influenced: "We contributed to $6.3M"
+- If marketing gets credit for Influenced: "We contributed to $6.5M"
 - The truth is somewhere in between — Sourced understates, Influenced overstates
 - Use both numbers together when presenting to leadership
 
@@ -185,16 +185,16 @@ A horizontal bar chart showing total pipeline dollars for each lead source, sort
 
 | Channel | Pipeline | Win Rate | Ad Spend | Pipeline ROI |
 |---|---|---|---|---|
-| Existing Client | Largest | ~27% | $0 | Infinite |
-| Referral | 2nd | ~29% | $0 | Infinite |
-| 6sense Display | 3rd | ~10% | $290K | 14:1 |
-| Email MQA | 4th | ~10% | Small | Very high |
-| Web Inbound | 5th | ~18% | Minimal | High |
+| Other / unmapped CRM sources | $14.8M | 17% | $0 tracked | N/A |
+| Existing Client | $3.2M | 54% | $0 tracked | N/A |
+| Referral | $2.8M | 29% | $0 tracked | N/A |
+| 6sense Channel | $1.5M | 12% | $0 tracked | N/A |
+| Web Inbound | $1.1M | 20% | $0 tracked | N/A |
 
 **Key insight from this slide:**
-- Existing clients and referrals are the most efficient pipeline source (no ad spend, high win rate)
-- 6sense Display has high spend but also drives significant pipeline when you count *influenced* deals
-- Email MQA has the best ROI because the cost (email platform) is low vs. pipeline generated
+- Existing clients and referrals are high-efficiency motions with strong win rates and no tracked media spend
+- 6sense Display has small CRM-sourced pipeline ($89K) but drives significant influenced/time-decay pipeline ($3.5M)
+- Email MQA is strongest in first-touch and linear models, showing it starts many journeys even when it is not the CRM source
 
 **What "ROI" means here:** Pipeline ROI = Total pipeline attributed ÷ Ad spend. If you spent $290K and it's associated with $4.1M in pipeline (time-decay), that's 14:1 return. But pipeline isn't revenue — Revenue ROI would use only the won portion.
 
@@ -396,15 +396,15 @@ Current spend × win rate × average deal size = current pipeline per dollar spe
 **The AI slide — here's what actually happened:**
 
 ### What is a Random Forest?
-Imagine you're trying to predict if a deal will close. You ask 100 different analysts (each one only looking at some of the data). Each analyst votes yes or no. The majority vote = the final prediction.
+Imagine you're trying to predict if a deal will close. You ask 200 different analysts (each one only looking at some of the data). Each analyst votes yes or no. The majority vote = the final prediction.
 
-In code: 100 "decision trees" each see different subsets of the data. Their votes are averaged. This prevents any one weird pattern from dominating.
+In code: 200 "decision trees" each see different subsets of the data. Their votes are averaged. This prevents any one weird pattern from dominating.
 
 ### Training Process
 1. Took 2,743 closed deals (both won AND lost)
 2. For each deal, the model looked at: deal amount, channel it came from, company segment, tier, industry, how many 6sense ad impressions that company received, how many email clicks, how many contacts at the account, seniority mix of those contacts
 3. Trained the model to find patterns between those features and whether the deal was won or lost
-4. Tested on 20% of the data it never saw → AUC = 0.807
+4. Evaluated with 5-fold cross-validation → AUC = 0.807
 
 ### What AUC = 0.807 means
 AUC (Area Under the Curve) measures how good the model is at ranking won deals above lost ones:
