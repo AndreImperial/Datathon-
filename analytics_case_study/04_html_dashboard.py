@@ -799,6 +799,28 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   }}
   .priority-card h3 {{ margin:0 0 8px; font-size:13px; color:var(--midnight); }}
   .priority-card p {{ margin:0; color:#475569; font-size:12px; line-height:1.55; }}
+  .evidence-grid {{ display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin:0 0 16px; }}
+  .evidence-card {{
+    background:#FFFFFF; border:1px solid var(--border); border-radius:8px;
+    padding:13px; min-width:0;
+  }}
+  .evidence-card h3 {{
+    margin:0 0 8px; color:var(--midnight); font-size:13px; font-weight:800;
+    display:flex; align-items:center; gap:8px;
+  }}
+  .evidence-card p {{ margin:0; color:#475569; font-size:12px; line-height:1.55; }}
+  .confidence-table th {{ background:#F8FAFC; }}
+  .confidence-table td {{ vertical-align:top; line-height:1.45; }}
+  .confidence-pill {{
+    display:inline-flex; align-items:center; justify-content:center;
+    min-width:74px; padding:3px 8px; border-radius:999px;
+    font-size:11px; font-weight:800; border:1px solid transparent;
+  }}
+  .confidence-pill.high {{ background:#ECFDF5; color:#047857; border-color:#A7F3D0; }}
+  .confidence-pill.medium {{ background:#FFF7ED; color:#9A3412; border-color:#FED7AA; }}
+  .confidence-pill.directional {{ background:#EAF2FF; color:#1E40AF; border-color:#C9D7EA; }}
+  .diagnosis-list {{ margin:0; padding-left:18px; color:#334155; font-size:12px; line-height:1.7; }}
+  .diagnosis-list li {{ margin-bottom:5px; }}
   .next-step-row {{
     display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:start;
     padding:10px 0; border-bottom:1px solid var(--border); font-size:12px;
@@ -807,7 +829,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .next-step-row strong {{ color:var(--midnight); }}
   @media(max-width:900px){{
     .chart-grid.cols-2,.chart-grid.cols-3,.kpi-row,.story-strip {{ grid-template-columns:1fr; }}
-    .conclusion-grid,.priority-grid {{ grid-template-columns:1fr; }}
+    .conclusion-grid,.priority-grid,.evidence-grid {{ grid-template-columns:1fr; }}
     .next-step-row {{ grid-template-columns:1fr; gap:4px; }}
     #sidebar {{ width:64px; }}
     #main   {{ margin-left:64px; }}
@@ -926,6 +948,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       &nbsp;<span class="model-pill lin">Linear</span>&nbsp; Equal split across ALL channels that touched the account — fairest view.
       &nbsp;<span class="model-pill td">Time-Decay</span>&nbsp; More credit to <em>recent</em> touches, less to old ones (half-life = 30 days). Best for budget decisions.
     </div>
+    <div class="evidence-grid">
+      <div class="evidence-card">
+        <h3><span class="confidence-pill high">Proves</span> Marketing has measurable pipeline presence</h3>
+        <p>The sourced and influenced models are directly reconciled to the opportunity data, so the dollar totals are safe to report.</p>
+      </div>
+      <div class="evidence-card">
+        <h3><span class="confidence-pill medium">Suggests</span> Channels play different journey roles</h3>
+        <p>First-touch, last-touch, linear, and time-decay views show whether a channel starts, assists, or closes account journeys.</p>
+      </div>
+      <div class="evidence-card">
+        <h3><span class="confidence-pill directional">Does not prove</span> Single-touch causality</h3>
+        <p>A touchpoint receiving credit does not mean it alone caused the deal; it means the touchpoint appeared in the pre-opportunity path.</p>
+      </div>
+    </div>
     <div class="chart-grid">
       <div class="chart-card full">
         <div id="c-attrib-comparison"></div>
@@ -987,6 +1023,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="section-takeaway"><strong>Channel takeaway:</strong> Relationship channels close best, while marketing channels build the net-new funnel that needs time to mature. <span class="evidence-badge green">54.3% existing-client win rate</span><span class="evidence-badge">net-new pipeline</span></div>
     <div class="context-box">
       <strong>What "ROI" means here:</strong> Pipeline ROI = pipeline generated ÷ dollars spent. A Pipeline ROI of 5x means every $1 in ad spend generated $5 in deal pipeline. This is different from Revenue ROI (only counting won deals) — both matter. Pipeline ROI tells you if you're building a healthy funnel. Revenue ROI tells you if it's converting.
+    </div>
+    <div class="evidence-grid">
+      <div class="evidence-card">
+        <h3><span class="confidence-pill high">Strong signal</span> Relationship channels convert best</h3>
+        <p>Existing client and referral performance explains why revenue is not only a paid-media story.</p>
+      </div>
+      <div class="evidence-card">
+        <h3><span class="confidence-pill medium">Efficiency signal</span> Marketing builds future pipeline</h3>
+        <p>Net-new channels should be judged by pipeline creation, later win conversion, and time-to-close together.</p>
+      </div>
+      <div class="evidence-card">
+        <h3><span class="confidence-pill directional">Next test</span> Separate quality from volume</h3>
+        <p>Track whether added channel spend creates qualified opportunities, not just more opportunities.</p>
+      </div>
     </div>
     <div class="chart-grid cols-2">
       <div class="chart-card">
@@ -1152,6 +1202,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="context-box">
       <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section predicts what will happen and tells you where to focus. The win probability model (Random Forest, AUC = 0.807) scores every open deal. The coverage analysis reveals that 68% of your target accounts have never seen a single marketing touchpoint — that is your biggest growth opportunity.
     </div>
+    <div class="evidence-grid">
+      <div class="evidence-card">
+        <h3><span class="confidence-pill high">Coverage lift</span> Reached accounts perform better</h3>
+        <p>Unreached accounts show a 17.5% opportunity rate, while email-only accounts show 45.9% and both-channel accounts show 42.6%.</p>
+      </div>
+      <div class="evidence-card">
+        <h3><span class="confidence-pill medium">Quality diagnosis</span> Growth is not automatically healthy</h3>
+        <p>Pipeline volume is rising while cohort win rate fell from 37% in 2022Q1 to 15% in 2024Q4.</p>
+      </div>
+      <div class="evidence-card">
+        <h3><span class="confidence-pill directional">Next test</span> Validate causality</h3>
+        <p>Run a holdout or phased rollout so the team can measure incremental lift from email plus 6sense coverage.</p>
+      </div>
+    </div>
 
     <div class="chart-grid cols-2">
       <div class="chart-card">
@@ -1291,6 +1355,57 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
     </div>
 
+    <div class="chart-card full" style="margin-bottom:16px">
+      <div class="section-title" style="font-size:13px;margin-bottom:6px">Decision Confidence</div>
+      <div style="font-size:11px;color:#64748B;margin-bottom:10px">This separates what the data directly supports from what should be treated as a testable business hypothesis.</div>
+      <div style="overflow-x:auto">
+        <table class="dash-table confidence-table">
+          <thead><tr><th>Recommendation</th><th>Confidence</th><th>Why We Believe It</th><th>What To Test Next</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Expand coverage to unreached target accounts.</strong></td>
+              <td><span class="confidence-pill high">High</span></td>
+              <td>3,256 target accounts are unreached, and reached groups show materially higher opportunity rates than unreached accounts.</td>
+              <td>Prioritize strong-fit unreached accounts and compare opportunity creation against a holdout group.</td>
+            </tr>
+            <tr>
+              <td><strong>Coordinate email engagement with 6sense display.</strong></td>
+              <td><span class="confidence-pill medium">Medium</span></td>
+              <td>Journey and attribution patterns show email starts conversations while 6sense remains active later in the path.</td>
+              <td>Trigger display frequency after email engagement and measure lift in meetings or opportunities.</td>
+            </tr>
+            <tr>
+              <td><strong>Tighten ICP and qualification criteria.</strong></td>
+              <td><span class="confidence-pill high">High</span></td>
+              <td>Cohort analysis shows pipeline growth alongside a win-rate decline from 37% to 15%.</td>
+              <td>Track win rate, stage conversion, and disqualification reasons by source and profile fit.</td>
+            </tr>
+            <tr>
+              <td><strong>Reallocate budget toward higher-attribution channels.</strong></td>
+              <td><span class="confidence-pill directional">Directional</span></td>
+              <td>Scenario modeling is useful for planning, but it assumes historical efficiency holds at higher spend.</td>
+              <td>Run budget changes in phases and monitor marginal pipeline per dollar before scaling.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="evidence-grid">
+      <div class="evidence-card">
+        <h3><span class="confidence-pill high">What the data proves</span></h3>
+        <p>Pipeline, won revenue, marketing-sourced pipeline, marketing-influenced pipeline, account coverage gaps, and cohort win-rate decline are directly measurable.</p>
+      </div>
+      <div class="evidence-card">
+        <h3><span class="confidence-pill medium">What the data suggests</span></h3>
+        <p>Coordinated email plus 6sense coverage is associated with better account movement and should be the primary growth play.</p>
+      </div>
+      <div class="evidence-card">
+        <h3><span class="confidence-pill directional">What needs testing</span></h3>
+        <p>Causality and budget scaling need experiments, holdouts, or phased rollouts before making large spend commitments.</p>
+      </div>
+    </div>
+
     <div class="chart-card full">
       <div class="section-title" style="font-size:13px;margin-bottom:6px">Recommended Action Plan</div>
       <div style="font-size:11px;color:#64748B;margin-bottom:10px">Each row connects the dashboard evidence to a business action, so the analysis can be defended in a presentation.</div>
@@ -1346,6 +1461,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="next-step-row">
         <strong>3. Recommend the move</strong>
         <span>Prioritize strong-fit account coverage and coordinated email-to-6sense journeys before simply adding budget.</span>
+      </div>
+      <div class="next-step-row">
+        <strong>4. State confidence</strong>
+        <span>Coverage expansion and ICP tightening are high-confidence recommendations; budget scaling is directional and should be tested in phases.</span>
       </div>
       <div class="chart-explain">
         <div class="ex-title">How to read this conclusion</div>
