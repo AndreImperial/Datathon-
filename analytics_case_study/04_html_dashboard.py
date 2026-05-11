@@ -69,14 +69,14 @@ def fmt(v, m="$"):
     return f"{m}{v:.0f}"
 
 LAYOUT = dict(
-    font=dict(family="Inter, Arial, sans-serif", size=12, color="#111827"),
+    font=dict(family="Inter, Arial, sans-serif", size=13, color="#0E1B2F"),
     plot_bgcolor="#FFFFFF", paper_bgcolor="#FFFFFF",
-    margin=dict(l=40, r=20, t=50, b=40),
-    legend=dict(bgcolor="rgba(0,0,0,0)", font_size=11),
+    margin=dict(l=46, r=24, t=56, b=44),
+    legend=dict(bgcolor="rgba(0,0,0,0)", font_size=12),
 )
 
-COLORS = ["#2563EB","#059669","#D97706","#7C3AED","#DC2626",
-          "#0891B2","#4B5563","#0F766E","#9333EA","#65A30D"]
+COLORS = ["#1E5AA8","#078766","#C98A22","#5B6EE1","#C24141",
+          "#0E7490","#56657A","#0F766E","#7C3AED","#5F8D2E"]
 
 # ─────────────────────────────────────────────
 # Chart builders
@@ -587,47 +587,48 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <style>
   :root{{
-    --primary:#2563EB; --primary-dark:#1E40AF; --accent:#D97706;
-    --success:#059669; --danger:#DC2626; --bg:#F6F7F9; --card:#FFFFFF;
-    --border:#E5E7EB; --text:#111827; --muted:#6B7280; --muted-2:#9CA3AF;
-    --nav:#FFFFFF; --nav-hover:#F3F4F6; --nav-active:#EFF6FF;
+    --midnight:#06162E; --midnight-2:#0B1F3A; --midnight-3:#102A4C;
+    --primary:#2563EB; --primary-dark:#173C7A; --accent:#C98A22;
+    --success:#078766; --danger:#C24141; --bg:#F4F7FB; --card:#FFFFFF;
+    --border:#DCE4EF; --text:#0E1B2F; --muted:#5D6B7D; --muted-2:#8A97A8;
+    --nav:#06162E; --nav-hover:#102A4C; --nav-active:#1E4F8F;
   }}
   * {{ box-sizing:border-box; margin:0; padding:0; }}
   html {{ scroll-behavior:smooth; }}
-  body {{ font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; font-size:13px; letter-spacing:0; }}
+  body {{ font-family:'Inter',sans-serif; background:var(--bg); color:var(--text); display:flex; min-height:100vh; font-size:14px; line-height:1.5; letter-spacing:0; }}
 
   /* Sidebar */
   #sidebar {{
     width:248px; min-height:100vh; background:var(--nav);
     display:flex; flex-direction:column; flex-shrink:0; position:fixed; z-index:100;
-    border-right:1px solid var(--border);
+    border-right:1px solid rgba(255,255,255,.08);
   }}
   .sidebar-brand {{
-    padding:22px 22px 18px; color:var(--text); font-size:14px; font-weight:700;
-    border-bottom:1px solid var(--border);
+    padding:22px 22px 18px; color:#F8FAFC; font-size:15px; font-weight:700;
+    border-bottom:1px solid rgba(255,255,255,.1);
     line-height:1.4;
   }}
-  .sidebar-brand small {{ display:block; font-size:11px; font-weight:500; color:var(--muted); margin-top:3px; }}
+  .sidebar-brand small {{ display:block; font-size:11px; font-weight:500; color:#9FB2CA; margin-top:3px; }}
   .nav-item {{ list-style:none; }}
   .nav-link {{
     display:flex; align-items:center; gap:11px; margin:3px 12px; padding:10px 12px;
-    color:#4B5563; text-decoration:none; font-size:13px; font-weight:600;
+    color:#B8C5D8; text-decoration:none; font-size:13px; font-weight:600;
     border-radius:7px; border-left:0; transition:all .16s ease;
     cursor:pointer;
   }}
-  .nav-link:hover {{ color:var(--text); background:var(--nav-hover); }}
-  .nav-link.active {{ color:var(--primary-dark); background:var(--nav-active); }}
+  .nav-link:hover {{ color:#FFFFFF; background:var(--nav-hover); }}
+  .nav-link.active {{ color:#FFFFFF; background:var(--nav-active); box-shadow:inset 3px 0 0 #7DB3FF; }}
   .nav-icon {{ width:18px; height:18px; flex:0 0 18px; stroke-width:2; }}
 
   /* Main */
   #main {{ margin-left:248px; flex:1; padding:0; min-width:0; }}
   .top-bar {{
-    background:rgba(255,255,255,.92); backdrop-filter:blur(10px);
-    padding:16px 32px; border-bottom:1px solid var(--border);
+    background:linear-gradient(90deg,var(--midnight),var(--midnight-2)); color:#FFFFFF;
+    padding:16px 32px; border-bottom:1px solid rgba(255,255,255,.08);
     display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:50;
   }}
-  .top-bar h1 {{ font-size:18px; font-weight:700; color:var(--text); margin:0; }}
-  .top-meta {{ display:flex; gap:10px; align-items:center; color:var(--muted); font-size:12px; }}
+  .top-bar h1 {{ font-size:19px; font-weight:700; color:#FFFFFF; margin:0; }}
+  .top-meta {{ display:flex; gap:10px; align-items:center; color:#C8D4E6; font-size:12px; }}
   .badge-pill {{
     background:#ECFDF5; color:#047857; padding:4px 10px;
     border-radius:999px; font-size:11px; font-weight:700; border:1px solid #A7F3D0;
@@ -644,18 +645,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .kpi-card.orange::before {{ background:var(--accent); }}
   .kpi-card.purple::before {{ background:#7C3AED; }}
   .kpi-label {{ font-size:11px; color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }}
-  .kpi-value {{ font-size:24px; font-weight:700; color:var(--text); margin-top:5px; line-height:1.1; }}
-  .kpi-sub   {{ font-size:12px; color:var(--muted); margin-top:5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
+  .kpi-value {{ font-size:26px; font-weight:700; color:var(--midnight); margin-top:5px; line-height:1.08; }}
+  .kpi-sub   {{ font-size:12px; color:var(--muted); margin-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
 
   /* Sections */
   .section {{ display:none; padding:22px 32px 42px; }}
   .section.active {{ display:block; }}
   .section-title {{
-    font-size:17px; font-weight:700; color:var(--text);
+    font-size:19px; font-weight:700; color:var(--midnight);
     margin-bottom:4px; border-left:0; padding-left:0;
   }}
   .section-desc {{
-    font-size:13px; color:var(--muted); margin-bottom:14px; padding-left:0; max-width:840px;
+    font-size:14px; color:var(--muted); margin-bottom:15px; padding-left:0; max-width:900px;
   }}
 
   /* Chart cards */
@@ -671,7 +672,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   /* Context box */
   .context-box {{
     background:#FFFFFF; border:1px solid var(--border); border-left:3px solid var(--primary);
-    border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:12px; color:#374151; line-height:1.55;
+    border-radius:8px; padding:12px 14px; margin-bottom:14px; font-size:13px; color:#243449; line-height:1.6;
   }}
   .context-box strong {{ font-weight:600; }}
 
@@ -679,10 +680,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .chart-explain {{
     background:#F9FAFB; border:1px solid #EEF0F3;
     padding:10px 12px; margin-top:10px; border-radius:7px;
-    font-size:11px; color:#4B5563; line-height:1.45;
+    font-size:12px; color:#4B5C70; line-height:1.5;
   }}
   .chart-explain .ex-title {{
-    font-weight:700; color:#111827; font-size:11px; margin-bottom:4px;
+    font-weight:700; color:var(--midnight); font-size:12px; margin-bottom:4px;
     display:flex; align-items:center; gap:6px;
   }}
   .chart-explain .ex-title::before {{
@@ -692,7 +693,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .chart-explain .ex-insight {{
     margin-top:7px; padding:7px 9px;
     background:#F0FDF4; border-left:2px solid var(--success);
-    border-radius:5px; font-size:11px; color:#166534; font-weight:600;
+    border-radius:5px; font-size:12px; color:#155E43; font-weight:600;
   }}
 
   /* Attribution model pills */
@@ -706,7 +707,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .model-pill.td  {{ background:#8B5CF6; }}
 
   /* Table */
-  .dash-table {{ width:100%; border-collapse:collapse; font-size:12px; }}
+  .dash-table {{ width:100%; border-collapse:collapse; font-size:13px; }}
   .dash-table th {{
     background:#F9FAFB; color:#374151; padding:9px 12px;
     text-align:left; font-weight:700; white-space:nowrap; border-bottom:1px solid var(--border);
@@ -752,7 +753,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div class="top-bar">
     <h1>Marketing Analytics Dashboard</h1>
     <div class="top-meta">
-      <span style="font-size:12px;color:#64748B;">Data: 2021–2024 &nbsp;|&nbsp; {total_deals} Opportunities &nbsp;|&nbsp; 8 Datasets</span>
+      <span>Data: 2021–2024 &nbsp;|&nbsp; {total_deals} Opportunities &nbsp;|&nbsp; 8 Datasets</span>
       <span class="badge-pill">Validated</span>
     </div>
   </div>
