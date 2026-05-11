@@ -2,7 +2,12 @@ __pycache__/
 *.py[cod]
 *.pyo
 .env
+.venv/
+venv/
 *.egg-info/
+.DS_Store
+.vscode/
+.idea/
 
 # Temp Office lock files
 ~$*
