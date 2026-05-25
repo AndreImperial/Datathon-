@@ -805,14 +805,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     --shadow-hover:0 20px 54px rgba(0, 0, 0, .38), 0 0 0 1px rgba(79,140,255,.16), 0 0 34px rgba(79,140,255,.13);
     --glass-blur:blur(18px);
   }}
-  body[data-theme="light"] {{
-    --bg:#F7FAFC; --bg-2:#EAF1F8; --panel:rgba(255,255,255,.78);
-    --panel-strong:rgba(255,255,255,.94); --panel-soft:rgba(15,23,42,.045);
-    --border:rgba(15, 23, 42, .12); --border-strong:rgba(15, 23, 42, .22);
-    --text:#0F172A; --text-soft:#27364A; --muted:#607086; --muted-2:#7B8AA0;
-    --shadow-soft:0 14px 34px rgba(30, 41, 59, .12);
-    --shadow-hover:0 20px 48px rgba(30,41,59,.18), 0 0 0 1px rgba(79,140,255,.18), 0 0 28px rgba(79,140,255,.10);
-  }}
   * {{ box-sizing:border-box; margin:0; padding:0; }}
   html {{ scroll-behavior:smooth; }}
   body {{
@@ -822,12 +814,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       radial-gradient(circle at 12% 0%, rgba(79,140,255,.16), transparent 32rem),
       radial-gradient(circle at 86% 12%, rgba(45,212,191,.10), transparent 30rem),
       linear-gradient(135deg, #070B13 0%, #111827 52%, #131A2A 100%);
-  }}
-  body[data-theme="light"] {{
-    background:
-      radial-gradient(circle at 12% 0%, rgba(79,140,255,.12), transparent 32rem),
-      radial-gradient(circle at 86% 12%, rgba(45,212,191,.12), transparent 30rem),
-      linear-gradient(135deg, #F8FBFF 0%, #EEF5FB 52%, #F7F3FF 100%);
   }}
   body::before {{
     content:""; position:fixed; inset:0; pointer-events:none; z-index:-1;
@@ -851,9 +837,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     border-right:1px solid var(--border); backdrop-filter:var(--glass-blur);
     -webkit-backdrop-filter:var(--glass-blur);
   }}
-  body[data-theme="light"] #sidebar {{
-    background:rgba(255,255,255,.82);
-  }}
   .sidebar-brand {{
     padding:22px 22px 18px; color:var(--text); font-size:15px; font-weight:800;
     line-height:1.35; border-bottom:1px solid var(--border);
@@ -866,8 +849,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     color:#B7C4D8; text-decoration:none; font-size:13px; font-weight:700;
     border-radius:8px; cursor:pointer; transition:background .16s ease, color .16s ease, transform .16s ease;
   }}
-  body[data-theme="light"] .nav-link {{ color:#42526A; }}
-  body[data-theme="light"] .nav-link:hover {{ color:#0F172A; }}
   .nav-link:hover {{ color:#FFFFFF; background:rgba(79,140,255,.14); transform:translateX(1px); }}
   .nav-link.active {{
     color:#FFFFFF; background:linear-gradient(135deg, rgba(79,140,255,.34), rgba(34,211,238,.14));
@@ -928,14 +909,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     font-size:12px; font-weight:800; cursor:pointer;
     transition:background .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease;
   }}
-  .mode-toggle:hover, .theme-toggle:hover {{ background:rgba(79,140,255,.18); border-color:rgba(79,140,255,.55); transform:translateY(-1px); box-shadow:0 10px 28px rgba(79,140,255,.16); }}
-  .mode-toggle i, .theme-toggle i {{ width:15px; height:15px; }}
-  .theme-toggle {{
-    min-height:32px; display:inline-flex; align-items:center; justify-content:center; padding:0 10px;
-    border:1px solid var(--border-strong); border-radius:8px; color:var(--text);
-    background:rgba(255,255,255,.06); cursor:pointer;
-    transition:background .16s ease, border-color .16s ease, transform .16s ease, box-shadow .16s ease;
-  }}
+  .mode-toggle:hover {{ background:rgba(79,140,255,.18); border-color:rgba(79,140,255,.55); transform:translateY(-1px); box-shadow:0 10px 28px rgba(79,140,255,.16); }}
+  .mode-toggle i {{ width:15px; height:15px; }}
 
   .kpi-row {{ display:grid; grid-template-columns:repeat(4,minmax(170px,1fr)); gap:14px; padding:22px 32px 0; }}
   .kpi-card, .story-card, .decision-panel, .chart-card, .conclusion-card,
@@ -1203,7 +1178,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <span>Data: 2021–2024 &nbsp;|&nbsp; {total_deals} Opportunities &nbsp;|&nbsp; 8 Datasets</span>
       </div>
       <span class="badge-pill">Validated</span>
-      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle light and dark theme" aria-pressed="false"><i data-lucide="sun-moon" aria-hidden="true"></i></button>
       <button class="mode-toggle" id="mode-toggle" type="button" aria-pressed="false"><i data-lucide="presentation" aria-hidden="true"></i><span>Presentation Mode</span></button>
     </div>
   </div>
@@ -1872,7 +1846,6 @@ if (window.lucide) {{
 }}
 
 const modeToggle = document.getElementById('mode-toggle');
-const themeToggle = document.getElementById('theme-toggle');
 function setMode(mode) {{
   const presentation = mode === 'presentation';
   document.body.classList.toggle('presentation-mode', presentation);
@@ -1883,27 +1856,12 @@ function setMode(mode) {{
   localStorage.setItem('dashboardMode', mode);
 }}
 
-function setTheme(theme) {{
-  const next = theme === 'light' ? 'light' : 'dark';
-  document.body.dataset.theme = next;
-  if (themeToggle) {{
-    themeToggle.setAttribute('aria-pressed', String(next === 'light'));
-    themeToggle.setAttribute('title', next === 'light' ? 'Switch to dark theme' : 'Switch to light theme');
-  }}
-  localStorage.setItem('dashboardTheme', next);
-}}
 if (modeToggle) {{
   modeToggle.addEventListener('click', () => {{
     setMode(document.body.classList.contains('presentation-mode') ? 'analyst' : 'presentation');
   }});
   setMode(localStorage.getItem('dashboardMode') || 'analyst');
 }}
-if (themeToggle) {{
-  themeToggle.addEventListener('click', () => {{
-    setTheme(document.body.dataset.theme === 'light' ? 'dark' : 'light');
-  }});
-}}
-setTheme(localStorage.getItem('dashboardTheme') || 'dark');
 
 const initialSection = window.location.hash ? window.location.hash.slice(1) : '';
 if (initialSection) {{
