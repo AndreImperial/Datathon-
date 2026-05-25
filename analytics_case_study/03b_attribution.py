@@ -18,9 +18,41 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from analytics_case_study.config import CLEANED_DATA_DIR, INTEGRATED_DATA_DIR, ANALYSIS_DIR
+from analytics_case_study.config import (
+    ANALYSIS_DIR,
+    CHANNEL_LEADSOURCE_MAP,
+    CLEANED_DATA_DIR,
+    INTEGRATED_DATA_DIR,
+)
 
 ATTRIBUTION_WINDOW_DAYS = 365  # look-back window before opportunity creation
+SOURCE_CHANNEL_MAP = {str(k).strip().lower(): v for k, v in CHANNEL_LEADSOURCE_MAP.items()}
+
+
+def classify_web_touchpoint(source, campaign):
+    """Map web UTM metadata to the same canonical channels used by CRM lead source."""
+    src = str(source or "").strip().lower()
+    camp = str(campaign or "").strip().lower()
+
+    for value in (camp, src):
+        if value in SOURCE_CHANNEL_MAP:
+            return SOURCE_CHANNEL_MAP[value]
+
+    if ("6sense" in camp or "6si" in camp) and "event" in camp:
+        return "6sense_event"
+    if "webinar" in src or "webinar" in camp:
+        return "webinar"
+    if "event" in src or "event" in camp:
+        return "event"
+    if "other" in src or "other" in camp:
+        return "other_marketing"
+    if "marketo" in src or "marketo" in camp or "email" in src or "hs_email" in src or "pardot" in src:
+        return "email_mqa"
+    if "6sense" in src or "6si" in src:
+        return "6sense_display"
+    if "linkedin" in src or "linkedin" in camp:
+        return "linkedin"
+    return "web_inbound"
 
 
 # ---------------------------------------------------------------------------
@@ -75,22 +107,9 @@ def build_touchpoints() -> pd.DataFrame:
         web["tp_date"] = pd.to_datetime(web["_timestamp"], utc=True, errors="coerce")
         web_with_domain = web.dropna(subset=["_domain", "tp_date"])
         for _, row in web_with_domain.iterrows():
-            src = str(row.get("_utmsource", "")).lower()
-            if "6sense" in src or "6si" in src:
-                ch = "6sense_display"
-                tp_type = "web_visit_6sense"
-            elif "email" in src or "hs_email" in src or "pardot" in src:
-                ch = "email_mqa"
-                tp_type = "web_visit_email"
-            elif "linkedin" in src:
-                ch = "linkedin"
-                tp_type = "web_visit_linkedin"
-            elif src in ("(none)", "organic", "google"):
-                ch = "web_inbound"
-                tp_type = "web_visit_organic"
-            else:
-                ch = "web_inbound"
-                tp_type = "web_visit_other"
+            campaign = str(row.get("_utmcampaign", ""))
+            ch = classify_web_touchpoint(row.get("_utmsource", ""), campaign)
+            tp_type = f"web_visit_{ch}"
             rows.append({
                 "domain": row["_domain"],
                 "touchpoint_date": row["tp_date"],
@@ -195,6 +214,11 @@ def apply_attribution_models(linked: pd.DataFrame, opps_full: pd.DataFrame) -> d
             return df.loc[df[iswon_col] == True, amount_col].sum()
         return 0.0
 
+    def _linked_won_sum(df, amount_col="_amount"):
+        if iswon_linked and iswon_linked in df.columns:
+            return df.loc[df[iswon_linked] == True, amount_col].sum()
+        return 0.0
+
     # --- Marketing Sourced ---
     if "channel_category" in opps_full.columns and "_amount" in opps_full.columns:
         if "is_marketing_sourced" in opps_full.columns:
@@ -212,17 +236,26 @@ def apply_attribution_models(linked: pd.DataFrame, opps_full: pd.DataFrame) -> d
         results["Marketing Sourced"] = sg
 
     # --- Marketing Influenced ---
+    # Credit influenced pipeline to the marketing touchpoint channel that
+    # actually touched the account, not to the opportunity's CRM source.
     if not linked.empty:
-        influenced_ids = linked["_opportunity_id"].unique()
-        influenced = opps_full[opps_full["_opportunity_id"].isin(influenced_ids)].copy()
-        if "_amount" in influenced.columns and "channel_category" in influenced.columns:
-            ig = influenced.groupby("channel_category").agg(
-                attributed_pipeline=("_amount", "sum"),
-                deal_count=("_opportunity_id", "count"),
-            ).reset_index().rename(columns={"channel_category": "channel"})
-            ig["attributed_won"] = influenced.groupby("channel_category").apply(
-                lambda g: _won_sum(g)
-            ).reindex(ig["channel"]).fillna(0).values
+        influenced_touchpoints = linked.drop_duplicates(["_opportunity_id", "channel"]).copy()
+        if "_amount" in influenced_touchpoints.columns and "channel" in influenced_touchpoints.columns:
+            n_channels = influenced_touchpoints.groupby("_opportunity_id")["channel"].transform("nunique")
+            influenced_touchpoints["influenced_pipeline_credit"] = influenced_touchpoints["_amount"] / n_channels.replace(0, np.nan)
+            if iswon_linked and iswon_linked in influenced_touchpoints.columns:
+                influenced_touchpoints["influenced_won_credit"] = np.where(
+                    influenced_touchpoints[iswon_linked] == True,
+                    influenced_touchpoints["influenced_pipeline_credit"],
+                    0,
+                )
+            else:
+                influenced_touchpoints["influenced_won_credit"] = 0.0
+            ig = influenced_touchpoints.groupby("channel").agg(
+                attributed_pipeline=("influenced_pipeline_credit", "sum"),
+                attributed_won=("influenced_won_credit", "sum"),
+                deal_count=("_opportunity_id", "nunique"),
+            ).reset_index()
             ig["attribution_model"] = "Marketing Influenced"
             results["Marketing Influenced"] = ig
 

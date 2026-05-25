@@ -27,6 +27,14 @@ def _write_excel(dfs: dict, filename: str):
     print(f"  Saved -> {path}")
 
 
+def _won_col(df: pd.DataFrame):
+    if "iswon" in df.columns:
+        return "iswon"
+    if "_iswon" in df.columns:
+        return "_iswon"
+    return None
+
+
 # ---------------------------------------------------------------------------
 # 1. Channel ROI
 # ---------------------------------------------------------------------------
@@ -61,11 +69,12 @@ def analyze_segment_conversion():
     opps = _load_clean("opportunities")
 
     # Win rate by segment
-    if "segment__c" in opps.columns and "_iswon" in opps.columns and "_amount" in opps.columns:
+    won_col = _won_col(opps)
+    if "segment__c" in opps.columns and won_col and "_amount" in opps.columns:
         seg = (opps.groupby("segment__c")
                .agg(
                    deal_count=("_opportunity_id", "count"),
-                   won_count=("_iswon", lambda x: (x == True).sum()),
+                   won_count=(won_col, lambda x: (x == True).sum()),
                    total_pipeline=("_amount", "sum"),
                    avg_deal_size=("_amount", "mean"),
                ).reset_index())
@@ -267,9 +276,9 @@ def analyze_budget_recommendation():
         s2_rows.append({"Channel": ch, "Recommended Spend ($)": spend, "Projected Pipeline ($)": proj})
     s2 = pd.DataFrame(s2_rows)
 
-    # Scenario 3: Growth (double email + 6sense, cut low-ROI in half)
+    # Scenario 3: Growth (double top tracked-spend channels, cut low-ROI in half)
     s3_spend = channels_with_spend.set_index("channel_category")["channel_spend"].to_dict()
-    for ch in ["email_mqa", "6sense_display"]:
+    for ch in top_channels:
         if ch in s3_spend:
             s3_spend[ch] *= 2.0
     for ch in bot_channels:

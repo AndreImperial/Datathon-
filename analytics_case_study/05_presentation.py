@@ -1,5 +1,5 @@
 """
-Phase 5: Executive Presentation with context, attribution, and advanced analytics.
+Phase 5 (revised): Executive Presentation — 17 slides with context backgrounds and attribution analysis.
 Run: python analytics_case_study/05_presentation.py
 """
 import os, sys, io
@@ -56,6 +56,7 @@ master_account   = _li("master_account")
 attribution      = _li("attribution_results")
 feat_imp         = _li("feature_importance")
 win_prob         = _li("win_probability")
+model_stats      = _li("model_stats")
 account_coverage = _li("account_coverage")
 deal_velocity    = _li("deal_velocity")
 cohort           = _li("cohort_analysis")
@@ -69,12 +70,11 @@ c6    = _lc("6sense_campaign")
 ad    = _lc("ad_metrics")
 
 total_pipeline = opps["_amount"].sum() if "_amount" in opps.columns else 0
-won_col = "iswon" if "iswon" in opps.columns else ("_iswon" if "_iswon" in opps.columns else None)
-won_pipeline   = opps.loc[opps[won_col]==True,"_amount"].sum() if won_col else 0
+won_pipeline   = opps.loc[opps["iswon"]==True,"_amount"].sum() if "iswon" in opps.columns else 0
 mktg_pipeline  = opps.loc[opps["is_marketing_sourced"]==True,"_amount"].sum() if "is_marketing_sourced" in opps.columns else 0
 influenced_pl  = attribution[attribution["attribution_model"]=="Marketing Influenced"]["attributed_pipeline"].sum() if not attribution.empty else 0
 total_deals    = len(opps)
-won_deals      = (opps[won_col]==True).sum() if won_col else 0
+won_deals      = (opps["iswon"]==True).sum() if "iswon" in opps.columns else 0
 win_rate_all   = won_deals/total_deals if total_deals else 0
 mktg_pct       = mktg_pipeline/total_pipeline if total_pipeline else 0
 
@@ -83,6 +83,11 @@ def fmt(v):
     if v>=1e6: return f"${v/1e6:.1f}M"
     if v>=1e3: return f"${v/1e3:.0f}K"
     return f"${v:.0f}"
+
+def model_auc_text():
+    if not model_stats.empty and "auc" in model_stats.columns and pd.notna(model_stats.loc[0, "auc"]):
+        return f"{float(model_stats.loc[0, 'auc']):.3f}"
+    return "N/A"
 
 # ─── Slide helpers ──────────────────────────────────
 def _txt(slide, text, l, t, w, h, size=11, bold=False, color=None, align=PP_ALIGN.LEFT):
@@ -172,7 +177,7 @@ def s2_exec(prs):
         box.fill.solid(); box.fill.fore_color.rgb=LIGHT_BG; box.line.fill.background()
         _txt(slide,f"> {b}",Inches(0.35),top+Inches(0.06),Inches(12.65),Inches(0.42),size=10.5)
         top += Inches(0.55)
-    _context(slide,"WHAT THIS SHOWS: Top-line numbers for the whole marketing program. Pipeline = all deal value in the funnel. Won Revenue = deals actually closed and signed. HOW TO READ: Compare Sourced vs Influenced — Sourced ($4.2M) means marketing is listed as the CRM origin; Influenced ($6.5M) means marketing touched the account at any point before the deal, even if sales sourced it officially. INSIGHT: Win rate across all channels is 33% (1 in 3 deals closes). Marketing-sourced deals close at ~10% because marketing finds prospects earlier in their journey — they need longer nurture before they're ready to buy.")
+    _context(slide,"WHAT THIS SHOWS: Top-line numbers for the whole marketing program. Pipeline = all deal value in the funnel. Won Revenue = deals actually closed and signed. HOW TO READ: Compare Sourced vs Influenced — Sourced ($4.2M) means marketing is listed as the CRM origin; Influenced ($6.3M) means marketing touched the account at any point before the deal, even if sales sourced it officially. INSIGHT: Win rate across all channels is 33% (1 in 3 deals closes). Marketing-sourced deals close at ~10% because marketing finds prospects earlier in their journey — they need longer nurture before they're ready to buy.")
 
 
 def s3_methodology(prs):
@@ -279,25 +284,35 @@ def s6_sourced_influenced(prs):
 
 def s7_funnel(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    _title_bar(slide,"Full Marketing Funnel","From first impression to closed-won revenue across all channels")
+    _title_bar(slide,"Funnel Volumes","Separate activity channels from opportunity outcomes")
     if funnel_metrics.empty:
         _txt(slide,"No funnel data.",Inches(1),Inches(2),Inches(10),Inches(1)); return
-    f=funnel_metrics[funnel_metrics["channel"]=="All Channels"].copy()
-    stages=f["stage"].tolist(); counts=f["count"].tolist()
+    outcome_channels=["All Opportunity Outcomes","Marketing-Sourced Outcomes"]
+    f=funnel_metrics[funnel_metrics["channel"].isin(outcome_channels)].copy()
+    if f.empty:
+        f=funnel_metrics.copy()
+    f["label"]=f["channel"].astype(str)+" - "+f["stage"].astype(str)
+    labels=f["label"].tolist(); counts=f["count"].tolist()
     fig,ax=plt.subplots(figsize=(9,5.2))
-    bars=ax.barh(stages[::-1],counts[::-1],color=MPL[:len(stages)])
+    bars=ax.barh(labels[::-1],counts[::-1],color=MPL[:len(labels)])
     for bar,count in zip(bars,counts[::-1]):
         ax.text(bar.get_width()*1.01,bar.get_y()+bar.get_height()/2,f"{count:,.0f}",va="center",fontsize=10)
-    ax.set_xlabel("Count"); ax.set_title("Marketing Funnel — All Channels",fontsize=12,fontweight="bold")
+    ax.set_xlabel("Count"); ax.set_title("Opportunity Outcomes",fontsize=12,fontweight="bold")
     ax.xaxis.set_major_formatter(mticker.FuncFormatter(lambda x,_:f"{x:,.0f}"))
     ax.spines[["top","right"]].set_visible(False); fig.tight_layout()
     _insert(slide,fig,Inches(0.5),Inches(0.95),Inches(9.5),Inches(5.5))
     _txt(slide,"Stage Conversion Rates",Inches(10.3),Inches(1.1),Inches(2.8),Inches(0.35),size=10,bold=True)
     top=Inches(1.5)
-    for i in range(1,len(counts)):
-        rate=counts[i]/counts[i-1] if counts[i-1] else 0
-        _txt(slide,f"{stages[i-1][:18]} -> {stages[i][:12]}: {rate:.1%}",Inches(10.3),top,Inches(2.8),Inches(0.38),size=9)
-        top+=Inches(0.4)
+    for channel in outcome_channels:
+        fc=f[f["channel"]==channel].copy()
+        if "stage_order" in fc.columns:
+            fc=fc.sort_values("stage_order")
+        if len(fc)>=2:
+            rate=fc["count"].iloc[1]/fc["count"].iloc[0] if fc["count"].iloc[0] else 0
+            _txt(slide,f"{channel[:20]}: {rate:.1%}",Inches(10.3),top,Inches(2.8),Inches(0.38),size=9)
+            top+=Inches(0.4)
+    _context(slide,"WHAT THIS SHOWS: Opportunity outcome volume is separated from upstream activity volume so unlike populations are not treated as one continuous funnel. HOW TO READ: Compare all opportunities against marketing-sourced opportunities, then look at closed-won conversion within each population. INSIGHT: This prevents misleading conversion math such as clicks-to-email or engagements-to-deals, which are parallel channel activities rather than sequential steps.")
+    return
     _context(slide,"WHAT THIS SHOWS: The full journey from first ad impression to closed deal, with the number of companies/people at each stage. HOW TO READ: Each bar = one funnel stage. The bar shrinks at each step because most people drop off. The conversion rate between steps is the most important number. INSIGHT: 135M impressions -> 71K clicks = 0.05% CTR (normal for display). The jump from Clicks to Email Engagements is not a conversion — email is a separate parallel channel. The real pipeline funnel is: Impressions -> Form Fills (1,286) -> 3,288 Deals -> 511 Marketing-Sourced -> 52 Marketing-Sourced Won. Each step represents a significant drop — improving any single conversion rate has compounding downstream effect.")
 
 
@@ -595,8 +610,9 @@ def s17_next_steps(prs):
 
 def s18_win_probability(prs):
     slide = prs.slides.add_slide(prs.slide_layouts[6])
-    _title_bar(slide,"ML Win Probability Model","Random Forest classifier trained on 2,743 closed deals — AUC = 0.807")
-    kpis = [("Model","Random Forest",PRIMARY),("AUC Score","0.807",SUCCESS),
+    auc = model_auc_text()
+    _title_bar(slide,"ML Win Probability Model",f"Random Forest classifier trained on 2,743 closed deals — AUC = {auc}")
+    kpis = [("Model","Random Forest",PRIMARY),("AUC Score",auc,SUCCESS),
             ("Training Deals","2,743",ACCENT),("Scored Open","545",PURPLE)]
     for i,(l,v,c) in enumerate(kpis):
         _kpi(slide,l,v,Inches(0.22+i*3.27),Inches(0.85),c)
@@ -630,7 +646,7 @@ def s18_win_probability(prs):
 
     fig.tight_layout()
     _insert(slide,fig,Inches(0.25),Inches(2.1),Inches(12.85),Inches(4.2))
-    _context(slide,"WHAT THIS SHOWS: A machine learning model trained on all closed deals to predict which open deals are most likely to close. Feature importance (left) = which data points the model relied on most. Win probability distribution (right) = how confident the model is about each of the 545 currently open deals. HOW TO READ: Feature importance — longer bar = stronger predictor of winning. Win probability histogram — bars on the right (>70%) are your hottest leads; left bars (<30%) are at risk. INSIGHT: Tier and channel category are the top predictors. Campaign impressions in the top 10 directly validates ABM strategy — accounts that marketing has reached with more ads ARE more likely to close. Share the win probability list with sales weekly as a 'hot deals' prioritization tool.")
+    _context(slide,"WHAT THIS SHOWS: A machine learning model trained on closed deals to predict which open deals are most likely to close. Feature importance (left) = which data points the model relied on most. Win probability distribution (right) = how confident the model is about each currently open deal. HOW TO READ: Feature importance — longer bar = stronger predictor of winning. Win probability histogram — bars on the right (>70%) are your hottest leads; left bars (<30%) are at risk. INSIGHT: Tier, channel category, deal size, segment, and account firmographics are the strongest predictors. Use this as a sales prioritization tool, not as proof that any single marketing touch caused a win.")
 
 
 def s19_account_coverage(prs):
@@ -780,13 +796,18 @@ def main():
         ("Targeting Matrix",     s21_targeting_matrix),
         ("Next Steps",           s17_next_steps),
     ]
+    errors=[]
     for i,(name,fn) in enumerate(builders,1):
         print(f"  [{i:02d}/{len(builders)}] {name} ...",end=" ",flush=True)
         try:
             fn(prs); print("OK")
         except Exception as e:
-            print(f"! {e}")
-    out=os.path.join(PRESENTATION_DIR,"Analytics_Slides.pptx")
+            errors.append((name, e))
+            print(f"FAILED: {e}")
+    if errors:
+        detail="; ".join(f"{name}: {err}" for name, err in errors)
+        raise RuntimeError(f"Presentation build failed for {len(errors)} slide(s): {detail}")
+    out=os.path.join(PRESENTATION_DIR,"Marketing_Analytics_Executive_Deck_v4.pptx")
     prs.save(out)
     print(f"\nOK Saved -> {out}")
     print(f"   {os.path.getsize(out)/1024:.0f} KB, {len(prs.slides)} slides")

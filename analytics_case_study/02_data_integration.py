@@ -96,14 +96,15 @@ def build_master_account(accounts, segments, campaign6s, email, web, opps, icp) 
     opp_by_acct = None
     if "accountid" in accounts.columns and "_account_id" in opps.columns:
         iswon_col = "iswon" if "iswon" in opps.columns else ("_iswon" if "_iswon" in opps.columns else None)
-        def _won_sum(x):
-            if iswon_col is None:
-                return 0
-            return x[opps.loc[x.index, iswon_col] == True].sum()
+        if iswon_col:
+            opps["won_amount"] = np.where(opps[iswon_col] == True, opps["_amount"], 0)
+        else:
+            opps["won_amount"] = 0
+
         opp_agg = (opps.groupby("_account_id")
                    .agg(
                        total_pipeline=("_amount", "sum"),
-                       total_won=("_amount", _won_sum),
+                       total_won=("won_amount", "sum"),
                        deal_count=("_opportunity_id", "count"),
                        primary_leadsource=("_leadsource", "first"),
                        channel_category=("channel_category", "first"),
@@ -111,21 +112,6 @@ def build_master_account(accounts, segments, campaign6s, email, web, opps, icp) 
                    ).reset_index()
                    .rename(columns={"_account_id": "accountid"}))
         base = base.merge(opp_agg, on="accountid", how="left")
-
-        missing_opps = opp_agg[~opp_agg["accountid"].isin(base["accountid"])].copy()
-        if not missing_opps.empty:
-            missing_names = (opps.dropna(subset=["_account_id"])
-                             .sort_values("_opportunity_id")
-                             .groupby("_account_id")["_account_name"]
-                             .first()
-                             .reset_index()
-                             .rename(columns={"_account_id": "accountid", "_account_name": "account_name"}))
-            missing_opps = missing_opps.merge(missing_names, on="accountid", how="left")
-            for col in base.columns:
-                if col not in missing_opps.columns:
-                    missing_opps[col] = np.nan
-            base = pd.concat([base, missing_opps[base.columns]], ignore_index=True)
-            print(f"  Added {len(missing_opps):,} opportunity-only accounts missing from account log")
 
     # --- ICP contacts by account ---
     icp_col = None
@@ -222,50 +208,67 @@ def build_funnel_metrics(campaign6s: pd.DataFrame, ad_metrics: pd.DataFrame,
     rows = []
     iswon_col = "iswon" if "iswon" in opps.columns else ("_iswon" if "_iswon" in opps.columns else None)
 
-    impressions = 0
-    clicks = 0
-    form_fills = 0
+    def add_funnel(channel, stages):
+        prev = np.nan
+        for stage, count in stages:
+            count = int(count) if pd.notna(count) else 0
+            rows.append({
+                "channel": channel,
+                "stage": stage,
+                "count": count,
+                "conversion_from_prev": count / prev if pd.notna(prev) and prev else np.nan,
+            })
+            prev = count
 
-    if "_impressions" in campaign6s.columns:
-        impressions += campaign6s["_impressions"].sum()
-    if "_impressions" in ad_metrics.columns:
-        impressions += ad_metrics["_impressions"].sum()
+    campaign_impressions = campaign6s["_impressions"].sum() if "_impressions" in campaign6s.columns else 0
+    campaign_clicks = campaign6s["_clicks"].sum() if "_clicks" in campaign6s.columns else 0
+    campaign_form_fills = campaign6s["_influencedformfills"].sum() if "_influencedformfills" in campaign6s.columns else 0
+    add_funnel("6sense Display", [
+        ("Impressions", campaign_impressions),
+        ("Clicks", campaign_clicks),
+        ("Influenced Form Fills", campaign_form_fills),
+    ])
 
-    if "_clicks" in campaign6s.columns:
-        clicks += campaign6s["_clicks"].sum()
-    if "_clicks" in ad_metrics.columns:
-        clicks += ad_metrics["_clicks"].sum()
-
-    # Form fills: 6sense influenced fills + web goal completions
-    if "_influencedformfills" in campaign6s.columns:
-        form_fills += campaign6s["_influencedformfills"].sum()
-    if web is not None and "is_goal_completed" in web.columns:
-        form_fills += web["is_goal_completed"].sum()
+    ad_impressions = ad_metrics["_impressions"].sum() if "_impressions" in ad_metrics.columns else 0
+    ad_clicks = ad_metrics["_clicks"].sum() if "_clicks" in ad_metrics.columns else 0
+    add_funnel("Paid Ads", [
+        ("Impressions", ad_impressions),
+        ("Clicks", ad_clicks),
+    ])
 
     email_engagements = len(email)
+    email_opens = email["is_open"].sum() if "is_open" in email.columns else 0
     email_clicks = email["is_click"].sum() if "is_click" in email.columns else 0
+    email_registers = email["is_register"].sum() if "is_register" in email.columns else 0
+    add_funnel("Email", [
+        ("Engagement Events", email_engagements),
+        ("Opens", email_opens),
+        ("Clicks", email_clicks),
+        ("Registrations", email_registers),
+    ])
+
+    if web is not None and not web.empty:
+        web_sessions = len(web)
+        web_goals = web["is_goal_completed"].sum() if "is_goal_completed" in web.columns else 0
+        add_funnel("Web", [
+            ("Sessions", web_sessions),
+            ("Goal Completions", web_goals),
+        ])
+
     total_opps = len(opps)
     marketing_opps = opps["is_marketing_sourced"].sum() if "is_marketing_sourced" in opps.columns else 0
     won_opps = (opps[iswon_col] == True).sum() if iswon_col else 0
     marketing_won = opps[(opps["is_marketing_sourced"] == True) & (opps[iswon_col] == True)].shape[0] if iswon_col and "is_marketing_sourced" in opps.columns else 0
+    add_funnel("All Opportunity Outcomes", [
+        ("All Opportunities", total_opps),
+        ("Closed Won (All)", won_opps),
+    ])
+    add_funnel("Marketing-Sourced Outcomes", [
+        ("Marketing-Sourced Opps", marketing_opps),
+        ("Marketing-Sourced Won", marketing_won),
+    ])
 
-    funnel = [
-        ("Impressions", int(impressions)),
-        ("Clicks", int(clicks)),
-        ("Form Fills / Goal Completions", int(form_fills)),
-        ("Email Engagements", int(email_engagements)),
-        ("Email Clicks", int(email_clicks)),
-        ("All Opportunities", int(total_opps)),
-        ("Marketing-Sourced Opps", int(marketing_opps)),
-        ("Closed Won (All)", int(won_opps)),
-        ("Marketing-Sourced Won", int(marketing_won)),
-    ]
-    for stage, count in funnel:
-        rows.append({"channel": "All Channels", "stage": stage, "count": count})
-
-    df_funnel = pd.DataFrame(rows)
-    df_funnel["conversion_from_prev"] = df_funnel["count"] / df_funnel["count"].shift(1)
-    return df_funnel
+    return pd.DataFrame(rows)
 
 
 # ---------------------------------------------------------------------------

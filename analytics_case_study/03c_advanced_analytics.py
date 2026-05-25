@@ -37,6 +37,39 @@ icp   = _lc("icp_database")
 ma    = _li("master_account")
 
 
+def _won_col(df):
+    if "iswon" in df.columns:
+        return "iswon"
+    if "_iswon" in df.columns:
+        return "_iswon"
+    return None
+
+
+def _account_domain_lookup():
+    if accts.empty or "accountid" not in accts.columns or "domain__c" not in accts.columns:
+        return {}
+    return accts.dropna(subset=["accountid"]).set_index("accountid")["domain__c"].to_dict()
+
+
+def _opportunities_with_domain(df):
+    if df.empty:
+        return df.copy()
+    out = df.copy()
+    acct_domain = _account_domain_lookup()
+
+    def resolve(row):
+        if "_domain" in out.columns and pd.notna(row.get("_domain")):
+            d = str(row.get("_domain")).strip().lower()
+            if d and d != "nan":
+                return d
+        acct_id = row.get("_account_id")
+        d = acct_domain.get(str(acct_id), acct_domain.get(acct_id, ""))
+        return str(d).strip().lower() if pd.notna(d) and str(d).strip() else np.nan
+
+    out["opp_domain"] = out.apply(resolve, axis=1)
+    return out
+
+
 # ============================================================
 # 1. WIN PROBABILITY MODEL
 # ============================================================
@@ -45,27 +78,27 @@ def build_win_probability():
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.preprocessing import LabelEncoder
     from sklearn.model_selection import cross_val_score
-    from sklearn.metrics import roc_auc_score
+    from sklearn.metrics import roc_auc_score, accuracy_score
 
     # Merge opps with master account features
-    ma2 = ma[["accountid","segment__c","industry","tier","accountprofilefit6sense__c",
+    account_feature_cols = ["accountid","segment__c","industry","tier","accountprofilefit6sense__c",
               "account6qa6sense__c","accountintentscore6sense__c","annualrevenue",
-              "numberofemployees","email_opens","email_clicks","campaign_impressions",
-              "campaign_form_fills","web_goal_completions","c_level_contacts",
-              "vp_contacts","director_contacts"]].copy()
+              "numberofemployees","c_level_contacts","vp_contacts","director_contacts"]
+    ma2 = ma[[c for c in account_feature_cols if c in ma.columns]].copy()
     ma2 = ma2.rename(columns={"accountid":"_account_id"})
 
     # Only bring in columns from ma that don't already exist in opps
-    new_cols = [c for c in ma2.columns if c not in opps.columns or c == "_account_id"]
-    df = opps.merge(ma2[new_cols], on="_account_id", how="left")
+    if "_account_id" in opps.columns and "_account_id" in ma2.columns:
+        new_cols = [c for c in ma2.columns if c not in opps.columns or c == "_account_id"]
+        df = opps.merge(ma2[new_cols], on="_account_id", how="left")
+    else:
+        df = opps.copy()
 
     # Build feature list from what's actually available after merge
     CANDIDATE_FEATURES = [
         "channel_category","segment__c","industry","tier",
         "accountprofilefit6sense__c","account6qa6sense__c",
         "accountintentscore6sense__c","annualrevenue","numberofemployees",
-        "email_opens","email_clicks","campaign_impressions",
-        "campaign_form_fills","web_goal_completions",
         "c_level_contacts","vp_contacts","director_contacts",
         "_amount",
     ]
@@ -86,8 +119,17 @@ def build_win_probability():
     open_  = df[~df["is_closed"]].copy()
     print(f"  Closed deals (train): {len(closed):,}  |  Open deals (score): {len(open_):,}")
 
+    won_col = _won_col(closed)
+    if not FEATURES or not won_col or closed.empty:
+        print("  Not enough columns/deals to train model — skipping")
+        return pd.DataFrame(), pd.DataFrame(), {"auc": float("nan"), "accuracy": float("nan")}
+
     X_raw = closed[FEATURES].copy()
-    y     = (closed["iswon"] == True).astype(int)
+    y     = (closed[won_col] == True).astype(int)
+    min_class = y.value_counts().min() if y.nunique() == 2 else 0
+    if min_class < 2:
+        print("  Need at least two won and two lost closed deals for CV — skipping")
+        return pd.DataFrame(), pd.DataFrame(), {"auc": float("nan"), "accuracy": float("nan")}
 
     # Encode & impute
     le_map = {}
@@ -114,8 +156,33 @@ def build_win_probability():
 
     rf = RandomForestClassifier(n_estimators=200, max_depth=8, min_samples_leaf=5,
                                 random_state=42, n_jobs=-1)
-    auc_scores = cross_val_score(rf, X, y, cv=5, scoring="roc_auc")
-    print(f"  Model AUC (5-fold CV): {auc_scores.mean():.3f} +/- {auc_scores.std():.3f}")
+    cv = min(5, int(min_class))
+    auc_scores = cross_val_score(rf, X, y, cv=cv, scoring="roc_auc")
+    validation_label = f"{cv}-fold stratified CV"
+    eval_auc = float(auc_scores.mean())
+    eval_accuracy = float("nan")
+
+    create_col = next((c for c in closed.columns if "createdate" in c.lower()), None)
+    if create_col:
+        dated = closed.copy()
+        dated["_model_create_date"] = pd.to_datetime(dated[create_col], utc=True, errors="coerce")
+        dated = dated.dropna(subset=["_model_create_date"]).sort_values("_model_create_date")
+        if len(dated) >= 200 and dated[won_col].nunique() == 2:
+            cutoff_idx = max(1, int(len(dated) * 0.8))
+            train_idx = dated.index[:cutoff_idx]
+            test_idx = dated.index[cutoff_idx:]
+            if y.loc[train_idx].nunique() == 2 and y.loc[test_idx].nunique() == 2:
+                holdout = RandomForestClassifier(
+                    n_estimators=200, max_depth=8, min_samples_leaf=5,
+                    random_state=42, n_jobs=-1
+                )
+                holdout.fit(X_raw.loc[train_idx].values, y.loc[train_idx])
+                test_probs = holdout.predict_proba(X_raw.loc[test_idx].values)[:, 1]
+                eval_auc = float(roc_auc_score(y.loc[test_idx], test_probs))
+                eval_accuracy = float(accuracy_score(y.loc[test_idx], test_probs >= 0.5))
+                validation_label = "time-based 80/20 holdout"
+
+    print(f"  Model AUC ({validation_label}): {eval_auc:.3f}")
 
     rf.fit(X, y)
 
@@ -131,8 +198,10 @@ def build_win_probability():
     # Score closed deals (show calibration)
     closed["win_probability"] = rf.predict_proba(X)[:,1]
     closed["predicted_win"] = (closed["win_probability"] >= 0.5).astype(int)
-    acc = (closed["predicted_win"] == y.values).mean()
-    print(f"  Accuracy on training set: {acc:.1%}")
+    train_acc = (closed["predicted_win"] == y.values).mean()
+    if pd.notna(eval_accuracy):
+        print(f"  Holdout accuracy: {eval_accuracy:.1%}")
+    print(f"  Training accuracy (diagnostic only): {train_acc:.1%}")
 
     # Score open deals
     open_scored = pd.DataFrame()
@@ -164,14 +233,23 @@ def build_win_probability():
     else:
         # All deals closed — show distribution on full dataset
         closed_show = closed[["_opportunity_id","_account_name","_amount","channel_category",
-                               "segment__c","win_probability","iswon"]].copy()
+                               "segment__c","win_probability",won_col]].copy()
+        if won_col != "iswon":
+            closed_show = closed_show.rename(columns={won_col: "iswon"})
         open_scored = closed_show
 
     feat_imp.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "feature_importance.parquet"), index=False)
     out = open_scored if len(open_) > 0 else closed[["_opportunity_id","_account_name","_amount",
-          "channel_category","segment__c","win_probability","iswon"]].copy()
+          "channel_category","segment__c","win_probability",won_col]].copy()
+    if won_col != "iswon" and not out.empty:
+        out = out.rename(columns={won_col: "iswon"})
     out.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "win_probability.parquet"), index=False)
-    return feat_imp, out, {"auc": float(auc_scores.mean()), "accuracy": float(acc)}
+    return feat_imp, out, {
+        "auc": eval_auc,
+        "accuracy": eval_accuracy if pd.notna(eval_accuracy) else float(train_acc),
+        "training_accuracy": float(train_acc),
+        "validation": validation_label,
+    }
 
 
 # ============================================================
@@ -179,10 +257,11 @@ def build_win_probability():
 # ============================================================
 def build_account_coverage():
     print("\n[2/7] Account Coverage Analysis ...")
-    acct_domains = set(accts["domain__c"].dropna().str.lower().str.strip())
-    email_domains = set(email["_domain"].dropna().str.lower().str.strip())
-    c6_domains    = set(c6["_6sensedomain"].dropna().str.lower().str.strip())
-    opp_domains   = set(opps["_domain"].dropna().str.lower().str.strip())
+    acct_domains = set(accts["domain__c"].dropna().str.lower().str.strip()) if "domain__c" in accts.columns else set()
+    email_domains = set(email["_domain"].dropna().str.lower().str.strip()) if "_domain" in email.columns else set()
+    c6_domains    = set(c6["_6sensedomain"].dropna().str.lower().str.strip()) if "_6sensedomain" in c6.columns else set()
+    opps_d = _opportunities_with_domain(opps)
+    opp_domains = set(opps_d["opp_domain"].dropna().str.lower().str.strip()) if "opp_domain" in opps_d.columns else set()
 
     rows = []
     for domain in acct_domains:
@@ -237,7 +316,11 @@ def build_deal_velocity():
     df["days_to_close"] = (df["_close"] - df["_create"]).dt.days
 
     # Won deals only for velocity (lost deals have arbitrary close dates)
-    won = df[(df["iswon"]==True) & df["days_to_close"].between(1, 730)].copy()
+    won_col = _won_col(df)
+    if not won_col:
+        print("  Missing won flag — skipping")
+        return pd.DataFrame()
+    won = df[(df[won_col]==True) & df["days_to_close"].between(1, 730)].copy()
 
     vel = won.groupby("channel_category")["days_to_close"].agg(
         mean_days="mean", median_days="median", deal_count="count",
@@ -293,19 +376,29 @@ def build_journey_sequences():
 
     # Link to won opportunities
     opp_date_col = next((c for c in opps.columns if "createdate" in c.lower()), None)
-    won_opps = opps[(opps["iswon"]==True) & opps["_domain"].notna()].copy()
+    opps_d = _opportunities_with_domain(opps)
+    won_col = _won_col(opps_d)
+    if not won_col or "opp_domain" not in opps_d.columns:
+        print("  Missing won flag or opportunity domain — skipping")
+        return pd.DataFrame()
+    won_opps = opps_d[(opps_d[won_col]==True) & opps_d["opp_domain"].notna()].copy()
     if opp_date_col:
         won_opps["_opp_date"] = pd.to_datetime(won_opps[opp_date_col], utc=True, errors="coerce")
 
     # For each won opp, find ordered channel sequence
     sequences = []
     for _, opp in won_opps.iterrows():
-        d = str(opp["_domain"]).lower().strip()
+        d = str(opp["opp_domain"]).lower().strip()
         opp_date = opp.get("_opp_date")
-        touches = tp[
-            (tp["domain"].str.lower().str.strip() == d) &
-            (tp["tp_date"] <= opp_date if pd.notna(opp_date) else True)
-        ].sort_values("tp_date")
+        if pd.notna(opp_date):
+            touches = tp[
+                (tp["domain"].str.lower().str.strip() == d) &
+                (tp["tp_date"] <= opp_date)
+            ].sort_values("tp_date")
+        else:
+            touches = tp[
+                tp["domain"].str.lower().str.strip() == d
+            ].sort_values("tp_date")
         if len(touches) == 0:
             continue
         # Get unique ordered channel sequence (deduplicate consecutive same channel)
@@ -358,8 +451,9 @@ def build_6qa_analysis():
     if qa_col not in opps.columns:
         # Join from accounts
         if qa_col in accts.columns and "_account_id" in opps.columns and "accountid" in accts.columns:
+            account_cols = [c for c in ["accountid", qa_col, pf_col, "accountintentscore6sense__c"] if c in accts.columns]
             opps_qa = opps.merge(
-                accts[["accountid", qa_col, pf_col, "accountintentscore6sense__c"]].rename(
+                accts[account_cols].rename(
                     columns={"accountid":"_account_id"}),
                 on="_account_id", how="left"
             )
@@ -372,14 +466,25 @@ def build_6qa_analysis():
     if qa_col not in opps_qa.columns:
         print("  6QA column not found")
         return pd.DataFrame()
+    won_col = _won_col(opps_qa)
+    if not won_col:
+        print("  Missing won flag — skipping")
+        return pd.DataFrame()
 
-    opps_qa[qa_col] = opps_qa[qa_col].map({True:True, False:False, "True":True, "False":False})
+    bool_map = {
+        True: True, False: False,
+        "True": True, "False": False, "true": True, "false": False,
+        "1": True, "0": False, "yes": True, "no": False,
+        1: True, 0: False,
+    }
+    opps_qa[qa_col] = opps_qa[qa_col].map(bool_map)
+    opps_qa["_won_amount"] = np.where(opps_qa[won_col] == True, opps_qa["_amount"], 0)
 
     qa_perf = opps_qa.groupby(qa_col).agg(
         deals=("_opportunity_id","count"),
-        won=("iswon", lambda x: (x==True).sum()),
+        won=(won_col, lambda x: (x==True).sum()),
         pipeline=("_amount","sum"),
-        won_pipeline=("_amount", lambda x: x[(opps_qa.loc[x.index,"iswon"]==True)].sum()),
+        won_pipeline=("_won_amount","sum"),
         avg_deal=("_amount","mean"),
     ).reset_index()
     qa_perf["win_rate"] = qa_perf["won"] / qa_perf["deals"]
@@ -394,7 +499,7 @@ def build_6qa_analysis():
     if pf_col in opps_qa.columns:
         pf_perf = opps_qa.dropna(subset=[pf_col]).groupby(pf_col).agg(
             deals=("_opportunity_id","count"),
-            won=("iswon", lambda x: (x==True).sum()),
+            won=(won_col, lambda x: (x==True).sum()),
             pipeline=("_amount","sum"),
             avg_deal=("_amount","mean"),
         ).reset_index()
@@ -416,22 +521,30 @@ def build_targeting_matrix():
     pf_col = "accountprofilefit6sense__c"
     # Join profile fit if not on opps
     if pf_col not in opps.columns:
-        opps_m = opps.merge(
-            accts[["accountid", pf_col]].rename(columns={"accountid":"_account_id"}),
-            on="_account_id", how="left"
-        )
+        if pf_col in accts.columns and "_account_id" in opps.columns and "accountid" in accts.columns:
+            opps_m = opps.merge(
+                accts[["accountid", pf_col]].rename(columns={"accountid":"_account_id"}),
+                on="_account_id", how="left"
+            )
+        else:
+            print("  Missing profile fit column — skipping")
+            return pd.DataFrame()
     else:
         opps_m = opps.copy()
 
-    needed = ["segment__c", pf_col, "_amount", "iswon"]
+    won_col = _won_col(opps_m)
+    needed = ["segment__c", pf_col, "_amount"]
     if not all(c in opps_m.columns for c in needed):
         print("  Missing columns — skipping")
+        return pd.DataFrame()
+    if not won_col:
+        print("  Missing won flag — skipping")
         return pd.DataFrame()
 
     df = opps_m.dropna(subset=["segment__c", pf_col]).copy()
     matrix = df.groupby(["segment__c", pf_col]).agg(
         deals=("_opportunity_id","count"),
-        won=("iswon", lambda x: (x==True).sum()),
+        won=(won_col, lambda x: (x==True).sum()),
         pipeline=("_amount","sum"),
         avg_deal=("_amount","mean"),
     ).reset_index()
@@ -458,14 +571,18 @@ def build_cohort_analysis():
         return pd.DataFrame()
 
     df = opps.copy()
+    won_col = _won_col(df)
+    if not won_col:
+        print("  Missing won flag — skipping")
+        return pd.DataFrame()
     df["create_date"] = pd.to_datetime(df[create_col], errors="coerce", utc=True)
     df["quarter"] = df["create_date"].dt.to_period("Q").astype(str)
 
     cohort = df.dropna(subset=["quarter","_amount"]).groupby("quarter").agg(
         deals=("_opportunity_id","count"),
-        won=("iswon", lambda x: (x==True).sum()),
+        won=(won_col, lambda x: (x==True).sum()),
         pipeline=("_amount","sum"),
-        won_pipeline=("_amount", lambda x: x[(df.loc[x.index,"iswon"]==True)].sum()),
+        won_pipeline=("_amount", lambda x: x[(df.loc[x.index,won_col]==True)].sum()),
         avg_deal=("_amount","mean"),
         marketing_sourced=("is_marketing_sourced", "sum"),
     ).reset_index()
@@ -494,6 +611,7 @@ def main():
     results = {}
 
     feat_imp, win_prob, model_stats = build_win_probability()
+    pd.DataFrame([model_stats]).to_parquet(os.path.join(INTEGRATED_DATA_DIR, "model_stats.parquet"), index=False)
     results["feature_importance"] = feat_imp
     results["win_probability_top"] = win_prob.head(20) if "win_probability" in win_prob.columns else win_prob.head(20)
 

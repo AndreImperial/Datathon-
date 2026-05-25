@@ -118,22 +118,23 @@ MARKETING_CHANNELS = {
 }
 
 BRAND_COLORS = [
-    "#1F77B4", "#FF7F0E", "#2CA02C", "#D62728",
-    "#9467BD", "#8C564B", "#E377C2", "#7F7F7F",
-    "#BCBD22", "#17BECF",
+    "#2563EB", "#0F766E", "#D97706", "#7C3AED",
+    "#0E7490", "#64748B", "#B45309", "#475569",
+    "#15803D", "#C24141",
 ]
 
 CHANNEL_COLOR_MAP = {
-    "6sense_display": "#1F77B4",
-    "6sense_event": "#AEC7E8",
-    "6sense_channel": "#6BAED6",
-    "email_mqa": "#FF7F0E",
-    "web_inbound": "#2CA02C",
-    "event": "#D62728",
-    "webinar": "#E377C2",
-    "linkedin": "#0077B5",
-    "sales": "#7F7F7F",
-    "referral": "#BCBD22",
-    "existing_client": "#17BECF",
-    "other_marketing": "#9467BD",
+    "6sense_display": "#2563EB",
+    "6sense_event": "#60A5FA",
+    "6sense_channel": "#1D4ED8",
+    "email_mqa": "#D97706",
+    "web_inbound": "#0F766E",
+    "event": "#B45309",
+    "webinar": "#7C3AED",
+    "linkedin": "#0E7490",
+    "sales": "#64748B",
+    "referral": "#15803D",
+    "existing_client": "#475569",
+    "other_marketing": "#8B5CF6",
+    "other": "#94A3B8",
 }

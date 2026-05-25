@@ -40,6 +40,7 @@ master_account = _load_int("master_account")
 email = _load_clean("email_engagements")
 opps = _load_clean("opportunities")
 ad_metrics = _load_clean("ad_metrics")
+won_col = "iswon" if "iswon" in opps.columns else ("_iswon" if "_iswon" in opps.columns else None)
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +78,7 @@ def kpi_card(title, value, color="#1F77B4"):
 # Tab 1: Executive Summary
 # ---------------------------------------------------------------------------
 total_pipeline = opps["_amount"].sum() if "_amount" in opps.columns else 0
-won_pipeline = opps.loc[opps["_iswon"] == True, "_amount"].sum() if "_iswon" in opps.columns and "_amount" in opps.columns else 0
+won_pipeline = opps.loc[opps[won_col] == True, "_amount"].sum() if won_col and "_amount" in opps.columns else 0
 mktg_pipeline = opps.loc[opps["is_marketing_sourced"] == True, "_amount"].sum() if "is_marketing_sourced" in opps.columns and "_amount" in opps.columns else 0
 mktg_pct = mktg_pipeline / total_pipeline if total_pipeline > 0 else 0
 
@@ -153,7 +154,7 @@ if not channel_pipeline.empty and not funnel_metrics.empty:
     scatter_spend_pipeline.update_traces(textposition="top center")
     scatter_spend_pipeline.update_layout(xaxis_title="Spend ($)", yaxis_title="Pipeline ($)", **LAYOUT)
 
-    funnel_all = funnel_metrics[funnel_metrics["channel"] == "All Channels"]
+    funnel_all = funnel_metrics[funnel_metrics["channel"] == "All Opportunity Outcomes"]
     funnel_fig = go.Figure(go.Funnel(
         y=funnel_all["stage"].tolist(),
         x=funnel_all["count"].tolist(),
@@ -200,13 +201,13 @@ tab2_content = dbc.Container([
 # ---------------------------------------------------------------------------
 # Tab 3: Segment Analysis
 # ---------------------------------------------------------------------------
-if "segment__c" in opps.columns and "_amount" in opps.columns and "_iswon" in opps.columns:
+if "segment__c" in opps.columns and "_amount" in opps.columns and won_col:
     seg_agg = (opps.dropna(subset=["segment__c"])
                .groupby("segment__c")
                .agg(
                    deals=("_opportunity_id", "count"),
                    pipeline=("_amount", "sum"),
-                   won=("_iswon", lambda x: (x == True).sum()),
+                   won=(won_col, lambda x: (x == True).sum()),
                    avg_deal=("_amount", "mean"),
                ).reset_index())
     seg_agg["win_rate"] = seg_agg["won"] / seg_agg["deals"]

@@ -111,13 +111,13 @@ python analytics_case_study/04_html_dashboard.py
 python analytics_case_study/06_validate_metrics.py
 ```
 
-Then copy the generated dashboard into the static publish folder:
+The dashboard generator also copies the generated HTML into the static publish folder:
 
 ```bash
-cp outputs/dashboard/Marketing_Analytics_Dashboard.html public/index.html
+python analytics_case_study/04_html_dashboard.py
 ```
 
-On Windows PowerShell:
+If you ever need to copy it manually, use:
 
 ```powershell
 Copy-Item outputs\dashboard\Marketing_Analytics_Dashboard.html public\index.html -Force

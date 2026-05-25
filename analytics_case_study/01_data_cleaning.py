@@ -16,7 +16,6 @@ from analytics_case_study.utils.cleaning_helpers import (
     normalize_domain, replace_null_strings, safe_numeric,
     safe_datetime, normalize_country, normalize_industry,
     filter_free_email_domains, derive_ctr, derive_cpc, derive_cpm,
-    month_period,
 )
 
 
@@ -57,11 +56,21 @@ def clean_opportunity_log() -> pd.DataFrame:
         print(f"  Deduplicated to {len(df):,} unique opportunities")
 
     # Normalise boolean columns — covers both prefixed and unprefixed column names
-    bool_map = {"True": True, "False": False, "true": True, "false": False,
-                "1": True, "0": False, "yes": True, "no": False}
+    bool_map = {
+        True: True, False: False,
+        "True": True, "False": False, "true": True, "false": False,
+        "1": True, "0": False, "yes": True, "no": False,
+        1: True, 0: False
+    }
     for c in ["_iswon", "_isclosed", "iswon", "isdeleted"]:
         if c in df.columns:
             df[c] = df[c].map(bool_map)
+    if "iswon" not in df.columns and "_iswon" in df.columns:
+        df["iswon"] = df["_iswon"]
+    if "_iswon" not in df.columns and "iswon" in df.columns:
+        df["_iswon"] = df["iswon"]
+    if "isclosed" not in df.columns and "_isclosed" in df.columns:
+        df["isclosed"] = df["_isclosed"]
 
     # Channel category from lead source
     if "_leadsource" in df.columns:
@@ -101,12 +110,24 @@ def clean_account_log() -> pd.DataFrame:
         if c in df.columns:
             df[c] = safe_numeric(df[c])
 
+    bool_map = {
+        True: True, False: False,
+        "True": True, "False": False, "true": True, "false": False,
+        "1": True, "0": False, "yes": True, "no": False,
+        1: True, 0: False
+    }
     for c in ["account6qa6sense__c", "top_5_account__c"]:
         if c in df.columns:
-            df[c] = df[c].map({"True": True, "False": False, "true": True, "false": False})
+            df[c] = df[c].map(bool_map)
 
     if "createddate" in df.columns:
         df["createddate"] = safe_datetime(df["createddate"])
+
+    if "accountid" in df.columns:
+        if "createddate" in df.columns:
+            df = df.sort_values("createddate")
+        df = df.groupby("accountid", as_index=False).last()
+        print(f"  Deduplicated to {len(df):,} unique accounts")
 
     # Normalise tier
     if "tier" in df.columns:
@@ -147,7 +168,7 @@ def clean_6sense_campaign() -> pd.DataFrame:
             df[c] = safe_datetime(df[c])
 
     if "_date" in df.columns:
-        df["month_year"] = month_period(df["_date"])
+        df["month_year"] = df["_date"].dt.to_period("M").astype(str)
 
     if "_clicks" in df.columns and "_impressions" in df.columns:
         df["ctr"] = derive_ctr(df["_clicks"], df["_impressions"])
@@ -194,7 +215,7 @@ def clean_ad_metrics() -> pd.DataFrame:
         df["landing_cvr"] = derive_ctr(df["pageviews"], df["_clicks"])
 
     if "day" in df.columns:
-        df["month_year"] = month_period(df["day"])
+        df["month_year"] = df["day"].dt.to_period("M").astype(str)
 
     out = os.path.join(CLEANED_DATA_DIR, "ad_metrics.parquet")
     df.to_parquet(out, index=False)
@@ -237,7 +258,7 @@ def clean_email_engagements() -> pd.DataFrame:
         df["days_to_engage"] = (df["_timestamp"] - df["_campaignSentDate"]).dt.days
 
     if "_timestamp" in df.columns:
-        df["month_year"] = month_period(df["_timestamp"])
+        df["month_year"] = df["_timestamp"].dt.to_period("M").astype(str)
 
     drop_cols = [c for c in ["_sdc_sequence", "_sdc_table_version"] if c in df.columns]
     df.drop(columns=drop_cols, inplace=True)
@@ -261,7 +282,7 @@ def clean_web_engagements() -> pd.DataFrame:
 
     if "_timestamp" in df.columns:
         df["_timestamp"] = safe_datetime(df["_timestamp"])
-        df["month_year"] = month_period(df["_timestamp"])
+        df["month_year"] = df["_timestamp"].dt.to_period("M").astype(str)
 
     if "_domain" in df.columns:
         df["_domain"] = normalize_domain(df["_domain"])
@@ -278,11 +299,15 @@ def clean_web_engagements() -> pd.DataFrame:
         df["is_organic"] = src.isin(["organic", "(none)", "google"])
 
     if "_goalcompletion" in df.columns:
-        df["is_goal_completed"] = df["_goalcompletion"].map(
-            {"True": True, "False": False, "true": True, "false": False}
-        )
+        bool_map = {
+            True: True, False: False,
+            "True": True, "False": False, "true": True, "false": False,
+            "1": True, "0": False, "yes": True, "no": False,
+            1: True, 0: False
+        }
+        df["is_goal_completed"] = df["_goalcompletion"].map(bool_map)
 
-    df["has_domain"] = df["_domain"].notna()
+    df["has_domain"] = df["_domain"].notna() if "_domain" in df.columns else False
 
     out = os.path.join(CLEANED_DATA_DIR, "web_engagements.parquet")
     df.to_parquet(out, index=False)

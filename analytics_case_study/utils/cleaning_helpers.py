@@ -19,8 +19,8 @@ def normalize_domain(series: pd.Series) -> pd.Series:
 
 
 def replace_null_strings(df: pd.DataFrame) -> pd.DataFrame:
-    """Replace literal 'null', 'NULL', 'None', '-' strings with np.nan."""
-    return df.replace({"null": np.nan, "NULL": np.nan, "None": np.nan, "-": np.nan, "": np.nan})
+    """Replace literal 'null', 'NULL', 'None', '-', 'nan' strings with np.nan."""
+    return df.replace({"null": np.nan, "NULL": np.nan, "None": np.nan, "-": np.nan, "": np.nan, "nan": np.nan, "NaN": np.nan})
 
 
 def safe_numeric(series: pd.Series) -> pd.Series:
@@ -29,13 +29,6 @@ def safe_numeric(series: pd.Series) -> pd.Series:
 
 def safe_datetime(series: pd.Series) -> pd.Series:
     return pd.to_datetime(series, errors="coerce", format="mixed", dayfirst=False)
-
-
-def month_period(series: pd.Series) -> pd.Series:
-    s = series
-    if getattr(s.dt, "tz", None) is not None:
-        s = s.dt.tz_convert(None)
-    return s.dt.to_period("M").astype(str)
 
 
 def normalize_country(series: pd.Series) -> pd.Series:

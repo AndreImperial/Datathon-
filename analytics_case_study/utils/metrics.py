@@ -28,14 +28,18 @@ def cost_per_unit(spend: float, units: int) -> float:
 
 def channel_funnel_summary(opps_df: pd.DataFrame, channel_col: str = "channel_category") -> pd.DataFrame:
     """Compute per-channel pipeline metrics from deduplicated opportunities."""
-    grp = opps_df.groupby(channel_col)
-    result = pd.DataFrame({
-        "deal_count": grp["_opportunity_id"].count(),
-        "total_pipeline": grp["_amount"].sum(),
-        "won_pipeline": grp.apply(lambda g: g.loc[g["_iswon"] == True, "_amount"].sum()),
-        "won_count": grp.apply(lambda g: (g["_iswon"] == True).sum()),
-        "avg_deal_size": grp["_amount"].mean(),
-    })
+    won_col = "iswon" if "iswon" in opps_df.columns else "_iswon"
+    df = opps_df.copy()
+    df["_won_flag"] = df[won_col].eq(True)
+    df["_won_amount"] = np.where(df["_won_flag"], df["_amount"], 0)
+    grp = df.groupby(channel_col)
+    result = grp.agg(
+        deal_count=("_opportunity_id", "count"),
+        total_pipeline=("_amount", "sum"),
+        won_pipeline=("_won_amount", "sum"),
+        won_count=("_won_flag", "sum"),
+        avg_deal_size=("_amount", "mean"),
+    )
     result["win_rate"] = (result["won_count"] / result["deal_count"]).round(4)
     result["pipeline_pct"] = (result["total_pipeline"] / result["total_pipeline"].sum()).round(4)
     return result.reset_index()
