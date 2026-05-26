@@ -52,6 +52,7 @@ cohort            = _load_int("cohort_analysis")
 feat_imp          = _load_int("feature_importance")
 model_stats       = _load_int("model_stats")
 opps              = _load_clean("opportunities")
+accounts          = _load_clean("accounts")
 email             = _load_clean("email_engagements")
 ad_metrics        = _load_clean("ad_metrics")
 won_col           = "iswon" if "iswon" in opps.columns else ("_iswon" if "_iswon" in opps.columns else None)
@@ -175,6 +176,59 @@ def tracked_spend_channels_text():
         return "tracked-spend channels"
     channels = channel_pipeline.loc[channel_pipeline["channel_spend"] > 0, "channel_category"].tolist()
     return ", ".join(channels) if channels else "tracked-spend channels"
+
+def dashboard_quality_vals():
+    defaults = {
+        "domain_match_rate": "N/A",
+        "missing_create_dates": "0",
+        "missing_date_class": "",
+        "unknown_channel_pct": "0.0%",
+        "unknown_channel_class": "",
+        "top3_pipeline_share": "0.0%",
+        "attribution_reconciliation": "N/A",
+    }
+    if opps.empty:
+        return defaults
+
+    domain_series = None
+    for col in ["_domain", "domain", "account_domain", "website"]:
+        if col in opps.columns:
+            domain_series = opps[col]
+            break
+    if domain_series is None and {"_account_id"}.issubset(opps.columns) and {"accountid", "domain__c"}.issubset(accounts.columns):
+        domain_map = accounts.drop_duplicates("accountid").set_index("accountid")["domain__c"]
+        domain_series = opps["_account_id"].map(domain_map)
+    if domain_series is not None:
+        valid_domains = domain_series.astype(str).str.strip().replace({"": np.nan, "nan": np.nan, "None": np.nan})
+        defaults["domain_match_rate"] = f"{valid_domains.notna().mean():.1%}"
+
+    create_col = next((c for c in ["_createddate", "createddate", "created_date"] if c in opps.columns), None)
+    if create_col:
+        missing_dates = int(pd.to_datetime(opps[create_col], errors="coerce").isna().sum())
+        defaults["missing_create_dates"] = f"{missing_dates:,}"
+        defaults["missing_date_class"] = "warn" if missing_dates else ""
+
+    if "channel_category" in opps.columns:
+        channels = opps["channel_category"].fillna("unknown").astype(str).str.lower().str.strip()
+        unknown_share = channels.isin(["", "unknown", "other", "nan", "none"]).mean()
+        defaults["unknown_channel_pct"] = f"{unknown_share:.1%}"
+        defaults["unknown_channel_class"] = "warn" if unknown_share > 0.10 else ""
+
+    if not channel_pipeline.empty and {"total_pipeline", "channel_category"}.issubset(channel_pipeline.columns):
+        total = float(channel_pipeline["total_pipeline"].sum())
+        if total > 0:
+            top3 = float(channel_pipeline.nlargest(3, "total_pipeline")["total_pipeline"].sum()) / total
+            defaults["top3_pipeline_share"] = f"{top3:.1%}"
+
+    if not attribution.empty and {"attribution_model", "attributed_pipeline"}.issubset(attribution.columns):
+        sourced = attribution.loc[attribution["attribution_model"] == "Marketing Sourced", "attributed_pipeline"].sum()
+        influenced = attribution.loc[attribution["attribution_model"] == "Marketing Influenced", "attributed_pipeline"].sum()
+        if sourced > 0:
+            defaults["attribution_reconciliation"] = f"{influenced / sourced:.1f}x"
+        elif influenced > 0:
+            defaults["attribution_reconciliation"] = "Influenced only"
+
+    return defaults
 
 LAYOUT = dict(
     font=dict(family="Inter, Arial, sans-serif", size=13, color="#F8FAFC"),
@@ -896,6 +950,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     color:var(--text-soft); font-weight:800;
   }}
   .status-chip i {{ width:13px; height:13px; color:var(--success); }}
+  .quality-strip {{
+    display:grid; grid-template-columns:repeat(5,minmax(150px,1fr)); gap:10px;
+    padding:12px 32px 0;
+  }}
+  .quality-card {{
+    border:1px solid var(--border); border-radius:8px; padding:10px 12px;
+    background:rgba(255,255,255,.045); color:var(--text-soft); font-size:12px;
+  }}
+  .quality-card strong {{ display:block; color:var(--text); font-size:13px; margin-bottom:3px; }}
+  .quality-card.warn {{ border-color:rgba(245,165,36,.42); background:rgba(245,165,36,.08); }}
   .badge-pill {{
     display:inline-flex; align-items:center; min-height:26px; padding:0 10px; border-radius:999px;
     color:#A7F3D0; background:rgba(45, 212, 191, .12); border:1px solid rgba(45, 212, 191, .32);
@@ -911,6 +975,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   }}
   .mode-toggle:hover {{ background:rgba(79,140,255,.18); border-color:rgba(79,140,255,.55); transform:translateY(-1px); box-shadow:0 10px 28px rgba(79,140,255,.16); }}
   .mode-toggle i {{ width:15px; height:15px; }}
+  .action-button {{
+    min-height:32px; display:inline-flex; align-items:center; gap:7px; padding:0 10px;
+    border:1px solid var(--border); border-radius:8px; color:var(--text-soft);
+    background:rgba(255,255,255,.045); font-size:12px; font-weight:800; cursor:pointer;
+    transition:background .16s ease, border-color .16s ease, transform .16s ease;
+  }}
+  .action-button:hover {{ transform:translateY(-1px); border-color:rgba(34,211,238,.42); background:rgba(34,211,238,.08); }}
+  .action-button i {{ width:15px; height:15px; }}
 
   .kpi-row {{ display:grid; grid-template-columns:repeat(4,minmax(170px,1fr)); gap:14px; padding:22px 32px 0; }}
   .kpi-card, .story-card, .decision-panel, .chart-card, .conclusion-card,
@@ -1013,6 +1085,16 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   }}
   .chart-card.full {{ grid-column:1/-1; }}
   .js-plotly-plot, .plot-container {{ min-height:360px; }}
+  .chart-caption {{
+    margin-top:9px; padding:9px 10px; border:1px solid var(--border); border-radius:8px;
+    color:var(--muted); background:rgba(255,255,255,.04); font-size:12px; line-height:1.45;
+  }}
+  .chart-caption strong {{ color:var(--text); }}
+  .chart-caption .caption-row {{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; }}
+  .caption-pill {{
+    display:inline-flex; align-items:center; padding:2px 7px; border-radius:999px;
+    border:1px solid var(--border); color:var(--text-soft); font-size:10px; font-weight:800;
+  }}
 
   .context-box, .chart-explain {{
     border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,.055);
@@ -1063,6 +1145,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .red-text {{ color:var(--danger); font-weight:800; }}
   .badge-ch {{ background:rgba(255,255,255,.07); color:var(--text-soft); padding:3px 7px; border-radius:6px; font-size:11px; font-weight:800; }}
   .table-wrap {{ overflow:auto; border:1px solid var(--border); border-radius:8px; }}
+  .low-sample {{ color:var(--accent); font-weight:800; }}
+  .table-empty {{ padding:18px; color:var(--muted); text-align:center; border:1px dashed var(--border); border-radius:8px; }}
+  .metric-lens {{
+    display:flex; gap:6px; flex-wrap:wrap; align-items:center; margin:0 32px 12px;
+    color:var(--muted); font-size:11px;
+  }}
+  .lens-button {{
+    min-height:26px; padding:0 9px; border-radius:999px; border:1px solid var(--border);
+    color:var(--text-soft); background:rgba(255,255,255,.045); font-size:11px; font-weight:800; cursor:pointer;
+  }}
+  .lens-button.active {{ background:rgba(79,140,255,.16); border-color:rgba(79,140,255,.42); color:var(--text); }}
   .chart-empty {{
     min-height:260px; display:flex; align-items:center; justify-content:center; text-align:center;
     border:1px dashed var(--border-strong); border-radius:8px; color:var(--muted);
@@ -1103,6 +1196,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .next-step-row {{ display:grid; grid-template-columns:160px 1fr; gap:12px; align-items:start; padding:10px 0; border-bottom:1px solid var(--border); font-size:12px; }}
   .next-step-row:last-child {{ border-bottom:0; }}
   .next-step-row strong {{ color:var(--text); }}
+  .drawer-backdrop {{
+    position:fixed; inset:0; background:rgba(2,6,23,.55); opacity:0; pointer-events:none;
+    transition:opacity .18s ease; z-index:180;
+  }}
+  .caveats-drawer {{
+    position:fixed; top:0; right:0; width:min(460px,92vw); height:100vh; z-index:190;
+    transform:translateX(105%); transition:transform .22s ease; overflow:auto;
+    background:rgba(10,15,26,.94); border-left:1px solid var(--border); color:var(--text-soft);
+    backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    padding:22px; box-shadow:-24px 0 60px rgba(0,0,0,.34);
+  }}
+  body.drawer-open .drawer-backdrop {{ opacity:1; pointer-events:auto; }}
+  body.drawer-open .caveats-drawer {{ transform:translateX(0); }}
+  .drawer-head {{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px; }}
+  .drawer-head h2 {{ margin:0; color:var(--text); font-size:18px; }}
+  .caveats-drawer ul {{ margin:0; padding-left:18px; }}
+  .caveats-drawer li {{ margin-bottom:10px; line-height:1.55; }}
 
   body.presentation-mode .chart-explain .ex-body,
   body.presentation-mode .chart-explain .learn-toggle,
@@ -1138,13 +1248,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .top-bar {{ align-items:flex-start; gap:8px; flex-direction:column; padding:14px 18px; }}
     .top-meta,.top-actions,.status-strip {{ flex-wrap:wrap; gap:7px; justify-content:flex-start; }}
     #nav-progress {{ left:64px; }}
-    .section,.kpi-row,.story-strip,.status-strip {{ padding-left:18px; padding-right:18px; }}
+    .section,.kpi-row,.story-strip,.status-strip,.quality-strip {{ padding-left:18px; padding-right:18px; }}
+    .quality-strip {{ grid-template-columns:1fr; }}
     .decision-panel,.scope-row {{ margin-left:18px; margin-right:18px; }}
     .chart-grid.cols-2,.chart-grid.cols-3,.kpi-row,.story-strip,.decision-panel,
     .conclusion-grid,.priority-grid,.evidence-grid {{ grid-template-columns:1fr; }}
     .decision-lead,.decision-item {{ border-right:0; border-bottom:1px solid var(--border); }}
     .decision-item:last-child {{ border-bottom:0; }}
     .next-step-row {{ grid-template-columns:1fr; gap:4px; }}
+  }}
+  @media print {{
+    #sidebar,.top-actions,.status-strip,.scope-row,.chart-explain .learn-toggle,#nav-progress,.drawer-backdrop,.caveats-drawer {{ display:none !important; }}
+    #main {{ margin-left:0; }}
+    body {{ background:#fff; color:#111827; display:block; }}
+    .top-bar {{ position:static; background:#fff; color:#111827; border-bottom:1px solid #CBD5E1; }}
+    .section {{ display:block !important; page-break-before:always; }}
+    .section:first-of-type {{ page-break-before:auto; }}
+    .chart-card,.kpi-card,.decision-panel,.quality-card {{ box-shadow:none; background:#fff; border-color:#CBD5E1; }}
   }}
 </style>
 </head>
@@ -1178,6 +1298,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <span>Data: 2021–2024 &nbsp;|&nbsp; {total_deals} Opportunities &nbsp;|&nbsp; 8 Datasets</span>
       </div>
       <span class="badge-pill">Validated</span>
+      <button class="action-button" id="print-button" type="button"><i data-lucide="printer" aria-hidden="true"></i><span>Print</span></button>
+      <button class="action-button" id="reset-button" type="button"><i data-lucide="rotate-ccw" aria-hidden="true"></i><span>Reset</span></button>
+      <button class="action-button" id="caveats-button" type="button"><i data-lucide="info" aria-hidden="true"></i><span>Caveats</span></button>
       <button class="mode-toggle" id="mode-toggle" type="button" aria-pressed="false"><i data-lucide="presentation" aria-hidden="true"></i><span>Presentation Mode</span></button>
     </div>
   </div>
@@ -1185,6 +1308,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <span class="status-chip"><i data-lucide="check-circle-2" aria-hidden="true"></i>Validation passed</span>
     <span class="status-chip"><i data-lucide="clock-3" aria-hidden="true"></i>Generated {generated_at}</span>
     <span class="status-chip"><i data-lucide="database" aria-hidden="true"></i>Cleaned + integrated data refreshed</span>
+  </div>
+  <div class="quality-strip" aria-label="Data quality scorecard">
+    <div class="quality-card"><strong>{domain_match_rate}</strong> Opportunity domain coverage</div>
+    <div class="quality-card {missing_date_class}"><strong>{missing_create_dates}</strong> opportunities missing create date</div>
+    <div class="quality-card {unknown_channel_class}"><strong>{unknown_channel_pct}</strong> unknown/other channel share</div>
+    <div class="quality-card"><strong>{top3_pipeline_share}</strong> top-3 channel concentration</div>
+    <div class="quality-card"><strong>{attribution_reconciliation}</strong> influenced vs sourced lens</div>
+  </div>
+  <div class="metric-lens" aria-label="Metric lens controls">
+    <span>Metric lens:</span>
+    <button class="lens-button active" data-lens="all" type="button">All</button>
+    <button class="lens-button" data-lens="dollars" type="button">$</button>
+    <button class="lens-button" data-lens="rates" type="button">%</button>
+    <button class="lens-button" data-lens="counts" type="button">Counts</button>
   </div>
 
   <!-- KPI Row (always visible) -->
@@ -1815,6 +1952,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
 </div><!-- /main -->
 
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+<aside class="caveats-drawer" id="caveats-drawer" aria-label="Data caveats" aria-hidden="true">
+  <div class="drawer-head">
+    <h2>Data Caveats</h2>
+    <button class="action-button" id="close-caveats" type="button"><i data-lucide="x" aria-hidden="true"></i><span>Close</span></button>
+  </div>
+  <ul>
+    <li><strong>Attribution is directional.</strong> Sourced, influenced, first-touch, last-touch, linear, and time-decay answer different questions; no single model proves causality.</li>
+    <li><strong>Web traffic is partially anonymous.</strong> Only sessions with a matched company domain can be connected to account-level journeys.</li>
+    <li><strong>Low-volume categories are unstable.</strong> Channels or segments with very few won deals should be read as signals to investigate, not budget mandates.</li>
+    <li><strong>Spend ROI is tracked-spend only.</strong> Channels without reliable spend data are excluded from ROI scenario math.</li>
+    <li><strong>Model scores are prioritization aids.</strong> Win probability supports sales review, but should be validated against holdout performance and business context.</li>
+  </ul>
+</aside>
+
 <!-- ─── Scripts ─────────────────────────────── -->
 <script>
 // ── Navigation ──────────────────────────────
@@ -1862,6 +2014,49 @@ if (modeToggle) {{
   }});
   setMode(localStorage.getItem('dashboardMode') || 'analyst');
 }}
+
+const printButton = document.getElementById('print-button');
+const resetButton = document.getElementById('reset-button');
+const caveatsButton = document.getElementById('caveats-button');
+const closeCaveats = document.getElementById('close-caveats');
+const drawerBackdrop = document.getElementById('drawer-backdrop');
+const caveatsDrawer = document.getElementById('caveats-drawer');
+
+function openCaveats() {{
+  document.body.classList.add('drawer-open');
+  if (caveatsDrawer) caveatsDrawer.setAttribute('aria-hidden', 'false');
+}}
+function closeCaveatsDrawer() {{
+  document.body.classList.remove('drawer-open');
+  if (caveatsDrawer) caveatsDrawer.setAttribute('aria-hidden', 'true');
+}}
+if (printButton) printButton.addEventListener('click', () => window.print());
+if (caveatsButton) caveatsButton.addEventListener('click', openCaveats);
+if (closeCaveats) closeCaveats.addEventListener('click', closeCaveatsDrawer);
+if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeCaveatsDrawer);
+if (resetButton) {{
+  resetButton.addEventListener('click', () => {{
+    const first = document.querySelector('.nav-link[data-section="s-exec"]');
+    if (first) showSection(first, 's-exec');
+    setMode('analyst');
+    closeCaveatsDrawer();
+    window.scrollTo({{top:0, behavior:'smooth'}});
+  }});
+}}
+
+document.addEventListener('keydown', (event) => {{
+  if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
+  const links = Array.from(document.querySelectorAll('.nav-link'));
+  const active = document.querySelector('.nav-link.active');
+  const idx = Math.max(0, links.indexOf(active));
+  if (event.key === 'ArrowRight' && links[idx + 1]) {{
+    links[idx + 1].click();
+  }}
+  if (event.key === 'ArrowLeft' && links[idx - 1]) {{
+    links[idx - 1].click();
+  }}
+  if (event.key === 'Escape') closeCaveatsDrawer();
+}});
 
 const initialSection = window.location.hash ? window.location.hash.slice(1) : '';
 if (initialSection) {{
@@ -1937,11 +2132,44 @@ const CHARTS = {{
   "c-cohort":            {cohort_chart},
 }};
 
+const CHART_META = {{
+  "c-bar-channel": ["Question: which CRM-sourced channels create the most pipeline?", "Population: all deduplicated opportunities.", "Benchmark: compare each bar against total pipeline share."],
+  "c-donut-won": ["Question: which channels actually closed revenue?", "Population: closed-won opportunities only.", "Caution: low-volume channels can swing sharply."],
+  "c-monthly-trend": ["Question: is pipeline creation changing over time?", "Population: opportunities with a create date.", "Benchmark: look for sustained trend, not one-month spikes."],
+  "c-attrib-comparison": ["Question: how does credit change by attribution model?", "Population: attributed opportunity touchpoints.", "Caution: model choice changes the answer."],
+  "c-sourced-influenced": ["Question: how much contribution is visible in CRM vs broader account influence?", "Population: sourced and influenced attribution views.", "Benchmark: influenced should be reported beside sourced."],
+  "c-attrib-waterfall": ["Question: which channels gain or lose credit near conversion?", "Population: first-touch vs last-touch attribution.", "Caution: this describes journey role, not causality."],
+  "c-spend-pipeline": ["Question: where does tracked spend appear efficient?", "Population: channels with reliable spend.", "Caution: ROI excludes untracked channels."],
+  "c-funnel": ["Question: what is the volume by channel activity and opportunity outcome?", "Population: separate activity populations, not one sequential funnel.", "Caution: do not read cross-channel bars as conversion steps."],
+  "c-seg-heatmap": ["Question: which segment/industry cells hold pipeline?", "Population: opportunities with segment and industry values.", "Benchmark: prioritize cells with both value and enough volume."],
+  "c-seg-winrate": ["Question: which segments balance win rate and deal size?", "Population: deduplicated opportunities by segment.", "Caution: small segments need validation."],
+  "c-creative-ctr": ["Question: which ad creatives earn attention?", "Population: creative rows with impressions and clicks.", "Benchmark: compare CTR before scaling spend."],
+  "c-creative-attr": ["Question: which creative attributes correlate with engagement?", "Population: grouped creative metadata.", "Caution: this is correlation, not message causality."],
+  "c-email-seniority": ["Question: which seniority engages with email?", "Population: email engagement records.", "Benchmark: opens and clicks answer different questions."],
+  "c-budget-scenario": ["Question: what could happen under budget shifts?", "Population: tracked-spend channels only.", "Caution: scenario assumes historical efficiency."],
+  "c-feat-imp": ["Question: what signals drive the win model?", "Population: closed opportunities used for training.", "Caution: importance is predictive, not causal."],
+  "c-win-prob": ["Question: how are open deals distributed by win probability?", "Population: currently open scored deals.", "Benchmark: use bands for prioritization."],
+  "c-account-coverage": ["Question: where is the account coverage gap?", "Population: target account domains.", "Benchmark: compare opportunity rate by coverage tier."],
+  "c-deal-velocity": ["Question: how long do won deals take by channel?", "Population: closed-won opportunities with valid close dates.", "Caution: low-N channels need flags."],
+  "c-journey": ["Question: what touchpoint sequences appear before wins?", "Population: won deals with linked pre-opportunity touchpoints.", "Caution: sequences are descriptive."],
+  "c-targeting-matrix": ["Question: which segment/profile-fit cells deserve ABM priority?", "Population: opportunities with segment and profile fit.", "Benchmark: dark cells need enough deal count."],
+  "c-cohort": ["Question: is pipeline growth protecting conversion quality?", "Population: opportunities by create quarter.", "Benchmark: compare pipeline trend against win-rate trend."]
+}};
+
 const PLOTLY_CONFIG = {{responsive:true, displayModeBar:true, displaylogo:false,
   modeBarButtonsToRemove:['lasso2d','select2d','autoScale2d']}};
 
 function showChartState(el, title, detail) {{
   el.innerHTML = `<div class="chart-empty"><div><strong>${{title}}</strong><span>${{detail}}</span></div></div>`;
+}}
+
+function addChartCaption(el, id) {{
+  const meta = CHART_META[id];
+  if (!meta || el.parentElement.querySelector('.chart-caption')) return;
+  const caption = document.createElement('div');
+  caption.className = 'chart-caption';
+  caption.innerHTML = `<div class="caption-row"><span class="caption-pill">Question</span><strong>${{meta[0].replace('Question: ', '')}}</strong></div><div>${{meta[1]}}</div><div>${{meta[2]}}</div>`;
+  el.parentElement.appendChild(caption);
 }}
 
 Object.entries(CHARTS).forEach(([id, spec]) => {{
@@ -1957,6 +2185,7 @@ Object.entries(CHARTS).forEach(([id, spec]) => {{
   }}
   try {{
     Plotly.newPlot(el, spec.data, spec.layout || {{}}, PLOTLY_CONFIG);
+    addChartCaption(el, id);
   }} catch (err) {{
     showChartState(el, 'Chart could not render', err && err.message ? err.message : 'Unexpected chart rendering error.');
   }}
@@ -1995,6 +2224,52 @@ function makeTablesSortable() {{
   }});
 }}
 
+function showTableEmptyStates() {{
+  document.querySelectorAll('.dash-table').forEach(table => {{
+    const tbody = table.querySelector('tbody');
+    if (!tbody || tbody.children.length) return;
+    const empty = document.createElement('div');
+    empty.className = 'table-empty';
+    empty.textContent = 'No table rows are available for this dataset.';
+    table.parentElement.appendChild(empty);
+  }});
+}}
+
+function applyMetricLens(lens) {{
+  document.querySelectorAll('.lens-button').forEach(btn => btn.classList.toggle('active', btn.dataset.lens === lens));
+  document.querySelectorAll('.dash-table').forEach(table => {{
+    const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.toLowerCase());
+    table.querySelectorAll('tr').forEach(row => {{
+      Array.from(row.children).forEach((cell, idx) => {{
+        const h = headers[idx] || '';
+        const isDollar = h.includes('pipeline') || h.includes('revenue') || h.includes('deal size') || h.includes('spend') || h.includes('why');
+        const isRate = h.includes('rate') || h.includes('roi') || h.includes('confidence');
+        const isCount = h.includes('deals') || h.includes('priority') || h.includes('channel') || h.includes('action');
+        const show = lens === 'all' || (lens === 'dollars' && isDollar) || (lens === 'rates' && isRate) || (lens === 'counts' && isCount);
+        cell.style.display = show ? '' : 'none';
+      }});
+    }});
+  }});
+  localStorage.setItem('metricLens', lens);
+}}
+
+document.querySelectorAll('.lens-button').forEach(btn => {{
+  btn.addEventListener('click', () => applyMetricLens(btn.dataset.lens));
+}});
+
+function addMetricTooltips() {{
+  const defs = {{
+    'Total Pipeline':'All opportunity amount across deduplicated deals.',
+    'Won Revenue':'Opportunity amount for deals marked closed won.',
+    'Mktg-Sourced Pipeline':'Pipeline where CRM lead source maps to a marketing channel.',
+    'Influenced Pipeline':'Pipeline from accounts with marketing touchpoints before opportunity creation.'
+  }};
+  document.querySelectorAll('.kpi-label').forEach(label => {{
+    const text = label.textContent.trim();
+    if (defs[text]) label.setAttribute('title', defs[text]);
+  }});
+}}
+
 // ── Channel table ────────────────────────────
 const channelRows = {channel_rows};
 const ctbody = document.getElementById('channel-tbody');
@@ -2004,6 +2279,7 @@ if(ctbody && channelRows) {{
     const rroi = r.revenue_roi === null || r.revenue_roi === undefined ? '—' : r.revenue_roi.toFixed(1)+'x';
     const wr = r.win_rate === null || r.win_rate === undefined ? '—' : (r.win_rate*100).toFixed(1)+'%';
     const cls = r.pipeline_roi && r.pipeline_roi > 5 ? 'green-text' : (r.pipeline_roi && r.pipeline_roi < 2 ? 'red-text' : '');
+    const lowSample = r.won_count !== null && r.won_count !== undefined && r.won_count > 0 && r.won_count < 5;
     ctbody.innerHTML += `<tr>
       <td><span class="badge-ch">${{r.channel_category}}</span></td>
       <td>${{r.deal_count}}</td>
@@ -2013,7 +2289,7 @@ if(ctbody && channelRows) {{
       <td>${{r.avg_deal_size ? '$'+(r.avg_deal_size/1e3).toFixed(0)+'K' : '—'}}</td>
       <td>${{r.channel_spend ? '$'+(r.channel_spend/1e3).toFixed(0)+'K' : '$0'}}</td>
       <td class="${{cls}}">${{roi}}</td>
-      <td>${{rroi}}</td>
+      <td>${{rroi}}${{lowSample ? ' <span class="low-sample" title="Low won-deal sample size">Low N</span>' : ''}}</td>
     </tr>`;
   }});
 }}
@@ -2039,6 +2315,9 @@ if(atbody && attribRows) {{
   }});
 }}
 makeTablesSortable();
+showTableEmptyStates();
+addMetricTooltips();
+applyMetricLens(localStorage.getItem('metricLens') || 'all');
 if (window.lucide) {{
   lucide.createIcons();
 }}
@@ -2059,6 +2338,7 @@ def build_channel_rows():
         rows.append({
             "channel_category": str(r.get("channel_category", "")),
             "deal_count": int(r.get("deal_count", 0)),
+            "won_count": int(r.get("won_count", 0) or 0),
             "total_pipeline": float(r.get("total_pipeline", 0) or 0),
             "won_pipeline": float(r.get("won_pipeline", 0) or 0),
             "win_rate": float(r.get("win_rate", 0) or 0),
@@ -2102,6 +2382,7 @@ def main():
     print("Building interactive HTML dashboard ...")
     coverage_vals = coverage_summary_vals()
     cohort_vals = cohort_summary_vals()
+    quality_vals = dashboard_quality_vals()
 
     print("  Rendering charts ...")
     charts = {
@@ -2145,6 +2426,7 @@ def main():
         top_sourced_channels=top_sourced_channels_text(),
         top_won_channels=top_won_channels_text(),
         tracked_spend_channels=tracked_spend_channels_text(),
+        **quality_vals,
         **coverage_vals,
         **cohort_vals,
         channel_rows=build_channel_rows(),

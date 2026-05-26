@@ -87,6 +87,17 @@ def _validate_cleaned(errors, warnings):
             errors.append("opportunities.parquet contains duplicate _opportunity_id rows")
         if "_amount" in opps.columns and pd.to_numeric(opps["_amount"], errors="coerce").isna().all():
             errors.append("opportunities.parquet _amount is entirely non-numeric/null")
+        closed_cols = [c for c in ["isclosed", "_isclosed"] if c in opps.columns]
+        if won_cols and closed_cols:
+            leakage = (opps[won_cols[0]] == True) & (opps[closed_cols[0]] == False)
+            if leakage.any():
+                errors.append(f"opportunities.parquet has {int(leakage.sum())} won opportunities not marked closed")
+        if won_cols:
+            date_col = next((c for c in ["_closedate", "closedate", "close_date"] if c in opps.columns), None)
+            if date_col:
+                missing_won_close_dates = (opps[won_cols[0]] == True) & pd.to_datetime(opps[date_col], errors="coerce").isna()
+                if missing_won_close_dates.any():
+                    warnings.append(f"opportunities.parquet has {int(missing_won_close_dates.sum())} won opportunities missing close dates")
 
     accounts = cleaned.get("accounts", pd.DataFrame())
     if not accounts.empty and "accountid" in accounts.columns and accounts["accountid"].duplicated().any():
@@ -135,6 +146,19 @@ def _validate_outputs(errors, warnings):
     if os.path.exists(DASHBOARD_HTML) and os.path.exists(PUBLIC_HTML):
         if _hash(DASHBOARD_HTML) != _hash(PUBLIC_HTML):
             errors.append("public/index.html is not in sync with outputs/dashboard/Marketing_Analytics_Dashboard.html")
+        with open(DASHBOARD_HTML, "r", encoding="utf-8") as f:
+            dashboard_text = f.read()
+        required_fragments = [
+            "quality-strip",
+            "metric-lens",
+            "caveats-drawer",
+            "chart-caption",
+            "nav-progress",
+            "data-lens=\"dollars\"",
+        ]
+        missing_fragments = [fragment for fragment in required_fragments if fragment not in dashboard_text]
+        if missing_fragments:
+            errors.append(f"dashboard HTML missing UX/audit fragments: {', '.join(missing_fragments)}")
 
     analysis_dir = os.path.join(OUTPUTS_DIR, "analysis")
     expected_workbooks = [
