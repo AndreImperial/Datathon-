@@ -42,7 +42,19 @@ source .venv/bin/activate
 
 ## Run The Pipeline
 
-Run the scripts from the repository root in order:
+Run the full pipeline from the repository root:
+
+```bash
+python run_pipeline.py
+```
+
+Preview the steps without executing them:
+
+```bash
+python run_pipeline.py --dry-run
+```
+
+The runner executes the scripts below in order:
 
 ```bash
 python analytics_case_study/01_data_cleaning.py
@@ -111,6 +123,12 @@ python analytics_case_study/04_html_dashboard.py
 python analytics_case_study/06_validate_metrics.py
 ```
 
+GitHub Actions also validates the committed artifacts on push and pull request:
+
+```text
+.github/workflows/validate.yml
+```
+
 The dashboard generator also copies the generated HTML into the static publish folder:
 
 ```bash
@@ -148,3 +166,9 @@ http://localhost:8050
 ## Notes
 
 This repository includes generated outputs so the dashboard and presentation can be reviewed without rerunning the full pipeline. For a lighter production-style repo, the generated `data/` and `outputs/` folders could be excluded and rebuilt from the raw source files.
+
+The dashboard audit backlog is tracked in:
+
+```text
+AUDIT_BACKLOG.md
+```

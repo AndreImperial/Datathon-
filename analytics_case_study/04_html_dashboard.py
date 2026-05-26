@@ -1,6 +1,6 @@
 """
 Phase 4 (revised): Self-Contained Interactive HTML Dashboard
-Generates a single .html file — no server required, open in any browser.
+Generates a single .html file â€” no server required, open in any browser.
 Output: outputs/dashboard/Marketing_Analytics_Dashboard.html
 """
 import os
@@ -26,9 +26,9 @@ OUTPUT_HTML = os.path.join(
 )
 PUBLIC_HTML = os.path.join(os.path.dirname(__file__), "..", "public", "index.html")
 
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Data loaders
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def _load_int(name):
     p = os.path.join(INTEGRATED_DATA_DIR, f"{name}.parquet")
     return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
@@ -57,9 +57,9 @@ email             = _load_clean("email_engagements")
 ad_metrics        = _load_clean("ad_metrics")
 won_col           = "iswon" if "iswon" in opps.columns else ("_iswon" if "_iswon" in opps.columns else None)
 
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Global KPIs
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 total_pipeline  = opps["_amount"].sum() if "_amount" in opps.columns else 0
 won_pipeline    = opps.loc[opps[won_col] == True, "_amount"].sum() if won_col and "_amount" in opps.columns else 0
 mktg_pipeline   = opps.loc[opps["is_marketing_sourced"] == True, "_amount"].sum() \
@@ -245,9 +245,9 @@ LAYOUT = dict(
 COLORS = ["#2563EB", "#0F766E", "#D97706", "#7C3AED", "#0E7490",
           "#64748B", "#B45309", "#475569", "#15803D", "#8B5CF6"]
 
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Chart builders
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def channel_bar():
     if channel_pipeline.empty: return go.Figure()
@@ -578,15 +578,15 @@ def budget_scenario_chart():
         fig.add_trace(go.Bar(
             name=label, x=df["channel_category"].tolist(), y=proj.tolist(),
             marker_color=color,
-            hovertemplate=f"<b>%{{x}}</b> — {label}<br>Projected Pipeline: $%{{y:,.0f}}<extra></extra>",
+            hovertemplate=f"<b>%{{x}}</b> â€” {label}<br>Projected Pipeline: $%{{y:,.0f}}<extra></extra>",
         ))
     fig.update_layout(title="Tracked-Spend Scenarios - Projected Pipeline", barmode="group", **LAYOUT)
     return fig
 
 
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Advanced Analytics Charts
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 def feature_importance_chart():
     if feat_imp.empty: return go.Figure()
@@ -597,7 +597,7 @@ def feature_importance_chart():
         text=[f"{v:.3f}" for v in df["importance"]], textposition="outside",
         hovertemplate="<b>%{y}</b><br>Importance: %{x:.4f}<extra></extra>",
     ))
-    fig.update_layout(title="Win Probability — Top Predictors (Random Forest Feature Importance)",
+    fig.update_layout(title="Win Probability â€” Top Predictors (Random Forest Feature Importance)",
                       xaxis_title="Importance Score", **LAYOUT)
     return fig
 
@@ -638,7 +638,7 @@ def account_coverage_chart():
             hovertemplate="<b>%{x}</b><br>Opp Rate: %{y:.0%}<extra></extra>",
         ))
     fig.update_layout(
-        title="Account Coverage — How Many Target Accounts Has Marketing Reached?",
+        title="Account Coverage â€” How Many Target Accounts Has Marketing Reached?",
         yaxis=dict(title="# Accounts"),
         yaxis2=dict(title="Opportunity Rate", overlaying="y", side="right",
                     tickformat=".0%", range=[0, 0.6]),
@@ -647,25 +647,6 @@ def account_coverage_chart():
     return fig
 
 
-def deal_velocity_chart():
-    if deal_velocity.empty: return go.Figure()
-    df = deal_velocity.sort_values("median_days")
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        name="Median Days", y=df["channel_category"], x=df["median_days"],
-        orientation="h", marker_color=COLORS[0],
-        text=[f"{int(v)}d (n={int(n)})" for v,n in zip(df["median_days"], df["deal_count"])],
-        textposition="outside",
-        hovertemplate="<b>%{y}</b><br>Median days: %{x}<extra></extra>",
-    ))
-    fig.add_trace(go.Bar(
-        name="Mean Days", y=df["channel_category"], x=df["mean_days"],
-        orientation="h", marker_color=COLORS[2], opacity=0.5,
-        hovertemplate="<b>%{y}</b><br>Mean days: %{x:.0f}<extra></extra>",
-    ))
-    fig.update_layout(title="Deal Velocity — Median Days from Deal Creation to Close (Won Deals)",
-                      xaxis_title="Days to Close", barmode="overlay", **LAYOUT)
-    return fig
 
 
 def journey_chart():
@@ -677,7 +658,7 @@ def journey_chart():
     fig = go.Figure(go.Bar(
         y=top["sequence_2ch"], x=top["deals"], orientation="h",
         marker_color=COLORS[:len(top)],
-        text=[f"{int(d)} deals — {fmt(p)}" for d,p in zip(top["deals"], top["pipeline"])],
+        text=[f"{int(d)} deals â€” {fmt(p)}" for d,p in zip(top["deals"], top["pipeline"])],
         textposition="outside",
         hovertemplate="<b>%{y}</b><br>Deals: %{x}<extra></extra>",
     ))
@@ -700,41 +681,11 @@ def targeting_matrix_chart():
         text=text_vals, texttemplate="%{text}",
         hovertemplate="Segment: %{y}<br>Profile: %{x}<br>Win Rate: %{z:.0%}<extra></extra>",
     ))
-    fig.update_layout(title="Win Rate Heatmap: Segment × 6sense Profile Fit<br><sup>Darker = Higher Win Rate = Better ABM Target</sup>",
+    fig.update_layout(title="Win Rate Heatmap: Segment Ã— 6sense Profile Fit<br><sup>Darker = Higher Win Rate = Better ABM Target</sup>",
                       **LAYOUT)
     return fig
 
 
-def cohort_chart():
-    if cohort.empty: return go.Figure()
-    df = cohort.copy()
-    fig = go.Figure()
-    fig.add_trace(go.Bar(
-        name="Pipeline ($)", x=df["quarter"], y=df["pipeline"],
-        marker_color=COLORS[0], opacity=0.8,
-        text=[fmt(v) for v in df["pipeline"]], textposition="outside",
-        hovertemplate="<b>%{x}</b><br>Pipeline: $%{y:,.0f}<extra></extra>",
-    ))
-    fig.add_trace(go.Scatter(
-        name="Win Rate", x=df["quarter"], y=df["win_rate"],
-        mode="lines+markers", marker=dict(size=8, color=COLORS[2]),
-        yaxis="y2",
-        hovertemplate="<b>%{x}</b><br>Win Rate: %{y:.0%}<extra></extra>",
-    ))
-    fig.add_trace(go.Scatter(
-        name="Mktg % of Deals", x=df["quarter"], y=df["mktg_pct"],
-        mode="lines+markers", marker=dict(size=8, color=COLORS[1]),
-        line=dict(dash="dash"), yaxis="y2",
-        hovertemplate="<b>%{x}</b><br>Marketing %: %{y:.0%}<extra></extra>",
-    ))
-    fig.update_layout(
-        title="Pipeline Cohort Analysis — Growth Trend, Win Rate & Marketing Share by Quarter",
-        yaxis=dict(title="Pipeline ($)"),
-        yaxis2=dict(title="Rate (%)", overlaying="y", side="right",
-                    tickformat=".0%", range=[0, 0.55]),
-        **LAYOUT,
-    )
-    return fig
 
 
 def win_prob_chart():
@@ -748,7 +699,7 @@ def win_prob_chart():
         hovertemplate="Win Prob: %{x:.0%}<br>Count: %{y}<extra></extra>",
     ))
     fig.update_layout(
-        title="Win Probability Distribution — Open Deals Scored by ML Model",
+        title="Win Probability Distribution â€” Open Deals Scored by ML Model",
         xaxis=dict(title="Win Probability", tickformat=".0%"),
         yaxis_title="Number of Deals",
         **LAYOUT,
@@ -756,7 +707,7 @@ def win_prob_chart():
     return fig
 
 
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def deal_velocity_chart():
     if deal_velocity.empty: return go.Figure()
     df = deal_velocity.sort_values("median_days")
@@ -827,14 +778,14 @@ def cohort_chart():
 
 
 # Serialise figures to JSON (for embedding)
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def fig_json(fig: go.Figure) -> str:
     return json.dumps(fig.to_dict(), cls=PlotlyJSONEncoder)
 
 
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # HTML Template
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -904,6 +855,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     border-radius:8px; cursor:pointer; transition:background .16s ease, color .16s ease, transform .16s ease;
   }}
   .nav-link:hover {{ color:#FFFFFF; background:rgba(79,140,255,.14); transform:translateX(1px); }}
+  .nav-link.hidden-by-search {{ display:none; }}
   .nav-link.active {{
     color:#FFFFFF; background:linear-gradient(135deg, rgba(79,140,255,.34), rgba(34,211,238,.14));
     box-shadow:inset 3px 0 0 var(--info), 0 8px 24px rgba(79,140,255,.12);
@@ -940,6 +892,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   }}
   .top-meta {{ display:flex; align-items:center; gap:10px; color:var(--muted); font-size:12px; }}
   .top-actions {{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }}
+  .dashboard-search {{
+    min-height:32px; width:min(240px, 42vw); padding:0 10px; border-radius:8px;
+    border:1px solid var(--border); background:rgba(255,255,255,.055); color:var(--text);
+    font-size:12px; outline:none;
+  }}
+  .dashboard-search::placeholder {{ color:var(--muted); }}
+  .dashboard-search:focus {{ border-color:rgba(34,211,238,.55); box-shadow:0 0 0 3px rgba(34,211,238,.10); }}
   .status-strip {{
     display:flex; flex-wrap:wrap; align-items:center; gap:8px;
     padding:10px 32px 0; color:var(--muted); font-size:11px;
@@ -983,6 +942,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   }}
   .action-button:hover {{ transform:translateY(-1px); border-color:rgba(34,211,238,.42); background:rgba(34,211,238,.08); }}
   .action-button i {{ width:15px; height:15px; }}
+  .menu-button {{ display:none; }}
+  .export-button {{ margin:0 0 8px; }}
+  a:focus-visible, button:focus-visible, input:focus-visible {{
+    outline:2px solid rgba(34,211,238,.85); outline-offset:2px;
+  }}
 
   .kpi-row {{ display:grid; grid-template-columns:repeat(4,minmax(170px,1fr)); gap:14px; padding:22px 32px 0; }}
   .kpi-card, .story-card, .decision-panel, .chart-card, .conclusion-card,
@@ -1136,8 +1100,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   }}
   .dash-table th[data-sort] {{ cursor:pointer; user-select:none; }}
   .dash-table th[data-sort]::after {{ content:""; opacity:.55; margin-left:6px; font-size:10px; }}
-  .dash-table th.sort-asc::after {{ content:"▲"; }}
-  .dash-table th.sort-desc::after {{ content:"▼"; }}
+  .dash-table th.sort-asc::after {{ content:"â–²"; }}
+  .dash-table th.sort-desc::after {{ content:"â–¼"; }}
   .dash-table td {{ padding:9px 12px; border-bottom:1px solid rgba(148,163,184,.13); vertical-align:top; }}
   .dash-table tr:nth-child(even) {{ background:rgba(255,255,255,.025); }}
   .dash-table tr:hover {{ background:rgba(79,140,255,.08); }}
@@ -1236,18 +1200,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   }}
 
   @media(max-width:900px){{
-    #sidebar {{ width:64px; }}
-    #main {{ margin-left:64px; }}
-    .sidebar-brand,.nav-link span {{ display:none; }}
-    .nav-link {{ position:relative; justify-content:center; margin:4px 9px; padding:11px 0; }}
-    .nav-link:hover::after,.nav-link:focus-visible::after {{
-      content:attr(aria-label); position:absolute; left:54px; top:50%; transform:translateY(-50%);
-      padding:6px 8px; border-radius:8px; background:#0A0F1A; color:#FFFFFF; white-space:nowrap;
-      font-size:12px; z-index:200; box-shadow:var(--shadow-soft);
-    }}
+    #sidebar {{ width:248px; transform:translateX(-104%); transition:transform .22s ease; z-index:170; }}
+    body.sidebar-open #sidebar {{ transform:translateX(0); }}
+    .menu-button {{ display:inline-flex; }}
+    #main {{ margin-left:0; }}
     .top-bar {{ align-items:flex-start; gap:8px; flex-direction:column; padding:14px 18px; }}
     .top-meta,.top-actions,.status-strip {{ flex-wrap:wrap; gap:7px; justify-content:flex-start; }}
-    #nav-progress {{ left:64px; }}
+    #nav-progress {{ left:0; }}
     .section,.kpi-row,.story-strip,.status-strip,.quality-strip {{ padding-left:18px; padding-right:18px; }}
     .quality-strip {{ grid-template-columns:1fr; }}
     .decision-panel,.scope-row {{ margin-left:18px; margin-right:18px; }}
@@ -1271,7 +1230,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <body>
 <div id="nav-progress" aria-hidden="true"><span></span></div>
 
-<!-- ─── Sidebar ─────────────────────────────── -->
+<!-- â”€â”€â”€ Sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <nav id="sidebar" aria-label="Dashboard sections">
   <div class="sidebar-brand">
     Marketing Analytics
@@ -1289,15 +1248,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   </ul>
 </nav>
 
-<!-- ─── Main ────────────────────────────────── -->
+<!-- â”€â”€â”€ Main â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <div id="main">
   <div class="top-bar">
     <h1>Marketing Analytics Dashboard</h1>
     <div class="top-actions">
       <div class="top-meta">
-      <span>Data: 2021–2024 &nbsp;|&nbsp; {total_deals} Opportunities &nbsp;|&nbsp; 8 Datasets</span>
+      <span>Data: 2021â€“2024 &nbsp;|&nbsp; {total_deals} Opportunities &nbsp;|&nbsp; 8 Datasets</span>
       </div>
       <span class="badge-pill">Validated</span>
+      <input class="dashboard-search" id="dashboard-search" type="search" placeholder="Search sections" aria-label="Search dashboard sections">
+      <button class="action-button menu-button" id="menu-button" type="button" aria-expanded="false"><i data-lucide="menu" aria-hidden="true"></i><span>Menu</span></button>
       <button class="action-button" id="print-button" type="button"><i data-lucide="printer" aria-hidden="true"></i><span>Print</span></button>
       <button class="action-button" id="reset-button" type="button"><i data-lucide="rotate-ccw" aria-hidden="true"></i><span>Reset</span></button>
       <button class="action-button" id="caveats-button" type="button"><i data-lucide="info" aria-hidden="true"></i><span>Caveats</span></button>
@@ -1369,32 +1330,32 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
     <div class="story-card quality">
       <h2>Pipeline quality needs executive attention</h2>
-      <p><span class="evidence-badge red">{cohort_start_rate} → {cohort_end_rate} win rate</span> means pipeline growth must be checked against conversion quality.</p>
+      <p><span class="evidence-badge red">{cohort_start_rate} â†’ {cohort_end_rate} win rate</span> means pipeline growth must be checked against conversion quality.</p>
     </div>
   </div>
 
-  <!-- ── 1. Executive Summary ─────────────── -->
+  <!-- â”€â”€ 1. Executive Summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <div id="s-exec" class="section active">
     <div class="section-title">Executive Summary</div>
     <div class="section-desc">High-level pipeline, revenue, and channel overview for a B2B ABM company targeting specific accounts with 6sense display ads, email, and events.</div>
     <div class="section-takeaway"><strong>Executive takeaway:</strong> The business has meaningful pipeline volume, but the strongest story is how marketing supports future revenue beyond direct source credit. <span class="evidence-badge">{total_pipeline} pipeline</span><span class="evidence-badge green">{won_pipeline} won</span></div>
     <div class="context-box">
-      <strong>How to read this dashboard:</strong> This company uses Account-Based Marketing (ABM) — instead of advertising to everyone, they pick specific companies ("target accounts") and run coordinated campaigns at those companies. A deal is born when a target account agrees to a sales conversation and eventually signs a contract. The job of this dashboard is to answer: <em>which marketing activities led to those deals?</em>
+      <strong>How to read this dashboard:</strong> This company uses Account-Based Marketing (ABM) â€” instead of advertising to everyone, they pick specific companies ("target accounts") and run coordinated campaigns at those companies. A deal is born when a target account agrees to a sales conversation and eventually signs a contract. The job of this dashboard is to answer: <em>which marketing activities led to those deals?</em>
     </div>
     <div class="chart-grid cols-2">
       <div class="chart-card">
         <div id="c-bar-channel"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Pipeline by Channel</div>
-          Each bar is the total dollar value of all deals (won + open) where the CRM lead source was tagged as that marketing channel. This is <strong>Marketing Sourced</strong> pipeline — only deals where marketing is listed as the origin.
-          <br><br><strong>Why "Other" and "Existing Client" are biggest:</strong> Most B2B deals come from existing customer expansions or sales-led outreach — that's normal. Marketing's role is to generate the <em>net-new</em> pipeline (6sense, email, web inbound, events).
+          <div class="ex-title">What this shows â€” Pipeline by Channel</div>
+          Each bar is the total dollar value of all deals (won + open) where the CRM lead source was tagged as that marketing channel. This is <strong>Marketing Sourced</strong> pipeline â€” only deals where marketing is listed as the origin.
+          <br><br><strong>Why "Other" and "Existing Client" are biggest:</strong> Most B2B deals come from existing customer expansions or sales-led outreach â€” that's normal. Marketing's role is to generate the <em>net-new</em> pipeline (6sense, email, web inbound, events).
           <div class="ex-insight">Key takeaway: {top_sourced_channels} are the top net-new marketing channels by sourced pipeline.</div>
         </div>
       </div>
       <div class="chart-card">
         <div id="c-donut-won"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Won Revenue by Channel</div>
+          <div class="ex-title">What this shows â€” Won Revenue by Channel</div>
           Of all deals that were actually <strong>closed and won</strong> (signed contracts, real money), this shows which channel sourced them. Only channels with won revenue appear.
           <br><br><strong>Why Existing Client often dominates:</strong> Upselling to existing customers is usually a higher-conversion motion because the relationship already exists. New-business marketing channels need time to mature.
           <div class="ex-insight">Key takeaway: {top_won_channels} are the largest won-revenue channels. Marketing channels should be judged with pipeline maturity and conversion timing in view.</div>
@@ -1403,30 +1364,30 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card full">
         <div id="c-monthly-trend"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Pipeline Created by Month</div>
+          <div class="ex-title">What this shows â€” Pipeline Created by Month</div>
           Each colored band represents pipeline (deal value) created in that month, stacked by channel. A taller bar = more deals created that month. The color split shows which channels are active at different times of year.
-          <br><br><strong>How to use it:</strong> Look for spikes — did they follow a campaign launch? Look for drops — did a channel go quiet? This helps connect campaign activity to deal creation with a time lag.
+          <br><br><strong>How to use it:</strong> Look for spikes â€” did they follow a campaign launch? Look for drops â€” did a channel go quiet? This helps connect campaign activity to deal creation with a time lag.
           <div class="ex-insight">Key takeaway: Compare this chart to your campaign calendar. Spikes are useful leads for investigation, but the chart alone does not prove campaign lift.</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── 2. Attribution Models ────────────── -->
+  <!-- â”€â”€ 2. Attribution Models â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <div id="s-attrib" class="section">
     <div class="section-title">Attribution Analysis</div>
-    <div class="section-desc">How different models split deal credit across marketing touchpoints — the core of understanding marketing ROI.</div>
+    <div class="section-desc">How different models split deal credit across marketing touchpoints â€” the core of understanding marketing ROI.</div>
     <div class="section-takeaway"><strong>Attribution takeaway:</strong> Sourced pipeline is the conservative number; influenced pipeline is the fuller account-journey story. <span class="evidence-badge orange">{sourced_pipeline} sourced</span><span class="evidence-badge">{influenced_pipeline} influenced</span></div>
     <div class="context-box">
-      <strong>The core concept:</strong> Every won deal has a trail of marketing touchpoints — ads seen, emails opened, website visits — that happened before the deal was created. Attribution models answer the question: <em>how much of this deal's dollar value should each marketing channel get credit for?</em>
+      <strong>The core concept:</strong> Every won deal has a trail of marketing touchpoints â€” ads seen, emails opened, website visits â€” that happened before the deal was created. Attribution models answer the question: <em>how much of this deal's dollar value should each marketing channel get credit for?</em>
       <br><br>
       We link marketing touchpoints to opportunities within a 365-day lookback window before deal creation. Here are the 6 models:
       <br><br>
       <span class="model-pill">Sourced</span>&nbsp; CRM says marketing was the origin. Hard credit, no sharing. ({sourced_pipeline})
       &nbsp;<span class="model-pill lt">Influenced</span>&nbsp; Marketing touched the account at any point before the deal. Measures reach. ({influenced_pipeline})
-      &nbsp;<span class="model-pill">First-Touch</span>&nbsp; 100% credit to the <em>first</em> marketing touch — finds who starts conversations.
-      &nbsp;<span class="model-pill lt">Last-Touch</span>&nbsp; 100% credit to the <em>last</em> touch before the deal — finds who closes conversations.
-      &nbsp;<span class="model-pill lin">Linear</span>&nbsp; Equal split across ALL channels that touched the account — fairest view.
+      &nbsp;<span class="model-pill">First-Touch</span>&nbsp; 100% credit to the <em>first</em> marketing touch â€” finds who starts conversations.
+      &nbsp;<span class="model-pill lt">Last-Touch</span>&nbsp; 100% credit to the <em>last</em> touch before the deal â€” finds who closes conversations.
+      &nbsp;<span class="model-pill lin">Linear</span>&nbsp; Equal split across ALL channels that touched the account â€” fairest view.
       &nbsp;<span class="model-pill td">Time-Decay</span>&nbsp; More credit to <em>recent</em> touches, less to old ones (half-life = 30 days). Best for budget decisions.
     </div>
     <div class="evidence-grid">
@@ -1447,7 +1408,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card full">
         <div id="c-attrib-comparison"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Attribution Model Comparison</div>
+          <div class="ex-title">What this shows â€” Attribution Model Comparison</div>
           <strong>This is the most important chart.</strong> Each group of bars is one attribution model. Within each group, each colored bar is one marketing channel. The bar height = how many dollars of pipeline that channel gets credited with under that model.
           <br><br>
           <strong>How to read it:</strong> Compare the same channel across different models. If Email's bar is tall in First-Touch but shorter in Last-Touch, Email is good at starting conversations but someone else closes them.
@@ -1461,24 +1422,24 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card">
         <div id="c-sourced-influenced"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Sourced vs. Influenced Pipeline</div>
+          <div class="ex-title">What this shows â€” Sourced vs. Influenced Pipeline</div>
           Two horizontal bars, two definitions of marketing contribution:
           <br><br>
           <strong>Sourced:</strong> The CRM field "Lead Source" explicitly says this deal came from marketing. Hard attribution. Conservative.
           <br><br>
-          <strong>Influenced:</strong> Marketing touched this account (any ad, email, or web visit) within 365 days before the deal was created — even if sales "sourced" the deal officially.
+          <strong>Influenced:</strong> Marketing touched this account (any ad, email, or web visit) within 365 days before the deal was created â€” even if sales "sourced" the deal officially.
           <br><br>
-          The gap between Sourced and Influenced is the "shadow credit" — marketing's work that doesn't show up in traditional CRM reporting.
-          <div class="ex-insight">Key takeaway: If you only report on Sourced, you're attributing {sourced_pipeline} to marketing. If you use Influenced, it's {influenced_pipeline}. Both are true — they just answer different questions.</div>
+          The gap between Sourced and Influenced is the "shadow credit" â€” marketing's work that doesn't show up in traditional CRM reporting.
+          <div class="ex-insight">Key takeaway: If you only report on Sourced, you're attributing {sourced_pipeline} to marketing. If you use Influenced, it's {influenced_pipeline}. Both are true â€” they just answer different questions.</div>
         </div>
       </div>
       <div class="chart-card">
         <div id="c-attrib-waterfall"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — First-Touch vs. Last-Touch Credit Shift</div>
+          <div class="ex-title">What this shows â€” First-Touch vs. Last-Touch Credit Shift</div>
           This shows how much each channel's credit <em>changes</em> when you switch from First-Touch to Last-Touch. Green bars = the channel gets MORE credit in Last-Touch. Red bars = the channel gets LESS credit.
           <br><br>
-          <strong>Why it matters:</strong> A channel that loses credit (red) is an <em>awareness channel</em> — it gets the conversation started but isn't involved at the decision point. A channel that gains credit (green) is a <em>conversion channel</em> — it's there when deals close.
+          <strong>Why it matters:</strong> A channel that loses credit (red) is an <em>awareness channel</em> â€” it gets the conversation started but isn't involved at the decision point. A channel that gains credit (green) is a <em>conversion channel</em> â€” it's there when deals close.
           <div class="ex-insight">Key takeaway: Channels that gain last-touch credit appear later in tracked journeys; channels that lose it appear earlier. Treat the pattern as a planning signal to test.</div>
         </div>
       </div>
@@ -1486,8 +1447,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     <!-- Attribution Table -->
     <div class="chart-card" style="margin-top:16px">
-      <div class="section-title" style="font-size:13px;margin-bottom:6px">Full Attribution Table — All Models Side by Side</div>
-      <div style="font-size:11px;color:#64748B;margin-bottom:10px">Every channel across every model in one place. The "Recommended Model" column shows which model gives that channel the most credit — use as a sanity check before budget decisions.</div>
+      <div class="section-title" style="font-size:13px;margin-bottom:6px">Full Attribution Table â€” All Models Side by Side</div>
+      <div style="font-size:11px;color:#64748B;margin-bottom:10px">Every channel across every model in one place. The "Recommended Model" column shows which model gives that channel the most credit â€” use as a sanity check before budget decisions.</div>
       <div style="overflow-x:auto">
         <table class="dash-table" id="attrib-table">
           <thead><tr><th>Channel</th><th>First-Touch ($)</th><th>Last-Touch ($)</th><th>Linear ($)</th><th>Time-Decay ($)</th><th>Sourced ($)</th><th>Influenced ($)</th><th>Best Model for Channel</th></tr></thead>
@@ -1497,13 +1458,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- ── 3. Channel Performance ───────────── -->
+  <!-- â”€â”€ 3. Channel Performance â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <div id="s-channel" class="section">
     <div class="section-title">Channel Performance</div>
-    <div class="section-desc">ROI, win rate, and funnel conversion by marketing channel — the efficiency scorecard.</div>
+    <div class="section-desc">ROI, win rate, and funnel conversion by marketing channel â€” the efficiency scorecard.</div>
     <div class="section-takeaway"><strong>Channel takeaway:</strong> Relationship channels close best, while marketing channels build the net-new funnel that needs time to mature. <span class="evidence-badge green">relationship channels</span><span class="evidence-badge">net-new pipeline</span></div>
     <div class="context-box">
-      <strong>What "ROI" means here:</strong> Pipeline ROI = pipeline generated ÷ dollars spent. A Pipeline ROI of 5x means every $1 in ad spend generated $5 in deal pipeline. This is different from Revenue ROI (only counting won deals) — both matter. Pipeline ROI tells you if you're building a healthy funnel. Revenue ROI tells you if it's converting.
+      <strong>What "ROI" means here:</strong> Pipeline ROI = pipeline generated Ã· dollars spent. A Pipeline ROI of 5x means every $1 in ad spend generated $5 in deal pipeline. This is different from Revenue ROI (only counting won deals) â€” both matter. Pipeline ROI tells you if you're building a healthy funnel. Revenue ROI tells you if it's converting.
     </div>
     <div class="evidence-grid">
       <div class="evidence-card">
@@ -1545,7 +1506,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="chart-card full">
         <div class="section-title" style="font-size:13px;margin-bottom:6px">Channel ROI Summary Table</div>
-        <div style="font-size:11px;color:#64748B;margin-bottom:10px">Pipeline ROI = total pipeline ÷ spend. Revenue ROI = won revenue ÷ spend. Channels with no spend tracked show — (they rely on sales effort, not ad budget).</div>
+        <div style="font-size:11px;color:#64748B;margin-bottom:10px">Pipeline ROI = total pipeline Ã· spend. Revenue ROI = won revenue Ã· spend. Channels with no spend tracked show â€” (they rely on sales effort, not ad budget).</div>
         <div style="overflow-x:auto">
           <table class="dash-table" id="channel-table">
             <thead><tr><th>Channel</th><th>Deals</th><th>Pipeline ($)</th><th>Won ($)</th><th>Win Rate</th><th>Avg Deal</th><th>Spend ($)</th><th>Pipeline ROI</th><th>Revenue ROI</th></tr></thead>
@@ -1556,10 +1517,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- ── 4. Segment Analysis ──────────────── -->
+  <!-- â”€â”€ 4. Segment Analysis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <div id="s-segment" class="section">
     <div class="section-title">Segment & ICP Analysis</div>
-    <div class="section-desc">Which account segments and industries have the most pipeline and highest win rates — your best ABM targeting zones.</div>
+    <div class="section-desc">Which account segments and industries have the most pipeline and highest win rates â€” your best ABM targeting zones.</div>
     <div class="section-takeaway"><strong>Segment takeaway:</strong> The best targeting decision balances revenue potential with win probability, not just the largest deal size. <span class="evidence-badge green">Commercial + Strong Fit wins most often</span></div>
     <div class="context-box">
       <strong>What is a "Segment" in ABM?</strong> In 6sense, accounts are grouped into buying stage segments based on their digital behavior: how much content they're consuming, what keywords they're searching, how often they visit competitor websites. Common stages: <em>Awareness</em> (just starting to research), <em>Consideration</em> (evaluating options), <em>Decision</em> (ready to buy). Targeting companies in the Decision stage with the right industry profile is how ABM maximizes efficiency.
@@ -1568,13 +1529,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card">
         <div id="c-seg-heatmap"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Pipeline Heatmap: Industry x Segment</div>
+          <div class="ex-title">What this shows â€” Pipeline Heatmap: Industry x Segment</div>
           Each cell = total pipeline from companies in that industry AND that 6sense segment. Darker blue = more pipeline concentrated there.
           <br><br>
           <strong>How to use it:</strong> The darkest cells are your highest-value targeting combinations. If Software + Decision is the darkest cell, you should prioritize software companies that 6sense flags as in the decision stage.
           <br><br>
-          <strong>The dollar amounts</strong> in each cell show absolute pipeline value — useful for prioritizing where to spend ABM budget and sales time.
-          <div class="ex-insight">Key takeaway: Focus outbound, personalized ads, and sales outreach on the 2–3 darkest cells. Everything else is secondary targeting.</div>
+          <strong>The dollar amounts</strong> in each cell show absolute pipeline value â€” useful for prioritizing where to spend ABM budget and sales time.
+          <div class="ex-insight">Key takeaway: Focus outbound, personalized ads, and sales outreach on the 2â€“3 darkest cells. Everything else is secondary targeting.</div>
         </div>
       </div>
       <div class="chart-card">
@@ -1587,76 +1548,76 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <br><br>
           <strong>Y-axis:</strong> Average deal size - how large the contracts are in this segment. Larger bubbles represent more deals.
           <br><br>
-          <strong>The ideal segment</strong> has BOTH a high win rate AND a high average deal size. Those are your ICP (Ideal Customer Profile) sweet spots — where you should concentrate ABM investment.
+          <strong>The ideal segment</strong> has BOTH a high win rate AND a high average deal size. Those are your ICP (Ideal Customer Profile) sweet spots â€” where you should concentrate ABM investment.
           <div class="ex-insight">Key takeaway: A segment with a high win rate but small deals might not be worth prioritizing. A segment with large deals but low win rate might need different sales approach or longer nurture. Look for the combination.</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── 5. Creative & Email ──────────────── -->
+  <!-- â”€â”€ 5. Creative & Email â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <div id="s-creative" class="section">
     <div class="section-title">Creative & Email Performance</div>
-    <div class="section-desc">Which ad creatives and email campaigns drive the highest engagement — tells you what messaging resonates with your target accounts.</div>
+    <div class="section-desc">Which ad creatives and email campaigns drive the highest engagement â€” tells you what messaging resonates with your target accounts.</div>
     <div class="section-takeaway"><strong>Creative takeaway:</strong> Creative performance is an efficiency lever: better messages improve account engagement before opportunities appear in CRM. <span class="evidence-badge">CTR and form fills</span><span class="evidence-badge orange">seniority engagement</span></div>
     <div class="context-box">
-      <strong>Why creative matters in ABM:</strong> In ABM, you're showing ads specifically to people at your target accounts — they'll see your ads repeatedly. If your creative is bad, they'll tune it out. If it's good, it builds brand recognition so when sales calls, the prospect already knows who you are. CTR (click-through rate) is the primary measure of creative effectiveness for display ads.
+      <strong>Why creative matters in ABM:</strong> In ABM, you're showing ads specifically to people at your target accounts â€” they'll see your ads repeatedly. If your creative is bad, they'll tune it out. If it's good, it builds brand recognition so when sales calls, the prospect already knows who you are. CTR (click-through rate) is the primary measure of creative effectiveness for display ads.
     </div>
     <div class="chart-grid cols-2">
       <div class="chart-card">
         <div id="c-creative-ctr"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Top 15 Ads by CTR</div>
-          CTR = Click-Through Rate = clicks ÷ impressions. If 1,000 people saw an ad and 5 clicked it, CTR = 0.5%.
+          <div class="ex-title">What this shows â€” Top 15 Ads by CTR</div>
+          CTR = Click-Through Rate = clicks Ã· impressions. If 1,000 people saw an ad and 5 clicked it, CTR = 0.5%.
           <br><br>
-          <strong>Industry benchmarks:</strong> Display ads average 0.05–0.1% CTR. LinkedIn ads average 0.3–0.5%. Anything above 0.5% is very good for display. These are the top-performing creatives from your $1.22M ad spend.
+          <strong>Industry benchmarks:</strong> Display ads average 0.05â€“0.1% CTR. LinkedIn ads average 0.3â€“0.5%. Anything above 0.5% is very good for display. These are the top-performing creatives from your $1.22M ad spend.
           <br><br>
-          <strong>What to do with this:</strong> The top ads tell your creative team what visual style, message, and CTA is working. Brief new creative based on these patterns — don't start from scratch.
+          <strong>What to do with this:</strong> The top ads tell your creative team what visual style, message, and CTA is working. Brief new creative based on these patterns â€” don't start from scratch.
           <div class="ex-insight">Key takeaway: The highest-CTR ads should be your always-on creatives. Pause the bottom performers and reallocate their budget to top performers.</div>
         </div>
       </div>
       <div class="chart-card">
         <div id="c-creative-attr"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — CTR by Creative Attribute (Tone/Type/CTA)</div>
+          <div class="ex-title">What this shows â€” CTR by Creative Attribute (Tone/Type/CTA)</div>
           Instead of looking at individual ads, this groups all ads by a shared creative characteristic (e.g., messaging tone: "direct" vs "inspirational" vs "educational") and compares their average CTR.
           <br><br>
           <strong>How to use it:</strong> If "Direct" tone has a higher CTR than "Inspirational," brief your creative team to write more direct copy. This is strategic creative direction backed by data.
-          <div class="ex-insight">Key takeaway: Use this to set creative briefs. Tell your agency: "Based on our data, X attribute outperforms Y — please prioritize X in the next batch."</div>
+          <div class="ex-insight">Key takeaway: Use this to set creative briefs. Tell your agency: "Based on our data, X attribute outperforms Y â€” please prioritize X in the next batch."</div>
         </div>
       </div>
       <div class="chart-card full">
         <div id="c-email-seniority"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Email Engagement by Job Seniority</div>
+          <div class="ex-title">What this shows â€” Email Engagement by Job Seniority</div>
           How different levels of seniority (C-Level, VP, Director, Manager) respond to email campaigns. Two metrics:
           <br><br>
           <strong>Open Rate (blue):</strong> What % of emails to that seniority level were opened. This measures subject line effectiveness and whether they recognize your brand enough to open.
           <br><br>
-          <strong>Click Rate (orange):</strong> What % clicked a link inside the email. This measures content relevance — did the email body give them a reason to take action?
+          <strong>Click Rate (orange):</strong> What % clicked a link inside the email. This measures content relevance â€” did the email body give them a reason to take action?
           <br><br>
-          <strong>Why seniority matters in ABM:</strong> C-Level executives make budget decisions but have no time — they need very short, high-value emails. Managers/Directors are often the evaluators — they need detailed content. Personalizing by seniority can dramatically improve click rates.
-          <div class="ex-insight">Key takeaway: The seniority level with the highest click rate is your most engaged audience — prioritize them for follow-up sequences. The seniority with high opens but low clicks needs better email body content.</div>
+          <strong>Why seniority matters in ABM:</strong> C-Level executives make budget decisions but have no time â€” they need very short, high-value emails. Managers/Directors are often the evaluators â€” they need detailed content. Personalizing by seniority can dramatically improve click rates.
+          <div class="ex-insight">Key takeaway: The seniority level with the highest click rate is your most engaged audience â€” prioritize them for follow-up sequences. The seniority with high opens but low clicks needs better email body content.</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- ── 6. Budget Scenarios ──────────────── -->
+  <!-- â”€â”€ 6. Budget Scenarios â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <div id="s-budget" class="section">
     <div class="section-title">Budget Recommendation & Scenarios</div>
     <div class="section-desc">Three scenarios showing what happens to projected pipeline if you reallocate the marketing budget based on ROI data.</div>
     <div class="section-takeaway"><strong>Budget takeaway:</strong> Use scenarios as directional planning, not exact forecasting; the chart only models channels with tracked spend. <span class="evidence-badge">{tracked_spend_channels}</span><span class="evidence-badge orange">diminishing returns risk</span></div>
     <div class="context-box">
-      <strong>How scenario modelling works:</strong> We take each channel's current "pipeline per dollar spent" efficiency rate (observed from real data) and apply it to different spending levels. If 6sense historically generates $5 of pipeline for every $1 spent, doubling the 6sense budget should generate roughly twice the pipeline (holding all other variables equal — which is a simplification, but useful for directional planning).
+      <strong>How scenario modelling works:</strong> We take each channel's current "pipeline per dollar spent" efficiency rate (observed from real data) and apply it to different spending levels. If 6sense historically generates $5 of pipeline for every $1 spent, doubling the 6sense budget should generate roughly twice the pipeline (holding all other variables equal â€” which is a simplification, but useful for directional planning).
       <br><br>
-      <strong>Three scenarios:</strong> (1) <em>Status Quo</em> — keep tracked spend exactly as-is. (2) <em>ROI-Optimized</em> — shift 30% more to the top tracked-ROI channels, cut the bottom tracked channels by 20%. (3) <em>Growth Mode</em> — double the top tracked-spend channels and reduce lower tracked-ROI channels. This excludes channels without spend data.
+      <strong>Three scenarios:</strong> (1) <em>Status Quo</em> â€” keep tracked spend exactly as-is. (2) <em>ROI-Optimized</em> â€” shift 30% more to the top tracked-ROI channels, cut the bottom tracked channels by 20%. (3) <em>Growth Mode</em> â€” double the top tracked-spend channels and reduce lower tracked-ROI channels. This excludes channels without spend data.
     </div>
     <div class="chart-grid">
       <div class="chart-card full">
         <div id="c-budget-scenario"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Budget Scenarios: Projected Pipeline by Channel</div>
+          <div class="ex-title">What this shows â€” Budget Scenarios: Projected Pipeline by Channel</div>
           Each group of bars is one marketing channel. Within the group, the three bars are the three budget scenarios. The bar height = how much pipeline that channel would be expected to generate under that scenario.
           <br><br>
           <strong>How to use it:</strong> Compare the total height across all channels for each scenario color. The scenario where the total (sum of all bars in that color) is tallest = the most pipeline-efficient allocation.
@@ -1670,10 +1631,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- ── 7. Advanced Analytics ──────────────── -->
+  <!-- â”€â”€ 7. Advanced Analytics â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <div id="s-advanced" class="section">
     <div class="section-title">Advanced Analytics</div>
-    <div class="section-desc">ML win probability model, account coverage gap, deal velocity, journey sequences, and targeting matrix — datathon-level depth.</div>
+    <div class="section-desc">ML win probability model, account coverage gap, deal velocity, journey sequences, and targeting matrix â€” datathon-level depth.</div>
     <div class="section-takeaway"><strong>Advanced takeaway:</strong> The predictive model and coverage analysis point to the same action: focus sales and marketing on high-fit accounts that are not yet fully activated. <span class="evidence-badge">AUC {model_auc}</span><span class="evidence-badge orange">{unreached_pct} unreached</span></div>
     <div class="context-box">
       <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section adds prioritization signals for where to focus. The win probability model (Random Forest, AUC = {model_auc}, {model_validation}) scores {open_deals} open deals. The coverage analysis reveals that {unreached_pct} of target accounts have no tracked email or 6sense touchpoint.
@@ -1697,7 +1658,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card">
         <div id="c-feat-imp"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Win Probability: Top Predictors</div>
+          <div class="ex-title">What this shows â€” Win Probability: Top Predictors</div>
           A Random Forest model was trained on closed deals to prioritize open opportunities. Feature importance shows which data points the model relied on most to predict whether a deal closes. <strong>AUC = {model_auc}</strong> using {model_validation} (1.0 = perfect, 0.5 = random).
           <br><br>
           <strong>How to read:</strong> Longer bar = stronger predictor. <strong>Tier</strong> reflects account qualification, <strong>channel</strong> reflects the original lead source, and account firmographics help separate higher- and lower-probability deals.
@@ -1707,7 +1668,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card">
         <div id="c-win-prob"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Win Probability Distribution (Open Deals)</div>
+          <div class="ex-title">What this shows â€” Win Probability Distribution (Open Deals)</div>
           This histogram shows {open_deals} currently open deals scored by the ML model. Each bar = number of open deals with that win probability range. Deals on the right side are higher-priority follow-up candidates.
           <br><br>
           <strong>How to use it:</strong> Sort your CRM by win probability and have sales prioritize the top 20% (probability > 70%). Don't waste effort on deals with < 20% probability until the pipeline is healthy.
@@ -1720,7 +1681,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card full">
         <div id="c-account-coverage"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Account Coverage: Has Marketing Reached Your Target Accounts?</div>
+          <div class="ex-title">What this shows â€” Account Coverage: Has Marketing Reached Your Target Accounts?</div>
           Of all {target_accounts} target account domains, this shows how many have been reached by email, 6sense, both, or neither. The orange line shows the observed opportunity rate (% of accounts in each group that have at least one CRM deal).
           <br><br>
           <strong>The critical finding:</strong> <strong>{unreached_accounts} accounts ({unreached_pct}) have never received a single marketing touchpoint.</strong> Yet accounts reached by email alone have a {email_only_rate} opportunity rate vs. {not_reached_rate} for unreached accounts.
@@ -1735,21 +1696,21 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card">
         <div id="c-deal-velocity"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Deal Velocity: How Fast Do Different Channels Close?</div>
+          <div class="ex-title">What this shows â€” Deal Velocity: How Fast Do Different Channels Close?</div>
           Median days from deal creation to close win, by channel. Error bars show the middle 50% range, so the chart shows both typical speed and variability.
           <br><br>
-          <strong>Why it matters:</strong> A channel might generate large pipeline but take 9 months to close. That affects cash flow forecasting. Existing clients close in 34 days (median) because the trust is already there. 6sense channel deals take 98 days — there's more evaluation needed from net-new accounts.
-          <div class="ex-insight">Key insight: If you need revenue fast, focus sales effort on existing client expansion and referrals (fastest close). If you're investing for Q3-Q4 revenue, start 6sense and event campaigns now — they need a 90-day runway.</div>
+          <strong>Why it matters:</strong> A channel might generate large pipeline but take 9 months to close. That affects cash flow forecasting. Existing clients close in 34 days (median) because the trust is already there. 6sense channel deals take 98 days â€” there's more evaluation needed from net-new accounts.
+          <div class="ex-insight">Key insight: If you need revenue fast, focus sales effort on existing client expansion and referrals (fastest close). If you're investing for Q3-Q4 revenue, start 6sense and event campaigns now â€” they need a 90-day runway.</div>
         </div>
       </div>
       <div class="chart-card">
         <div id="c-journey"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Winning Touchpoint Journey Sequences</div>
+          <div class="ex-title">What this shows â€” Winning Touchpoint Journey Sequences</div>
           For won deals that had tracked marketing touchpoints, what was the sequence of channels in order? This shows the most common channel paths that led to a closed deal.
           <br><br>
-          <strong>How to read:</strong> "email_mqa → 6sense_display" means: email was the first touch, then 6sense display ads followed. The most common winning sequence validates the two-stage strategy: email opens the conversation, 6sense keeps the brand visible through the evaluation period.
-          <div class="ex-insight">Key insight: Build this as a coordinated playbook — when email engagement is detected, trigger 6sense to increase impression frequency for that account. The data shows this sequence produces wins.</div>
+          <strong>How to read:</strong> "email_mqa â†’ 6sense_display" means: email was the first touch, then 6sense display ads followed. The most common winning sequence validates the two-stage strategy: email opens the conversation, 6sense keeps the brand visible through the evaluation period.
+          <div class="ex-insight">Key insight: Build this as a coordinated playbook â€” when email engagement is detected, trigger 6sense to increase impression frequency for that account. The data shows this sequence produces wins.</div>
         </div>
       </div>
     </div>
@@ -1758,17 +1719,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card">
         <div id="c-targeting-matrix"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — ABM Targeting Priority Matrix</div>
+          <div class="ex-title">What this shows â€” ABM Targeting Priority Matrix</div>
           Win rate heatmap crossing Segment (Enterprise/Commercial/Mid) vs. 6sense Profile Fit (Strong/Moderate/Weak). Darker blue = higher win rate = higher-priority target.
           <br><br>
-          <strong>How to use it:</strong> The darkest cells define your Tier 1 ABM targets — where you invest your most personalized, expensive outreach. Commercial + Strong Fit (47% win rate) and Mid + Moderate (43%) are the sweet spots.
-          <div class="ex-insight">Key insight: Enterprise + Strong Fit has the highest average deal size ($15,928) AND 35% win rate. Commercial + Strong Fit wins most often (47%). Run both in parallel — Enterprise for revenue growth, Commercial for volume.</div>
+          <strong>How to use it:</strong> The darkest cells define your Tier 1 ABM targets â€” where you invest your most personalized, expensive outreach. Commercial + Strong Fit (47% win rate) and Mid + Moderate (43%) are the sweet spots.
+          <div class="ex-insight">Key insight: Enterprise + Strong Fit has the highest average deal size ($15,928) AND 35% win rate. Commercial + Strong Fit wins most often (47%). Run both in parallel â€” Enterprise for revenue growth, Commercial for volume.</div>
         </div>
       </div>
       <div class="chart-card">
         <div id="c-cohort"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows — Pipeline Cohort Analysis by Quarter</div>
+          <div class="ex-title">What this shows â€” Pipeline Cohort Analysis by Quarter</div>
           Blue bars = pipeline created each quarter (growing). Green line = win rate per quarter (declining). Yellow dashed = marketing's share of deals per quarter (volatile).
           <br><br>
           <strong>The critical trend:</strong> Pipeline is growing, while win rate moved from {cohort_start_rate} in {cohort_start_quarter} to {cohort_end_rate} in {cohort_end_quarter}. Marketing's share peaked at {mktg_peak_pct} and ended at {mktg_end_pct}. This suggests pipeline quality and source mix need review.
@@ -1778,11 +1739,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- ── 8. Conclusion ───────────────── -->
+  <!-- â”€â”€ 8. Conclusion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
   <div id="s-conclusion" class="section">
     <div class="section-title">Conclusion</div>
     <div class="section-desc">The practical readout: what the analysis says, what risks matter, and what the next actions should be.</div>
-    <div class="section-takeaway"><strong>Final takeaway:</strong> The recommendation is targeted growth, not blanket budget expansion. <span class="evidence-badge">{influenced_pipeline} influenced</span><span class="evidence-badge orange">{unreached_pct} unreached</span><span class="evidence-badge red">{cohort_start_rate} → {cohort_end_rate} win rate</span></div>
+    <div class="section-takeaway"><strong>Final takeaway:</strong> The recommendation is targeted growth, not blanket budget expansion. <span class="evidence-badge">{influenced_pipeline} influenced</span><span class="evidence-badge orange">{unreached_pct} unreached</span><span class="evidence-badge red">{cohort_start_rate} â†’ {cohort_end_rate} win rate</span></div>
     <div class="conclusion-hero">
       <div class="eyebrow">Bottom-line recommendation</div>
       <h3>Reach the right unreached accounts, start with email, test 6sense overlay, and protect win rate as pipeline grows.</h3>
@@ -1967,9 +1928,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   </ul>
 </aside>
 
-<!-- ─── Scripts ─────────────────────────────── -->
+<!-- â”€â”€â”€ Scripts â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
 <script>
-// ── Navigation ──────────────────────────────
+// â”€â”€ Navigation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function showSection(link, sectionId) {{
   document.querySelectorAll('.nav-link').forEach(l => {{
     l.classList.remove('active');
@@ -1979,6 +1940,9 @@ function showSection(link, sectionId) {{
   link.setAttribute('aria-current', 'page');
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   document.getElementById(sectionId).classList.add('active');
+  document.body.classList.remove('sidebar-open');
+  const menuButton = document.getElementById('menu-button');
+  if (menuButton) menuButton.setAttribute('aria-expanded', 'false');
   history.replaceState(null, '', `#${{sectionId}}`);
   updateProgress(link);
   // Trigger resize so Plotly charts re-fit
@@ -2018,6 +1982,8 @@ if (modeToggle) {{
 const printButton = document.getElementById('print-button');
 const resetButton = document.getElementById('reset-button');
 const caveatsButton = document.getElementById('caveats-button');
+const menuButton = document.getElementById('menu-button');
+const dashboardSearch = document.getElementById('dashboard-search');
 const closeCaveats = document.getElementById('close-caveats');
 const drawerBackdrop = document.getElementById('drawer-backdrop');
 const caveatsDrawer = document.getElementById('caveats-drawer');
@@ -2034,6 +2000,22 @@ if (printButton) printButton.addEventListener('click', () => window.print());
 if (caveatsButton) caveatsButton.addEventListener('click', openCaveats);
 if (closeCaveats) closeCaveats.addEventListener('click', closeCaveatsDrawer);
 if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeCaveatsDrawer);
+if (menuButton) {{
+  menuButton.addEventListener('click', () => {{
+    const open = !document.body.classList.contains('sidebar-open');
+    document.body.classList.toggle('sidebar-open', open);
+    menuButton.setAttribute('aria-expanded', String(open));
+  }});
+}}
+if (dashboardSearch) {{
+  dashboardSearch.addEventListener('input', () => {{
+    const q = dashboardSearch.value.trim().toLowerCase();
+    document.querySelectorAll('.nav-link').forEach(link => {{
+      const label = link.textContent.toLowerCase();
+      link.classList.toggle('hidden-by-search', Boolean(q) && !label.includes(q));
+    }});
+  }});
+}}
 if (resetButton) {{
   resetButton.addEventListener('click', () => {{
     const first = document.querySelector('.nav-link[data-section="s-exec"]');
@@ -2102,7 +2084,7 @@ document.querySelectorAll('.chart-explain').forEach((box, idx) => {{
   }}
 }});
 
-// ── Chart data (injected by Python) ─────────
+// â”€â”€ Chart data (injected by Python) â”€â”€â”€â”€â”€â”€â”€â”€â”€
 if (window.lucide) {{
   lucide.createIcons();
 }}
@@ -2193,10 +2175,10 @@ Object.entries(CHARTS).forEach(([id, spec]) => {{
 
 function parseCellValue(text) {{
   const raw = text.trim();
-  const numeric = Number(raw.replace(/[$,%xKMB,\s]/g, '').replace(/^â€”$/, ''));
+  const numeric = Number(raw.replace(/[$,%xKMB,\s]/g, '').replace(/^Ã¢â‚¬â€$/, ''));
   if (raw.endsWith('M')) return numeric * 1000000;
   if (raw.endsWith('K')) return numeric * 1000;
-  if (!Number.isNaN(numeric) && raw !== '' && raw !== 'â€”') return numeric;
+  if (!Number.isNaN(numeric) && raw !== '' && raw !== 'Ã¢â‚¬â€') return numeric;
   return raw.toLowerCase();
 }}
 
@@ -2270,14 +2252,43 @@ function addMetricTooltips() {{
   }});
 }}
 
-// ── Channel table ────────────────────────────
+function addTableExports() {{
+  document.querySelectorAll('.dash-table').forEach((table, idx) => {{
+    const wrap = table.closest('.table-wrap');
+    if (!wrap || wrap.parentElement.querySelector(`[data-export-for="${{table.id || idx}}"]`)) return;
+    const button = document.createElement('button');
+    button.className = 'action-button export-button';
+    button.type = 'button';
+    button.dataset.exportFor = table.id || String(idx);
+    button.innerHTML = '<i data-lucide="download" aria-hidden="true"></i><span>CSV</span>';
+    button.addEventListener('click', () => {{
+      const rows = Array.from(table.querySelectorAll('tr')).map(row =>
+        Array.from(row.children).filter(cell => cell.style.display !== 'none').map(cell =>
+          `"${{cell.textContent.trim().replace(/"/g, '""')}}"`
+        ).join(',')
+      ).join('\\n');
+      const blob = new Blob([rows], {{type:'text/csv;charset=utf-8;'}});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${{table.id || 'dashboard-table'}}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }});
+    wrap.parentElement.insertBefore(button, wrap);
+  }});
+}}
+
+// â”€â”€ Channel table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const channelRows = {channel_rows};
 const ctbody = document.getElementById('channel-tbody');
 if(ctbody && channelRows) {{
   channelRows.forEach(r => {{
-    const roi = r.pipeline_roi === null || r.pipeline_roi === undefined ? '—' : r.pipeline_roi.toFixed(1)+'x';
-    const rroi = r.revenue_roi === null || r.revenue_roi === undefined ? '—' : r.revenue_roi.toFixed(1)+'x';
-    const wr = r.win_rate === null || r.win_rate === undefined ? '—' : (r.win_rate*100).toFixed(1)+'%';
+    const roi = r.pipeline_roi === null || r.pipeline_roi === undefined ? 'â€”' : r.pipeline_roi.toFixed(1)+'x';
+    const rroi = r.revenue_roi === null || r.revenue_roi === undefined ? 'â€”' : r.revenue_roi.toFixed(1)+'x';
+    const wr = r.win_rate === null || r.win_rate === undefined ? 'â€”' : (r.win_rate*100).toFixed(1)+'%';
     const cls = r.pipeline_roi && r.pipeline_roi > 5 ? 'green-text' : (r.pipeline_roi && r.pipeline_roi < 2 ? 'red-text' : '');
     const lowSample = r.won_count !== null && r.won_count !== undefined && r.won_count > 0 && r.won_count < 5;
     ctbody.innerHTML += `<tr>
@@ -2286,7 +2297,7 @@ if(ctbody && channelRows) {{
       <td>${{(r.total_pipeline/1e6).toFixed(1)}}M</td>
       <td>${{(r.won_pipeline/1e6).toFixed(1)}}M</td>
       <td>${{wr}}</td>
-      <td>${{r.avg_deal_size ? '$'+(r.avg_deal_size/1e3).toFixed(0)+'K' : '—'}}</td>
+      <td>${{r.avg_deal_size ? '$'+(r.avg_deal_size/1e3).toFixed(0)+'K' : 'â€”'}}</td>
       <td>${{r.channel_spend ? '$'+(r.channel_spend/1e3).toFixed(0)+'K' : '$0'}}</td>
       <td class="${{cls}}">${{roi}}</td>
       <td>${{rroi}}${{lowSample ? ' <span class="low-sample" title="Low won-deal sample size">Low N</span>' : ''}}</td>
@@ -2294,7 +2305,7 @@ if(ctbody && channelRows) {{
   }});
 }}
 
-// ── Attribution table ────────────────────────
+// â”€â”€ Attribution table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const attribRows = {attrib_rows};
 const atbody = document.getElementById('attrib-tbody');
 if(atbody && attribRows) {{
@@ -2304,12 +2315,12 @@ if(atbody && attribRows) {{
                       r.lt > r.ft ? 'Last-Touch' : 'First-Touch';
     atbody.innerHTML += `<tr>
       <td><span class="badge-ch">${{r.channel}}</span></td>
-      <td>${{r.ft ? '$'+(r.ft/1e3).toFixed(0)+'K' : '—'}}</td>
-      <td>${{r.lt ? '$'+(r.lt/1e3).toFixed(0)+'K' : '—'}}</td>
-      <td>${{r.lin ? '$'+(r.lin/1e3).toFixed(0)+'K' : '—'}}</td>
-      <td>${{r.td ? '$'+(r.td/1e3).toFixed(0)+'K' : '—'}}</td>
-      <td>${{r.sourced ? '$'+(r.sourced/1e3).toFixed(0)+'K' : '—'}}</td>
-      <td>${{r.influenced ? '$'+(r.influenced/1e3).toFixed(0)+'K' : '—'}}</td>
+      <td>${{r.ft ? '$'+(r.ft/1e3).toFixed(0)+'K' : 'â€”'}}</td>
+      <td>${{r.lt ? '$'+(r.lt/1e3).toFixed(0)+'K' : 'â€”'}}</td>
+      <td>${{r.lin ? '$'+(r.lin/1e3).toFixed(0)+'K' : 'â€”'}}</td>
+      <td>${{r.td ? '$'+(r.td/1e3).toFixed(0)+'K' : 'â€”'}}</td>
+      <td>${{r.sourced ? '$'+(r.sourced/1e3).toFixed(0)+'K' : 'â€”'}}</td>
+      <td>${{r.influenced ? '$'+(r.influenced/1e3).toFixed(0)+'K' : 'â€”'}}</td>
       <td class="green-text">${{bestModel}}</td>
     </tr>`;
   }});
@@ -2317,6 +2328,7 @@ if(atbody && attribRows) {{
 makeTablesSortable();
 showTableEmptyStates();
 addMetricTooltips();
+addTableExports();
 applyMetricLens(localStorage.getItem('metricLens') || 'all');
 if (window.lucide) {{
   lucide.createIcons();
@@ -2327,9 +2339,9 @@ if (window.lucide) {{
 """
 
 
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Build and write HTML
-# ─────────────────────────────────────────────
+# â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def build_channel_rows():
     if channel_pipeline.empty:
         return "[]"
@@ -2443,7 +2455,7 @@ def main():
     print(f"  OK Saved -> {OUTPUT_HTML}")
     print(f"  OK Copied -> {PUBLIC_HTML}")
     print(f"  File size: {size_kb:.0f} KB")
-    print("\n  Open in any browser — no server required.")
+    print("\n  Open in any browser â€” no server required.")
 
 
 if __name__ == "__main__":

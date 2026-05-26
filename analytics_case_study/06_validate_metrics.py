@@ -7,6 +7,7 @@ in sync with the generated dashboard.
 """
 import hashlib
 import os
+import ast
 import sys
 
 import pandas as pd
@@ -19,6 +20,8 @@ BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 PUBLIC_HTML = os.path.join(BASE_DIR, "public", "index.html")
 DASHBOARD_HTML = os.path.join(OUTPUTS_DIR, "dashboard", "Marketing_Analytics_Dashboard.html")
 PRESENTATION_DECK = os.path.join(OUTPUTS_DIR, "presentation", "Marketing_Analytics_Executive_Deck_v4.pptx")
+DASHBOARD_SOURCE = os.path.join(BASE_DIR, "analytics_case_study", "04_html_dashboard.py")
+PIPELINE_RUNNER = os.path.join(BASE_DIR, "run_pipeline.py")
 
 
 REQUIRED_CLEANED = {
@@ -155,6 +158,10 @@ def _validate_outputs(errors, warnings):
             "chart-caption",
             "nav-progress",
             "data-lens=\"dollars\"",
+            "dashboard-search",
+            "menu-button",
+            "export-button",
+            "prefers-reduced-motion",
         ]
         missing_fragments = [fragment for fragment in required_fragments if fragment not in dashboard_text]
         if missing_fragments:
@@ -180,6 +187,42 @@ def _validate_outputs(errors, warnings):
         warnings.append(f"Presentation deck looks unexpectedly small: {PRESENTATION_DECK}")
 
 
+def _validate_source_health(errors, warnings):
+    for path in [DASHBOARD_SOURCE, PIPELINE_RUNNER]:
+        if not os.path.exists(path):
+            errors.append(f"Missing source artifact: {path}")
+
+    if os.path.exists(DASHBOARD_SOURCE):
+        with open(DASHBOARD_SOURCE, "r", encoding="utf-8") as f:
+            source = f.read()
+        tree = ast.parse(source, filename=DASHBOARD_SOURCE)
+        defs = {}
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef):
+                defs.setdefault(node.name, []).append(node.lineno)
+        dupes = {name: lines for name, lines in defs.items() if len(lines) > 1}
+        if dupes:
+            details = "; ".join(f"{name} at lines {lines}" for name, lines in sorted(dupes.items()))
+            errors.append(f"04_html_dashboard.py has duplicate function definitions: {details}")
+
+    if os.path.exists(PIPELINE_RUNNER):
+        with open(PIPELINE_RUNNER, "r", encoding="utf-8") as f:
+            runner = f.read()
+        expected_steps = [
+            "01_data_cleaning.py",
+            "02_data_integration.py",
+            "03_analysis.py",
+            "03b_attribution.py",
+            "03c_advanced_analytics.py",
+            "04_html_dashboard.py",
+            "05_presentation.py",
+            "06_validate_metrics.py",
+        ]
+        missing_steps = [step for step in expected_steps if step not in runner]
+        if missing_steps:
+            errors.append(f"run_pipeline.py missing pipeline steps: {', '.join(missing_steps)}")
+
+
 def main():
     errors = []
     warnings = []
@@ -191,6 +234,7 @@ def main():
     _validate_cleaned(errors, warnings)
     _validate_integrated(errors, warnings)
     _validate_outputs(errors, warnings)
+    _validate_source_health(errors, warnings)
 
     for warning in warnings:
         print(f"WARNING {warning}")
