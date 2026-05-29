@@ -153,6 +153,7 @@ def _validate_outputs(errors, warnings):
             dashboard_text = f.read()
         required_fragments = [
             "quality-strip",
+            "s-essential",
             "metric-lens",
             "caveats-drawer",
             "chart-caption",

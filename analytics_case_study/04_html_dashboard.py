@@ -1237,7 +1237,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <small>B2B SaaS &nbsp;|&nbsp; 2023-2024</small>
   </div>
   <ul class="nav flex-column mt-2" id="navMenu">
-    <li class="nav-item"><a href="#s-exec" class="nav-link active" aria-current="page" aria-label="Executive Summary" data-section="s-exec" onclick="showSection(this,'s-exec'); return false;"><i class="nav-icon" data-lucide="layout-dashboard" aria-hidden="true"></i><span>Executive Summary</span></a></li>
+    <li class="nav-item"><a href="#s-essential" class="nav-link active" aria-current="page" aria-label="Essential View" data-section="s-essential" onclick="showSection(this,'s-essential'); return false;"><i class="nav-icon" data-lucide="sparkles" aria-hidden="true"></i><span>Essential View</span></a></li>
+    <li class="nav-item"><a href="#s-exec" class="nav-link" aria-label="Executive Summary" data-section="s-exec" onclick="showSection(this,'s-exec'); return false;"><i class="nav-icon" data-lucide="layout-dashboard" aria-hidden="true"></i><span>Executive Summary</span></a></li>
     <li class="nav-item"><a href="#s-attrib" class="nav-link" aria-label="Attribution Models" data-section="s-attrib" onclick="showSection(this,'s-attrib'); return false;"><i class="nav-icon" data-lucide="git-branch" aria-hidden="true"></i><span>Attribution Models</span></a></li>
     <li class="nav-item"><a href="#s-channel" class="nav-link" aria-label="Channel Performance" data-section="s-channel" onclick="showSection(this,'s-channel'); return false;"><i class="nav-icon" data-lucide="trending-up" aria-hidden="true"></i><span>Channel Performance</span></a></li>
     <li class="nav-item"><a href="#s-segment" class="nav-link" aria-label="Segment Analysis" data-section="s-segment" onclick="showSection(this,'s-segment'); return false;"><i class="nav-icon" data-lucide="building-2" aria-hidden="true"></i><span>Segment Analysis</span></a></li>
@@ -1335,7 +1336,55 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   </div>
 
   <!-- â”€â”€ 1. Executive Summary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
-  <div id="s-exec" class="section active">
+  <div id="s-essential" class="section active">
+    <div class="section-title">Essential View</div>
+    <div class="section-desc">A focused version for decision-makers: the answer, the few charts that support it, and the next actions.</div>
+    <div class="section-takeaway"><strong>Recommended path:</strong> protect pipeline quality, expand coverage to unreached target accounts, and treat attribution as directional planning evidence. <span class="evidence-badge">{influenced_pipeline} influenced</span><span class="evidence-badge orange">{unreached_pct} unreached</span><span class="evidence-badge red">{cohort_start_rate} to {cohort_end_rate} win rate</span></div>
+    <div class="priority-grid">
+      <div class="priority-card">
+        <div class="priority-tag">Do first</div>
+        <h3>Audit pipeline quality</h3>
+        <p>Pipeline volume is growing, but cohort win rate moved from {cohort_start_rate} to {cohort_end_rate}. Tighten ICP and qualification before increasing broad spend.</p>
+      </div>
+      <div class="priority-card">
+        <div class="priority-tag">Growth lever</div>
+        <h3>Reach unreached accounts</h3>
+        <p>{unreached_accounts} target accounts, or {unreached_pct}, have no tracked email or 6sense touch. Prioritize strong-fit accounts and use a holdout.</p>
+      </div>
+      <div class="priority-card">
+        <div class="priority-tag">Budget lens</div>
+        <h3>Scale with proof</h3>
+        <p>Use sourced, influenced, and tracked-spend scenarios to choose tests, then validate incremental lift before committing large reallocations.</p>
+      </div>
+    </div>
+    <div class="chart-grid cols-2" style="margin-top:16px">
+      <div class="chart-card"><div id="c-essential-contribution"></div></div>
+      <div class="chart-card"><div id="c-essential-coverage"></div></div>
+      <div class="chart-card full"><div id="c-essential-cohort"></div></div>
+      <div class="chart-card"><div id="c-essential-targeting"></div></div>
+      <div class="chart-card"><div id="c-essential-budget"></div></div>
+    </div>
+    <div class="chart-card full" style="margin-top:16px">
+      <div class="section-title" style="font-size:13px;margin-bottom:8px">Essential Action Plan</div>
+      <div class="table-wrap">
+        <table class="dash-table">
+          <thead><tr><th>Priority</th><th>Decision</th><th>Why</th><th>Next step</th></tr></thead>
+          <tbody>
+            <tr><td><span class="priority-tag">1</span></td><td>Protect quality</td><td>Win rate moved from {cohort_start_rate} to {cohort_end_rate} while pipeline grew.</td><td>Run a quarterly ICP and qualification review before scaling volume.</td></tr>
+            <tr><td><span class="priority-tag">2</span></td><td>Expand coverage</td><td>{unreached_pct} of target accounts are unreached by tracked email or 6sense.</td><td>Launch email-first coverage test with a holdout group.</td></tr>
+            <tr><td><span class="priority-tag">3</span></td><td>Use attribution carefully</td><td>{influenced_pipeline} influenced vs. {sourced_pipeline} sourced shows marketing has broader journey impact.</td><td>Use time-decay/linear models for planning, not as causality proof.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="scope-row" aria-label="Essential view drilldown">
+      <span class="scope-chip"><i data-lucide="eye" aria-hidden="true"></i>Only 5 charts are shown here by design</span>
+      <span class="scope-chip"><i data-lucide="layers" aria-hidden="true"></i>Use the left nav for analyst detail</span>
+      <span class="scope-chip"><i data-lucide="shield-check" aria-hidden="true"></i>Caveats remain available from the top bar</span>
+    </div>
+  </div>
+
+  <div id="s-exec" class="section">
     <div class="section-title">Executive Summary</div>
     <div class="section-desc">High-level pipeline, revenue, and channel overview for a B2B ABM company targeting specific accounts with 6sense display ads, email, and events.</div>
     <div class="section-takeaway"><strong>Executive takeaway:</strong> The business has meaningful pipeline volume, but the strongest story is how marketing supports future revenue beyond direct source credit. <span class="evidence-badge">{total_pipeline} pipeline</span><span class="evidence-badge green">{won_pipeline} won</span></div>
@@ -2018,8 +2067,8 @@ if (dashboardSearch) {{
 }}
 if (resetButton) {{
   resetButton.addEventListener('click', () => {{
-    const first = document.querySelector('.nav-link[data-section="s-exec"]');
-    if (first) showSection(first, 's-exec');
+    const first = document.querySelector('.nav-link[data-section="s-essential"]');
+    if (first) showSection(first, 's-essential');
     setMode('analyst');
     closeCaveatsDrawer();
     window.scrollTo({{top:0, behavior:'smooth'}});
@@ -2091,6 +2140,11 @@ if (window.lucide) {{
 
 // Chart data (injected by Python)
 const CHARTS = {{
+  "c-essential-contribution": {sourced_influenced},
+  "c-essential-coverage":     {account_coverage_chart},
+  "c-essential-cohort":       {cohort_chart},
+  "c-essential-targeting":    {targeting_matrix_chart},
+  "c-essential-budget":       {budget_scenario},
   "c-bar-channel":       {bar_channel},
   "c-donut-won":         {donut_won},
   "c-monthly-trend":     {monthly_trend},
@@ -2115,6 +2169,11 @@ const CHARTS = {{
 }};
 
 const CHART_META = {{
+  "c-essential-contribution": ["Question: is marketing impact larger than CRM source credit?", "Population: sourced and influenced attribution views.", "Decision use: report both numbers, with sourced as conservative and influenced as journey context."],
+  "c-essential-coverage": ["Question: where is the biggest growth lever?", "Population: target account domains.", "Decision use: expand coverage with a holdout instead of scaling broad spend immediately."],
+  "c-essential-cohort": ["Question: is growth protecting conversion quality?", "Population: opportunities by create quarter.", "Decision use: tighten ICP and qualification before increasing volume."],
+  "c-essential-targeting": ["Question: which account cells deserve ABM focus?", "Population: opportunities with segment and profile fit.", "Decision use: prioritize high-fit cells before expanding reach."],
+  "c-essential-budget": ["Question: what budget tests are worth considering?", "Population: tracked-spend channels only.", "Decision use: use scenarios to size tests, not to promise revenue."],
   "c-bar-channel": ["Question: which CRM-sourced channels create the most pipeline?", "Population: all deduplicated opportunities.", "Benchmark: compare each bar against total pipeline share."],
   "c-donut-won": ["Question: which channels actually closed revenue?", "Population: closed-won opportunities only.", "Caution: low-volume channels can swing sharply."],
   "c-monthly-trend": ["Question: is pipeline creation changing over time?", "Population: opportunities with a create date.", "Benchmark: look for sustained trend, not one-month spikes."],
