@@ -1059,6 +1059,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     display:inline-flex; align-items:center; padding:2px 7px; border-radius:999px;
     border:1px solid var(--border); color:var(--text-soft); font-size:10px; font-weight:800;
   }}
+  .chart-story {{
+    margin-top:10px; display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px;
+  }}
+  .story-step {{
+    border:1px solid var(--border); border-radius:8px; padding:9px 10px;
+    background:rgba(255,255,255,.045); color:var(--text-soft); font-size:12px; line-height:1.45;
+  }}
+  .story-step strong {{
+    display:block; margin-bottom:4px; color:var(--text); font-size:11px; text-transform:uppercase; letter-spacing:.04em;
+  }}
+  .story-step.action {{ border-color:rgba(45,212,191,.30); background:rgba(45,212,191,.075); }}
 
   .context-box, .chart-explain {{
     border-radius:8px; border:1px solid var(--border); background:rgba(255,255,255,.055);
@@ -1210,7 +1221,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .section,.kpi-row,.story-strip,.status-strip,.quality-strip {{ padding-left:18px; padding-right:18px; }}
     .quality-strip {{ grid-template-columns:1fr; }}
     .decision-panel,.scope-row {{ margin-left:18px; margin-right:18px; }}
-    .chart-grid.cols-2,.chart-grid.cols-3,.kpi-row,.story-strip,.decision-panel,
+    .chart-grid.cols-2,.chart-grid.cols-3,.kpi-row,.story-strip,.decision-panel,.chart-story,
     .conclusion-grid,.priority-grid,.evidence-grid {{ grid-template-columns:1fr; }}
     .decision-lead,.decision-item {{ border-right:0; border-bottom:1px solid var(--border); }}
     .decision-item:last-child {{ border-bottom:0; }}
@@ -2213,6 +2224,64 @@ const CHART_META = {{
   "c-cohort": ["Question: is pipeline growth protecting conversion quality?", "Population: opportunities by create quarter.", "Benchmark: compare pipeline trend against win-rate trend."]
 }};
 
+const CHART_STORY = {{
+  "c-essential-contribution": {{
+    finding: "Influenced pipeline is materially larger than CRM-sourced pipeline.",
+    meaning: "Marketing is showing up in the buyer journey even when it is not the official source.",
+    action: "Report sourced as conservative credit and influenced as journey impact."
+  }},
+  "c-essential-coverage": {{
+    finding: "A large share of target accounts still has no tracked email or 6sense touch.",
+    meaning: "The easiest growth lever is not more channels; it is reaching the right accounts already in the ICP universe.",
+    action: "Launch a strong-fit account coverage test with a holdout group."
+  }},
+  "c-essential-cohort": {{
+    finding: "Pipeline volume rises while win-rate quality weakens in recent cohorts.",
+    meaning: "Growth is at risk of becoming lower quality if qualification and ICP fit are not tightened.",
+    action: "Audit ICP and qualification before scaling broad top-of-funnel spend."
+  }},
+  "c-essential-targeting": {{
+    finding: "Win rate varies sharply by segment and 6sense profile fit.",
+    meaning: "ABM budget should be concentrated where fit and conversion probability are strongest.",
+    action: "Prioritize high-fit cells for personalized outreach and paid coverage."
+  }},
+  "c-essential-budget": {{
+    finding: "Tracked-spend scenarios show where budget tests may be efficient.",
+    meaning: "The scenario is a planning model, not a forecast guarantee.",
+    action: "Use it to size controlled experiments, then measure incremental lift."
+  }},
+  "c-bar-channel": {{
+    finding: "Pipeline is concentrated in a small set of source channels.",
+    meaning: "Channel scale and channel quality need to be evaluated separately.",
+    action: "Pair pipeline ranking with win rate and deal velocity before reallocating spend."
+  }},
+  "c-sourced-influenced": {{
+    finding: "Influenced credit tells a broader story than CRM source credit.",
+    meaning: "Single-source reporting understates marketing's account-journey role.",
+    action: "Use both views in CMO reporting and label them clearly."
+  }},
+  "c-account-coverage": {{
+    finding: "Many target accounts are not yet covered by tracked marketing touches.",
+    meaning: "Coverage expansion can increase learning and opportunity creation without changing the ICP.",
+    action: "Build a coverage plan for unreached strong-fit accounts."
+  }},
+  "c-cohort": {{
+    finding: "Pipeline and conversion quality are moving in different directions.",
+    meaning: "More pipeline is not automatically better pipeline.",
+    action: "Make quality control part of every growth recommendation."
+  }},
+  "c-targeting-matrix": {{
+    finding: "Some segment/profile-fit combinations are much stronger than others.",
+    meaning: "The best strategy is targeted growth, not equal coverage everywhere.",
+    action: "Shift premium ABM effort to cells with stronger fit and win rate."
+  }},
+  "c-budget-scenario": {{
+    finding: "Spend scenarios point to plausible budget tests.",
+    meaning: "Historical ROI can guide experiments but should not be treated as causal proof.",
+    action: "Approve phased tests with measurement guardrails."
+  }}
+}};
+
 const PLOTLY_CONFIG = {{responsive:true, displayModeBar:true, displaylogo:false,
   modeBarButtonsToRemove:['lasso2d','select2d','autoScale2d']}};
 
@@ -2222,10 +2291,17 @@ function showChartState(el, title, detail) {{
 
 function addChartCaption(el, id) {{
   const meta = CHART_META[id];
-  if (!meta || el.parentElement.querySelector('.chart-caption')) return;
+  const story = CHART_STORY[id];
+  if ((!meta && !story) || el.parentElement.querySelector('.chart-caption')) return;
   const caption = document.createElement('div');
   caption.className = 'chart-caption';
-  caption.innerHTML = `<div class="caption-row"><span class="caption-pill">Question</span><strong>${{meta[0].replace('Question: ', '')}}</strong></div><div>${{meta[1]}}</div><div>${{meta[2]}}</div>`;
+  const metaHtml = meta ? `<div class="caption-row"><span class="caption-pill">Question</span><strong>${{meta[0].replace('Question: ', '')}}</strong></div><div>${{meta[1]}}</div><div>${{meta[2]}}</div>` : '';
+  const storyHtml = story ? `<div class="chart-story">
+    <div class="story-step"><strong>Finding</strong>${{story.finding}}</div>
+    <div class="story-step"><strong>Meaning</strong>${{story.meaning}}</div>
+    <div class="story-step action"><strong>Action</strong>${{story.action}}</div>
+  </div>` : '';
+  caption.innerHTML = metaHtml + storyHtml;
   el.parentElement.appendChild(caption);
 }}
 
