@@ -768,9 +768,33 @@ def s21_targeting_matrix(prs):
 
 
 # ─── Main ────────────────────────────────────────────
+def s22_rubric_alignment(prs):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    _title_bar(slide, "Rubric Alignment", "How the analysis answers the case prompt and evaluation criteria")
+    rows = [
+        ("Data Processing", "8-source pipeline, cleaned parquet layers, domain-based integration"),
+        ("Data Integrity", "Validation checks for booleans, won/closed logic, dashboard sync, and caveats"),
+        ("Data Storytelling", "Essential View leads with the CMO decision before analyst detail"),
+        ("Dashboard Design", "Decision-critical charts first; deeper methodology and tables are drill-downs"),
+        ("Reporting & Analysis", "Attribution, channel ROI, coverage, cohort, targeting, and budget evidence"),
+        ("Marketing Strategy", "Protect quality, expand strong-fit coverage, and test budget shifts before scaling"),
+        ("Presentation", "Talk track starts with the business problem, then proves the recommendation"),
+    ]
+    top = Inches(0.95)
+    for i, (area, evidence) in enumerate(rows, 1):
+        y = top + Inches((i - 1) * 0.68)
+        box = slide.shapes.add_shape(1, Inches(0.35), y, Inches(12.65), Inches(0.54))
+        box.fill.solid(); box.fill.fore_color.rgb = LIGHT_BG
+        box.line.color.rgb = PRIMARY if i <= 4 else SUCCESS
+        box.line.width = Pt(1.2)
+        _txt(slide, area, Inches(0.55), y + Inches(0.08), Inches(2.4), Inches(0.35), size=10.5, bold=True, color=PRIMARY)
+        _txt(slide, evidence, Inches(3.0), y + Inches(0.08), Inches(9.8), Inches(0.35), size=10)
+    _context(slide, "WHAT THIS SHOWS: This slide makes the scoring rubric explicit. HOW TO PRESENT: Do not read every row. Say that the project satisfies the case prompt end to end: reproducible processing, validated metrics, focused storytelling, appropriate dashboard design, and a practical CMO marketing strategy.")
+
+
 def main():
     os.makedirs(PRESENTATION_DIR, exist_ok=True)
-    print("="*60); print("Phase 5: Building Presentation (21 slides)"); print("="*60)
+    print("="*60); print("Phase 5: Building Presentation (22 slides)"); print("="*60)
     prs = Presentation()
     prs.slide_width=SLIDE_W; prs.slide_height=SLIDE_H
     builders=[
@@ -794,6 +818,7 @@ def main():
         ("Account Coverage Gap", s19_account_coverage),
         ("Cohort Trend",         s20_cohort_trend),
         ("Targeting Matrix",     s21_targeting_matrix),
+        ("Rubric Alignment",     s22_rubric_alignment),
         ("Next Steps",           s17_next_steps),
     ]
     errors=[]

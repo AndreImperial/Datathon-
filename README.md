@@ -172,3 +172,9 @@ The dashboard audit backlog is tracked in:
 ```text
 AUDIT_BACKLOG.md
 ```
+
+The case prompt and grading rubric alignment are tracked in:
+
+```text
+RUBRIC_ALIGNMENT.md
+```

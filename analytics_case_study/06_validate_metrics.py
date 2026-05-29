@@ -22,6 +22,7 @@ DASHBOARD_HTML = os.path.join(OUTPUTS_DIR, "dashboard", "Marketing_Analytics_Das
 PRESENTATION_DECK = os.path.join(OUTPUTS_DIR, "presentation", "Marketing_Analytics_Executive_Deck_v4.pptx")
 DASHBOARD_SOURCE = os.path.join(BASE_DIR, "analytics_case_study", "04_html_dashboard.py")
 PIPELINE_RUNNER = os.path.join(BASE_DIR, "run_pipeline.py")
+RUBRIC_ALIGNMENT = os.path.join(BASE_DIR, "RUBRIC_ALIGNMENT.md")
 
 
 REQUIRED_CLEANED = {
@@ -154,6 +155,7 @@ def _validate_outputs(errors, warnings):
         required_fragments = [
             "quality-strip",
             "s-essential",
+            "Case Deliverable Coverage",
             "metric-lens",
             "caveats-drawer",
             "chart-caption",
@@ -222,6 +224,25 @@ def _validate_source_health(errors, warnings):
         missing_steps = [step for step in expected_steps if step not in runner]
         if missing_steps:
             errors.append(f"run_pipeline.py missing pipeline steps: {', '.join(missing_steps)}")
+
+    if not os.path.exists(RUBRIC_ALIGNMENT):
+        errors.append(f"Missing rubric alignment document: {RUBRIC_ALIGNMENT}")
+    else:
+        with open(RUBRIC_ALIGNMENT, "r", encoding="utf-8") as f:
+            rubric = f.read()
+        required_rubric_sections = [
+            "Data Processing",
+            "Data Integrity",
+            "Data Storytelling",
+            "Dashboard Design",
+            "Reporting And Analysis",
+            "Marketing Strategy",
+            "Presentation Skills",
+            "Presentation Design",
+        ]
+        missing_sections = [section for section in required_rubric_sections if section not in rubric]
+        if missing_sections:
+            errors.append(f"RUBRIC_ALIGNMENT.md missing rubric sections: {', '.join(missing_sections)}")
 
 
 def main():

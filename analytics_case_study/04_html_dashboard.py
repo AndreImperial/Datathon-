@@ -1377,6 +1377,22 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         </table>
       </div>
     </div>
+    <div class="chart-card full" style="margin-top:16px">
+      <div class="section-title" style="font-size:13px;margin-bottom:8px">Case Deliverable Coverage</div>
+      <div class="table-wrap">
+        <table class="dash-table">
+          <thead><tr><th>Rubric Area</th><th>Where It Is Answered</th><th>What The Evaluator Should See</th></tr></thead>
+          <tbody>
+            <tr><td>Data Processing</td><td>Data & methodology, validation, pipeline runner</td><td>Eight raw sources are cleaned, deduplicated, normalized by domain, and rebuilt through reproducible scripts.</td></tr>
+            <tr><td>Data Integrity</td><td>Quality scorecard, validation script, caveats</td><td>Won revenue, attribution, funnel, and dashboard artifacts are checked for consistency before presentation.</td></tr>
+            <tr><td>Data Storytelling</td><td>Essential View and Conclusion</td><td>The story is focused: marketing influence is broader than source credit, but growth must protect quality.</td></tr>
+            <tr><td>Dashboard Design</td><td>Essential View first; analyst detail in side navigation</td><td>The default page prioritizes only decision-critical charts; deeper charts are available but not forced.</td></tr>
+            <tr><td>Reporting & Analysis</td><td>Attribution, coverage, cohort, targeting, budget sections</td><td>Findings connect to evidence and translate into specific CMO recommendations.</td></tr>
+            <tr><td>Marketing Strategy</td><td>Action plan, targeting matrix, budget scenario</td><td>Recommended pivot: protect ICP quality, expand strong-fit account coverage, and test budget shifts before scaling.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
     <div class="scope-row" aria-label="Essential view drilldown">
       <span class="scope-chip"><i data-lucide="eye" aria-hidden="true"></i>Only 5 charts are shown here by design</span>
       <span class="scope-chip"><i data-lucide="layers" aria-hidden="true"></i>Use the left nav for analyst detail</span>
