@@ -786,6 +786,42 @@ def fig_json(fig: go.Figure) -> str:
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # HTML Template
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+def clean_generated_html(html: str) -> str:
+    """Repair mojibake from older template text and keep generated output ASCII-clean."""
+    replacements = {
+        chr(0x2014): " - ",
+        chr(0x2013): "-",
+        chr(0x2192): " to ",
+        chr(0x00d7): "x",
+        chr(0x00f7): "/",
+        chr(0x25b2): "^",
+        chr(0x25bc): "v",
+        chr(0x2500): "-",
+        chr(0x00a0): " ",
+    }
+
+    expanded = {}
+    for bad, good in replacements.items():
+        expanded[bad] = good
+        variants = [bad]
+        for _ in range(3):
+            next_variants = []
+            for variant in variants:
+                for encoding in ("cp1252", "latin1"):
+                    try:
+                        mojibake = variant.encode("utf-8").decode(encoding, errors="ignore")
+                    except UnicodeError:
+                        continue
+                    expanded[mojibake] = good
+                    next_variants.append(mojibake)
+            variants = next_variants
+
+    replacements = expanded
+    for bad, good in replacements.items():
+        html = html.replace(bad, good)
+    return html
+
+
 HTML_TEMPLATE = """<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -1111,8 +1147,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   }}
   .dash-table th[data-sort] {{ cursor:pointer; user-select:none; }}
   .dash-table th[data-sort]::after {{ content:""; opacity:.55; margin-left:6px; font-size:10px; }}
-  .dash-table th.sort-asc::after {{ content:"â–²"; }}
-  .dash-table th.sort-desc::after {{ content:"â–¼"; }}
+  .dash-table th.sort-asc::after {{ content:"^"; }}
+  .dash-table th.sort-desc::after {{ content:"v"; }}
   .dash-table td {{ padding:9px 12px; border-bottom:1px solid rgba(148,163,184,.13); vertical-align:top; }}
   .dash-table tr:nth-child(even) {{ background:rgba(255,255,255,.025); }}
   .dash-table tr:hover {{ background:rgba(79,140,255,.08); }}
@@ -1249,14 +1285,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   </div>
   <ul class="nav flex-column mt-2" id="navMenu">
     <li class="nav-item"><a href="#s-essential" class="nav-link active" aria-current="page" aria-label="Essential View" data-section="s-essential" onclick="showSection(this,'s-essential'); return false;"><i class="nav-icon" data-lucide="sparkles" aria-hidden="true"></i><span>Essential View</span></a></li>
-    <li class="nav-item"><a href="#s-exec" class="nav-link" aria-label="Executive Summary" data-section="s-exec" onclick="showSection(this,'s-exec'); return false;"><i class="nav-icon" data-lucide="layout-dashboard" aria-hidden="true"></i><span>Executive Summary</span></a></li>
-    <li class="nav-item"><a href="#s-attrib" class="nav-link" aria-label="Attribution Models" data-section="s-attrib" onclick="showSection(this,'s-attrib'); return false;"><i class="nav-icon" data-lucide="git-branch" aria-hidden="true"></i><span>Attribution Models</span></a></li>
-    <li class="nav-item"><a href="#s-channel" class="nav-link" aria-label="Channel Performance" data-section="s-channel" onclick="showSection(this,'s-channel'); return false;"><i class="nav-icon" data-lucide="trending-up" aria-hidden="true"></i><span>Channel Performance</span></a></li>
-    <li class="nav-item"><a href="#s-segment" class="nav-link" aria-label="Segment Analysis" data-section="s-segment" onclick="showSection(this,'s-segment'); return false;"><i class="nav-icon" data-lucide="building-2" aria-hidden="true"></i><span>Segment Analysis</span></a></li>
-    <li class="nav-item"><a href="#s-creative" class="nav-link" aria-label="Creative and Email" data-section="s-creative" onclick="showSection(this,'s-creative'); return false;"><i class="nav-icon" data-lucide="mail" aria-hidden="true"></i><span>Creative & Email</span></a></li>
-    <li class="nav-item"><a href="#s-budget" class="nav-link" aria-label="Budget Scenarios" data-section="s-budget" onclick="showSection(this,'s-budget'); return false;"><i class="nav-icon" data-lucide="circle-dollar-sign" aria-hidden="true"></i><span>Budget Scenarios</span></a></li>
-    <li class="nav-item"><a href="#s-advanced" class="nav-link" aria-label="Advanced Analytics" data-section="s-advanced" onclick="showSection(this,'s-advanced'); return false;"><i class="nav-icon" data-lucide="brain-circuit" aria-hidden="true"></i><span>Advanced Analytics</span></a></li>
-    <li class="nav-item"><a href="#s-conclusion" class="nav-link" aria-label="Conclusion" data-section="s-conclusion" onclick="showSection(this,'s-conclusion'); return false;"><i class="nav-icon" data-lucide="check-circle-2" aria-hidden="true"></i><span>Conclusion</span></a></li>
+    <li class="nav-item"><a href="#s-attrib" class="nav-link" aria-label="Attribution Models" data-section="s-attrib" onclick="showSection(this,'s-attrib'); return false;"><i class="nav-icon" data-lucide="git-branch" aria-hidden="true"></i><span>Attribution</span></a></li>
+    <li class="nav-item"><a href="#s-channel" class="nav-link" aria-label="Channel Performance" data-section="s-channel" onclick="showSection(this,'s-channel'); return false;"><i class="nav-icon" data-lucide="trending-up" aria-hidden="true"></i><span>Channel ROI</span></a></li>
+    <li class="nav-item"><a href="#s-conclusion" class="nav-link" aria-label="Conclusion" data-section="s-conclusion" onclick="showSection(this,'s-conclusion'); return false;"><i class="nav-icon" data-lucide="check-circle-2" aria-hidden="true"></i><span>Recommendation</span></a></li>
+    <li class="nav-item"><a href="#s-appendix" class="nav-link" aria-label="Analyst Appendix" data-section="s-appendix" onclick="showSection(this,'s-appendix'); return false;"><i class="nav-icon" data-lucide="archive" aria-hidden="true"></i><span>Analyst Appendix</span></a></li>
   </ul>
 </nav>
 
@@ -1327,7 +1359,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <div class="scope-row" aria-label="Dashboard usage notes">
     <span class="scope-chip"><i data-lucide="target" aria-hidden="true"></i>Audience: executive marketing review</span>
-    <span class="scope-chip"><i data-lucide="mouse-pointer-click" aria-hidden="true"></i>Use nav, hover charts, open "How to read this"</span>
+    <span class="scope-chip"><i data-lucide="mouse-pointer-click" aria-hidden="true"></i>Judge path: Essential, Attribution, Channel ROI, Recommendation</span>
     <span class="scope-chip"><i data-lucide="shield-check" aria-hidden="true"></i>Confidence labels separate observed facts from testable hypotheses</span>
   </div>
 
@@ -1372,8 +1404,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card"><div id="c-essential-contribution"></div></div>
       <div class="chart-card"><div id="c-essential-coverage"></div></div>
       <div class="chart-card full"><div id="c-essential-cohort"></div></div>
-      <div class="chart-card"><div id="c-essential-targeting"></div></div>
-      <div class="chart-card"><div id="c-essential-budget"></div></div>
     </div>
     <div class="chart-card full" style="margin-top:16px">
       <div class="section-title" style="font-size:13px;margin-bottom:8px">Essential Action Plan</div>
@@ -1388,25 +1418,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         </table>
       </div>
     </div>
-    <div class="chart-card full" style="margin-top:16px">
-      <div class="section-title" style="font-size:13px;margin-bottom:8px">Case Deliverable Coverage</div>
-      <div class="table-wrap">
-        <table class="dash-table">
-          <thead><tr><th>Rubric Area</th><th>Where It Is Answered</th><th>What The Evaluator Should See</th></tr></thead>
-          <tbody>
-            <tr><td>Data Processing</td><td>Data & methodology, validation, pipeline runner</td><td>Eight raw sources are cleaned, deduplicated, normalized by domain, and rebuilt through reproducible scripts.</td></tr>
-            <tr><td>Data Integrity</td><td>Quality scorecard, validation script, caveats</td><td>Won revenue, attribution, funnel, and dashboard artifacts are checked for consistency before presentation.</td></tr>
-            <tr><td>Data Storytelling</td><td>Essential View and Conclusion</td><td>The story is focused: marketing influence is broader than source credit, but growth must protect quality.</td></tr>
-            <tr><td>Dashboard Design</td><td>Essential View first; analyst detail in side navigation</td><td>The default page prioritizes only decision-critical charts; deeper charts are available but not forced.</td></tr>
-            <tr><td>Reporting & Analysis</td><td>Attribution, coverage, cohort, targeting, budget sections</td><td>Findings connect to evidence and translate into specific CMO recommendations.</td></tr>
-            <tr><td>Marketing Strategy</td><td>Action plan, targeting matrix, budget scenario</td><td>Recommended pivot: protect ICP quality, expand strong-fit account coverage, and test budget shifts before scaling.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
     <div class="scope-row" aria-label="Essential view drilldown">
-      <span class="scope-chip"><i data-lucide="eye" aria-hidden="true"></i>Only 5 charts are shown here by design</span>
-      <span class="scope-chip"><i data-lucide="layers" aria-hidden="true"></i>Use the left nav for analyst detail</span>
+      <span class="scope-chip"><i data-lucide="eye" aria-hidden="true"></i>Only 3 charts are shown here by design</span>
+      <span class="scope-chip"><i data-lucide="layers" aria-hidden="true"></i>Deeper views are in the appendix</span>
       <span class="scope-chip"><i data-lucide="shield-check" aria-hidden="true"></i>Caveats remain available from the top bar</span>
     </div>
   </div>
@@ -1816,6 +1830,60 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   </div>
 
   <!-- â”€â”€ 8. Conclusion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ -->
+  <div id="s-appendix" class="section">
+    <div class="section-title">Analyst Appendix</div>
+    <div class="section-desc">Extra evidence is still available, but it is no longer part of the default judging path.</div>
+    <div class="section-takeaway"><strong>Use this section when challenged:</strong> it holds the supporting analysis behind the recommendation without making the opening dashboard feel crowded.</div>
+    <div class="priority-grid">
+      <div class="priority-card">
+        <div class="priority-tag">Overview</div>
+        <h3>Executive Summary</h3>
+        <p>Top-line pipeline, won revenue, and monthly trend views.</p>
+        <button class="action-button" type="button" onclick="showAppendixSection('s-exec')"><i data-lucide="layout-dashboard" aria-hidden="true"></i><span>Open</span></button>
+      </div>
+      <div class="priority-card">
+        <div class="priority-tag">Targeting</div>
+        <h3>Segment & ICP</h3>
+        <p>Segment, industry, and ICP evidence for account prioritization.</p>
+        <button class="action-button" type="button" onclick="showAppendixSection('s-segment')"><i data-lucide="building-2" aria-hidden="true"></i><span>Open</span></button>
+      </div>
+      <div class="priority-card">
+        <div class="priority-tag">Engagement</div>
+        <h3>Creative & Email</h3>
+        <p>Creative CTR and email engagement detail for messaging decisions.</p>
+        <button class="action-button" type="button" onclick="showAppendixSection('s-creative')"><i data-lucide="mail" aria-hidden="true"></i><span>Open</span></button>
+      </div>
+      <div class="priority-card">
+        <div class="priority-tag">Planning</div>
+        <h3>Budget Scenarios</h3>
+        <p>Tracked-spend scenarios for sizing controlled budget tests.</p>
+        <button class="action-button" type="button" onclick="showAppendixSection('s-budget')"><i data-lucide="circle-dollar-sign" aria-hidden="true"></i><span>Open</span></button>
+      </div>
+      <div class="priority-card">
+        <div class="priority-tag">Modeling</div>
+        <h3>Advanced Analytics</h3>
+        <p>Win probability, deal velocity, journey, and targeting matrix detail.</p>
+        <button class="action-button" type="button" onclick="showAppendixSection('s-advanced')"><i data-lucide="brain-circuit" aria-hidden="true"></i><span>Open</span></button>
+      </div>
+    </div>
+    <div class="chart-card full" style="margin-top:16px">
+      <div class="section-title" style="font-size:13px;margin-bottom:8px">Case Deliverable Coverage</div>
+      <div class="table-wrap">
+        <table class="dash-table">
+          <thead><tr><th>Rubric Area</th><th>Where It Is Answered</th><th>What The Evaluator Should See</th></tr></thead>
+          <tbody>
+            <tr><td>Data Processing</td><td>Pipeline runner and methodology notes</td><td>Eight raw sources are cleaned, deduplicated, normalized by domain, and rebuilt through reproducible scripts.</td></tr>
+            <tr><td>Data Integrity</td><td>Quality scorecard, validation script, caveats</td><td>Won revenue, attribution, funnel, and dashboard artifacts are checked for consistency before presentation.</td></tr>
+            <tr><td>Data Storytelling</td><td>Essential View and Recommendation</td><td>The story is focused: marketing influence is broader than source credit, but growth must protect quality.</td></tr>
+            <tr><td>Dashboard Design</td><td>Short judging path plus appendix</td><td>The default page prioritizes decision-critical charts; deeper charts are available but not forced.</td></tr>
+            <tr><td>Reporting & Analysis</td><td>Attribution, coverage, cohort, targeting, budget sections</td><td>Findings connect to evidence and translate into specific CMO recommendations.</td></tr>
+            <tr><td>Marketing Strategy</td><td>Action plan, targeting matrix, budget scenario</td><td>Recommended pivot: protect ICP quality, expand strong-fit account coverage, and test budget shifts before scaling.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <div id="s-conclusion" class="section">
     <div class="section-title">Conclusion</div>
     <div class="section-desc">The practical readout: what the analysis says, what risks matter, and what the next actions should be.</div>
@@ -2025,6 +2093,11 @@ function showSection(link, sectionId) {{
   setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
 }}
 
+function showAppendixSection(sectionId) {{
+  const appendixLink = document.querySelector('.nav-link[data-section="s-appendix"]');
+  if (appendixLink) showSection(appendixLink, sectionId);
+}}
+
 function updateProgress(activeLink) {{
   const links = Array.from(document.querySelectorAll('.nav-link'));
   const idx = Math.max(0, links.indexOf(activeLink));
@@ -2119,7 +2192,11 @@ document.addEventListener('keydown', (event) => {{
 const initialSection = window.location.hash ? window.location.hash.slice(1) : '';
 if (initialSection) {{
   const initialLink = document.querySelector(`.nav-link[data-section="${{initialSection}}"]`);
-  if (initialLink) showSection(initialLink, initialSection);
+  if (initialLink) {{
+    showSection(initialLink, initialSection);
+  }} else if (document.getElementById(initialSection)) {{
+    showAppendixSection(initialSection);
+  }}
 }} else {{
   const activeLink = document.querySelector('.nav-link.active');
   if (activeLink) updateProgress(activeLink);
@@ -2326,10 +2403,10 @@ Object.entries(CHARTS).forEach(([id, spec]) => {{
 
 function parseCellValue(text) {{
   const raw = text.trim();
-  const numeric = Number(raw.replace(/[$,%xKMB,\s]/g, '').replace(/^Ã¢â‚¬â€$/, ''));
+  const numeric = Number(raw.replace(/[$,%xKMB,\s]/g, '').replace(/^-$/, ''));
   if (raw.endsWith('M')) return numeric * 1000000;
   if (raw.endsWith('K')) return numeric * 1000;
-  if (!Number.isNaN(numeric) && raw !== '' && raw !== 'Ã¢â‚¬â€') return numeric;
+  if (!Number.isNaN(numeric) && raw !== '' && raw !== '-') return numeric;
   return raw.toLowerCase();
 }}
 
@@ -2596,6 +2673,7 @@ def main():
         attrib_rows=build_attrib_rows(),
         **charts,
     )
+    html = clean_generated_html(html)
 
     with open(OUTPUT_HTML, "w", encoding="utf-8") as f:
         f.write(html)
