@@ -400,6 +400,42 @@
   .drawer-head h2 { margin:0; color:var(--text); font-size:18px; }
   .caveats-drawer ul { margin:0; padding-left:18px; }
   .caveats-drawer li { margin-bottom:10px; line-height:1.55; }
+  .assistant-panel {
+    position:fixed; right:22px; bottom:22px; width:min(440px, calc(100vw - 36px)); max-height:min(680px, calc(100vh - 42px));
+    z-index:185; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--border-strong);
+    border-radius:8px; background:rgba(10,15,26,.96); color:var(--text-soft);
+    box-shadow:0 24px 70px rgba(0,0,0,.42); backdrop-filter:var(--glass-blur); -webkit-backdrop-filter:var(--glass-blur);
+    transform:translateY(18px); opacity:0; pointer-events:none; transition:opacity .18s ease, transform .18s ease;
+  }
+  body.assistant-open .assistant-panel { transform:translateY(0); opacity:1; pointer-events:auto; }
+  .assistant-head {
+    display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 14px 12px;
+    border-bottom:1px solid var(--border); background:linear-gradient(135deg, rgba(79,140,255,.18), rgba(34,211,238,.08));
+  }
+  .assistant-title { display:flex; align-items:center; gap:9px; min-width:0; }
+  .assistant-title i { width:18px; height:18px; color:var(--info); flex:0 0 18px; }
+  .assistant-title strong { display:block; color:var(--text); font-size:13px; }
+  .assistant-title span { display:block; color:var(--muted); font-size:11px; }
+  .assistant-body { padding:12px; overflow:auto; display:flex; flex-direction:column; gap:10px; }
+  .assistant-message {
+    max-width:92%; padding:9px 10px; border-radius:8px; border:1px solid var(--border);
+    background:rgba(255,255,255,.055); color:var(--text-soft); font-size:12px; line-height:1.5;
+  }
+  .assistant-message.user { align-self:flex-end; background:rgba(79,140,255,.18); color:var(--text); }
+  .assistant-message.bot strong { display:block; color:var(--text); margin-bottom:4px; }
+  .assistant-suggestions { display:flex; flex-wrap:wrap; gap:7px; padding:0 12px 11px; }
+  .assistant-chip {
+    min-height:28px; padding:0 9px; border-radius:999px; border:1px solid var(--border);
+    background:rgba(255,255,255,.045); color:var(--text-soft); font-size:11px; font-weight:800; cursor:pointer;
+  }
+  .assistant-chip:hover { border-color:rgba(34,211,238,.42); background:rgba(34,211,238,.08); color:var(--text); }
+  .assistant-form { display:flex; gap:8px; padding:12px; border-top:1px solid var(--border); background:rgba(255,255,255,.035); }
+  .assistant-input {
+    flex:1; min-width:0; min-height:36px; border-radius:8px; border:1px solid var(--border);
+    background:rgba(255,255,255,.06); color:var(--text); padding:0 10px; font-size:12px; outline:none;
+  }
+  .assistant-input:focus { border-color:rgba(34,211,238,.55); box-shadow:0 0 0 3px rgba(34,211,238,.10); }
+  .assistant-footnote { padding:0 12px 11px; color:var(--muted-2); font-size:10px; line-height:1.4; }
 
   body.presentation-mode .chart-explain .ex-body,
   body.presentation-mode .chart-explain .learn-toggle,
@@ -482,12 +518,13 @@
       <button class="action-button" id="print-button" type="button"><i data-lucide="printer" aria-hidden="true"></i><span>Print</span></button>
       <button class="action-button" id="reset-button" type="button"><i data-lucide="rotate-ccw" aria-hidden="true"></i><span>Reset</span></button>
       <button class="action-button" id="caveats-button" type="button"><i data-lucide="info" aria-hidden="true"></i><span>Caveats</span></button>
+      <button class="action-button" id="assistant-button" type="button" aria-expanded="false"><i data-lucide="bot" aria-hidden="true"></i><span>Ask AI</span></button>
       <button class="mode-toggle" id="mode-toggle" type="button" aria-pressed="false"><i data-lucide="presentation" aria-hidden="true"></i><span>Presentation Mode</span></button>
     </div>
   </div>
   <div class="status-strip" aria-label="Dashboard generation status">
     <span class="status-chip"><i data-lucide="check-circle-2" aria-hidden="true"></i>Validation passed</span>
-    <span class="status-chip"><i data-lucide="clock-3" aria-hidden="true"></i>Generated Jun 01, 2026 09:43 PM</span>
+    <span class="status-chip"><i data-lucide="clock-3" aria-hidden="true"></i>Generated Jun 02, 2026 04:03 PM</span>
     <span class="status-chip"><i data-lucide="database" aria-hidden="true"></i>Cleaned + integrated data refreshed</span>
   </div>
   <div class="quality-strip" aria-label="Data quality scorecard">
@@ -1249,6 +1286,28 @@
 </aside>
 
 <!-- --- Scripts ------------------------------- -->
+<aside class="assistant-panel" id="assistant-panel" aria-label="Dashboard AI assistant" aria-hidden="true">
+  <div class="assistant-head">
+    <div class="assistant-title">
+      <i data-lucide="bot" aria-hidden="true"></i>
+      <div><strong>Dashboard AI</strong><span>Answers from this analysis only</span></div>
+    </div>
+    <button class="action-button" id="close-assistant" type="button"><i data-lucide="x" aria-hidden="true"></i><span>Close</span></button>
+  </div>
+  <div class="assistant-body" id="assistant-body" aria-live="polite"></div>
+  <div class="assistant-suggestions" aria-label="Suggested questions">
+    <button class="assistant-chip" type="button" data-question="What is the main recommendation?">Main recommendation</button>
+    <button class="assistant-chip" type="button" data-question="Why is coverage important?">Coverage</button>
+    <button class="assistant-chip" type="button" data-question="What is marketing sourced vs influenced?">Attribution</button>
+    <button class="assistant-chip" type="button" data-question="What are the caveats?">Caveats</button>
+  </div>
+  <form class="assistant-form" id="assistant-form">
+    <input class="assistant-input" id="assistant-input" type="text" autocomplete="off" placeholder="Ask about ROI, attribution, coverage, or next steps" aria-label="Ask the dashboard assistant">
+    <button class="action-button" type="submit"><i data-lucide="send" aria-hidden="true"></i><span>Ask</span></button>
+  </form>
+  <div class="assistant-footnote">This static assistant uses dashboard facts and rules. It does not call an external model or send data anywhere.</div>
+</aside>
+
 <script>
 // -- Navigation ------------------------------
 function showSection(link, sectionId) {
@@ -1312,6 +1371,55 @@ const dashboardSearch = document.getElementById('dashboard-search');
 const closeCaveats = document.getElementById('close-caveats');
 const drawerBackdrop = document.getElementById('drawer-backdrop');
 const caveatsDrawer = document.getElementById('caveats-drawer');
+const assistantButton = document.getElementById('assistant-button');
+const closeAssistant = document.getElementById('close-assistant');
+const assistantPanel = document.getElementById('assistant-panel');
+const assistantBody = document.getElementById('assistant-body');
+const assistantForm = document.getElementById('assistant-form');
+const assistantInput = document.getElementById('assistant-input');
+
+const ASSISTANT_KNOWLEDGE = [
+  {
+    title: 'Main Recommendation',
+    keywords: ['main','recommendation','recommend','next','action','strategy','summary','should','do'],
+    answer: 'The main recommendation is targeted growth, not blanket budget expansion. Protect pipeline quality first, expand coverage to unreached strong-fit accounts, and use attribution plus tracked-spend scenarios to size controlled tests. The three headline signals are $6.5M influenced pipeline, 67.9% unreached target accounts, and a cohort win-rate move from 37% to 15%.'
+  },
+  {
+    title: 'Coverage Gap',
+    keywords: ['coverage','unreached','accounts','target','email','6sense','reach','growth'],
+    answer: '3,256 target accounts, or 67.9%, have no tracked email or 6sense touch. That is the clearest growth lever because reached groups show stronger observed opportunity rates: email-only accounts are at 45.9%, both-channel accounts are at 42.6%, and not-reached accounts are at 17.5%. Use a holdout so the team can measure incremental lift.'
+  },
+  {
+    title: 'Sourced vs Influenced',
+    keywords: ['sourced','influenced','attribution','source','credit','marketing','touch','pipeline'],
+    answer: 'Marketing-sourced pipeline is conservative CRM source credit: $4.2M. Influenced pipeline is broader journey impact from accounts with marketing touchpoints before opportunity creation: $6.5M. Both are true, but they answer different questions. Use sourced for conservative reporting and influenced for journey context.'
+  },
+  {
+    title: 'Pipeline Quality',
+    keywords: ['quality','win','rate','cohort','decline','risk','pipeline','conversion'],
+    answer: 'Pipeline quality is the main risk. Cohort win rate moved from 37% in 2022Q1 to 15% in 2024Q4, while pipeline volume rose. That means growth should be paired with ICP and qualification review before increasing broad top-of-funnel spend.'
+  },
+  {
+    title: 'Budget and ROI',
+    keywords: ['budget','roi','spend','reallocate','allocation','scenario','cost','efficiency'],
+    answer: 'Budget scenarios are directional planning tools, not forecasts. They only model tracked-spend channels (6sense_display, linkedin) and assume historical efficiency holds at higher spend. The safe move is phased budget testing with marginal pipeline-per-dollar tracking, not one big reallocation.'
+  },
+  {
+    title: 'Caveats',
+    keywords: ['caveat','caveats','limits','limitation','causality','confidence','trust','risk'],
+    answer: 'Key caveats: attribution is directional and does not prove causality; web traffic is only connectable when domains match; low-volume channels can be unstable; ROI excludes channels without reliable spend; and win-probability scores are prioritization aids, not guaranteed outcomes.'
+  },
+  {
+    title: 'Validation and Data Quality',
+    keywords: ['validation','quality','data','clean','domain','unknown','concentration','date'],
+    answer: 'The dashboard passed validation with 0 warnings. The quality strip reports 96.4% opportunity domain coverage, 0 opportunities missing create date, 34.1% unknown/other channel share, 83.2% top-3 channel concentration, and 1.5x influenced-vs-sourced reconciliation.'
+  },
+  {
+    title: 'Model',
+    keywords: ['model','auc','prediction','probability','open','deals','machine','learning','ml'],
+    answer: 'The win-probability model is a prioritization signal for open opportunities. It scored 545 open deals, with AUC 0.796 using time-based 80/20 holdout. Use it to prioritize sales review, but validate performance against holdout outcomes and business context.'
+  }
+];
 
 function openCaveats() {
   document.body.classList.add('drawer-open');
@@ -1325,6 +1433,83 @@ if (printButton) printButton.addEventListener('click', () => window.print());
 if (caveatsButton) caveatsButton.addEventListener('click', openCaveats);
 if (closeCaveats) closeCaveats.addEventListener('click', closeCaveatsDrawer);
 if (drawerBackdrop) drawerBackdrop.addEventListener('click', closeCaveatsDrawer);
+function openAssistant() {
+  document.body.classList.add('assistant-open');
+  if (assistantPanel) assistantPanel.setAttribute('aria-hidden', 'false');
+  if (assistantButton) assistantButton.setAttribute('aria-expanded', 'true');
+  if (assistantBody && !assistantBody.dataset.seeded) {
+    addAssistantMessage('bot', 'Dashboard AI', 'Ask me about the recommendation, attribution, ROI caveats, account coverage, pipeline quality, or the ML model. I answer only from this dashboard.');
+    assistantBody.dataset.seeded = 'true';
+  }
+  setTimeout(() => assistantInput && assistantInput.focus(), 50);
+}
+function closeAssistantPanel() {
+  document.body.classList.remove('assistant-open');
+  if (assistantPanel) assistantPanel.setAttribute('aria-hidden', 'true');
+  if (assistantButton) assistantButton.setAttribute('aria-expanded', 'false');
+}
+function tokenizeAssistant(text) {
+  return text.toLowerCase().split(/[^a-z0-9$%.]+/).filter(Boolean);
+}
+function answerDashboardQuestion(question) {
+  const tokens = tokenizeAssistant(question);
+  let best = null;
+  let bestScore = 0;
+  ASSISTANT_KNOWLEDGE.forEach(item => {
+    const score = item.keywords.reduce((sum, kw) => sum + (tokens.includes(kw) || question.toLowerCase().includes(kw) ? 1 : 0), 0);
+    if (score > bestScore) {
+      best = item;
+      bestScore = score;
+    }
+  });
+  if (!best || bestScore === 0) {
+    return {
+      title: 'Try a dashboard question',
+      answer: 'I can answer questions about the main recommendation, marketing-sourced vs influenced pipeline, coverage gaps, ROI caveats, pipeline quality, data validation, and the win-probability model.'
+    };
+  }
+  return best;
+}
+function addAssistantMessage(role, title, text) {
+  if (!assistantBody) return;
+  const msg = document.createElement('div');
+  msg.className = `assistant-message ${role}`;
+  if (role === 'bot') {
+    const heading = document.createElement('strong');
+    heading.textContent = title;
+    msg.appendChild(heading);
+  }
+  const body = document.createElement('span');
+  body.textContent = text;
+  msg.appendChild(body);
+  assistantBody.appendChild(msg);
+  assistantBody.scrollTop = assistantBody.scrollHeight;
+}
+function submitAssistantQuestion(question) {
+  const q = question.trim();
+  if (!q) return;
+  addAssistantMessage('user', '', q);
+  const result = answerDashboardQuestion(q);
+  addAssistantMessage('bot', result.title, result.answer);
+}
+if (assistantButton) assistantButton.addEventListener('click', () => {
+  if (document.body.classList.contains('assistant-open')) closeAssistantPanel();
+  else openAssistant();
+});
+if (closeAssistant) closeAssistant.addEventListener('click', closeAssistantPanel);
+if (assistantForm) {
+  assistantForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    submitAssistantQuestion(assistantInput ? assistantInput.value : '');
+    if (assistantInput) assistantInput.value = '';
+  });
+}
+document.querySelectorAll('.assistant-chip').forEach(btn => {
+  btn.addEventListener('click', () => {
+    openAssistant();
+    submitAssistantQuestion(btn.dataset.question || btn.textContent || '');
+  });
+});
 if (menuButton) {
   menuButton.addEventListener('click', () => {
     const open = !document.body.classList.contains('sidebar-open');
@@ -1347,6 +1532,7 @@ if (resetButton) {
     if (first) showSection(first, 's-essential');
     setMode('analyst');
     closeCaveatsDrawer();
+    closeAssistantPanel();
     window.scrollTo({top:0, behavior:'smooth'});
   });
 }
@@ -1362,7 +1548,10 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'ArrowLeft' && links[idx - 1]) {
     links[idx - 1].click();
   }
-  if (event.key === 'Escape') closeCaveatsDrawer();
+  if (event.key === 'Escape') {
+    closeCaveatsDrawer();
+    closeAssistantPanel();
+  }
 });
 
 const initialSection = window.location.hash ? window.location.hash.slice(1) : '';
