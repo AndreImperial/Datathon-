@@ -15,7 +15,9 @@ CLEANED_DATA_DIR = ROOT / "data" / "cleaned"
 INTEGRATED_DATA_DIR = ROOT / "data" / "integrated"
 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+POLLINATIONS_API_URL = "https://text.pollinations.ai/openai"
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite"
+DEFAULT_POLLINATIONS_MODEL = "openai"
 DEFAULT_OLLAMA_MODEL = "llama3.1:8b"
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
 
@@ -292,6 +294,45 @@ def _call_gemini(prompt):
     return answer, None
 
 
+def _call_pollinations(prompt):
+    model = os.environ.get("POLLINATIONS_MODEL", DEFAULT_POLLINATIONS_MODEL)
+    payload = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.2,
+        "max_tokens": 650,
+    }
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        POLLINATIONS_API_URL,
+        data=body,
+        method="POST",
+        headers={
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+            "User-Agent": "Mozilla/5.0 Marketing-Datathon-Dashboard/1.0",
+        },
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=75) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        return None, f"Pollinations API error {exc.code}: {detail[:300]}"
+    except Exception as exc:
+        return None, f"Pollinations request failed: {exc}"
+
+    try:
+        answer = data["choices"][0]["message"]["content"].strip()
+    except (KeyError, IndexError, TypeError, AttributeError):
+        answer = ""
+
+    if not answer:
+        return None, "Pollinations returned an empty response."
+    return answer, None
+
+
 def _ollama_available():
     try:
         with urllib.request.urlopen(f"{OLLAMA_BASE_URL}/api/tags", timeout=1.5):
@@ -338,16 +379,25 @@ def _call_ollama(prompt):
 
 
 def _provider_order():
-    provider = os.environ.get("LLM_PROVIDER", "ollama").strip().lower()
+    provider = os.environ.get("LLM_PROVIDER", "pollinations").strip().lower()
+    if provider == "pollinations":
+        return ["pollinations", "gemini", "ollama"]
     if provider == "gemini":
-        return ["gemini", "ollama"]
-    return ["ollama", "gemini"]
+        return ["gemini", "pollinations", "ollama"]
+    if provider == "ollama":
+        return ["ollama", "pollinations", "gemini"]
+    return ["pollinations", "gemini", "ollama"]
 
 
 def _call_llm(prompt):
     errors = []
     for provider in _provider_order():
-        if provider == "ollama":
+        if provider == "pollinations":
+            answer, error = _call_pollinations(prompt)
+            if answer:
+                return answer, "pollinations", None
+            errors.append(error)
+        elif provider == "ollama":
             answer, error = _call_ollama(prompt)
             if answer:
                 return answer, "ollama", None
@@ -389,7 +439,8 @@ def health():
         "ok": True,
         "context": CONTEXT_PATH.exists(),
         "backend_data": CLEANED_DATA_DIR.exists() and INTEGRATED_DATA_DIR.exists(),
-        "llm_provider": os.environ.get("LLM_PROVIDER", "ollama"),
+        "llm_provider": os.environ.get("LLM_PROVIDER", "pollinations"),
+        "pollinations_model": os.environ.get("POLLINATIONS_MODEL", DEFAULT_POLLINATIONS_MODEL),
         "ollama_available": _ollama_available(),
         "ollama_base_url": OLLAMA_BASE_URL,
         "ollama_model": os.environ.get("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL),

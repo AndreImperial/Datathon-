@@ -2206,7 +2206,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <input class="assistant-input" id="assistant-input" type="text" autocomplete="off" placeholder="Ask about ABM, ROI, ICP, attribution, coverage, or next steps" aria-label="Ask the dashboard assistant">
     <button class="action-button" type="submit"><i data-lucide="send" aria-hidden="true"></i><span>Ask</span></button>
   </form>
-  <div class="assistant-footnote">Uses local Ollama when available, then Gemini if configured. Typed answers require a live LLM.</div>
+  <div class="assistant-footnote">Uses a hosted free LLM API by default, with Gemini or Ollama as optional overrides. No canned typed answers.</div>
 </aside>
 
 <script>
@@ -2428,7 +2428,7 @@ async function callDashboardLLM(question) {{
   if (!response.ok) throw new Error(data.error || 'Assistant API unavailable');
   if (!data || !data.answer) throw new Error('Assistant returned no answer');
   return {{
-    title: data.mode === 'ollama' ? 'Ollama Agent' : (data.mode === 'gemini' ? 'Gemini Assistant' : 'Dashboard AI'),
+    title: data.mode === 'pollinations' ? 'Hosted AI Agent' : (data.mode === 'ollama' ? 'Ollama Agent' : (data.mode === 'gemini' ? 'Gemini Assistant' : 'Dashboard AI')),
     answer: data.answer
   }};
 }}
@@ -2459,7 +2459,7 @@ async function submitAssistantQuestion(question) {{
     pending.querySelector('span').textContent = result.answer;
   }} catch (err) {{
     pending.querySelector('strong').textContent = 'LLM unavailable';
-    pending.querySelector('span').textContent = `${{err.message}} Run Ollama locally with "ollama pull llama3.1:8b" and "ollama serve", then refresh this dashboard.`;
+    pending.querySelector('span').textContent = `${{err.message}} The assistant only answers through a live LLM API; please try again in a moment or configure another provider.`;
   }}
 }}
 if (assistantButton) assistantButton.addEventListener('click', () => {{

@@ -77,10 +77,9 @@ Open the static dashboard directly:
 public/index.html
 ```
 
-The dashboard also includes an optional AI assistant. For free local LLM answers with no API key, install Ollama, pull a model, and run the Python web app:
+The dashboard also includes an AI assistant. For live LLM answers with no API key, run the Python web app:
 
 ```bash
-ollama pull llama3.1:8b
 python app.py
 ```
 
@@ -90,30 +89,32 @@ Then open:
 http://localhost:8050
 ```
 
-Optional Ollama settings:
+By default, the assistant uses the hosted free Pollinations OpenAI-compatible endpoint:
 
 ```text
-OLLAMA_BASE_URL=http://127.0.0.1:11434
-OLLAMA_MODEL=llama3.1:8b
-LLM_PROVIDER=ollama
+LLM_PROVIDER=pollinations
+POLLINATIONS_MODEL=openai
 ```
 
-For a lighter local model, pull `llama3.2:3b` and set:
+The assistant sends a scoped agent prompt with both the dashboard context and compact summaries of the backend Parquet datasets: channel pipeline, attribution, cohort analysis, account coverage, targeting matrix, creative performance, journey sequences, win probability, and raw source table summaries. Typed questions are answered by a live LLM, not hardcoded fallback logic.
+
+Gemini is still supported as an optional provider. To prefer it, set:
 
 ```text
-OLLAMA_MODEL=llama3.2:3b
-```
-
-The assistant sends Ollama a scoped agent prompt with both the dashboard context and compact summaries of the backend Parquet datasets: channel pipeline, attribution, cohort analysis, account coverage, targeting matrix, creative performance, journey sequences, win probability, and raw source table summaries.
-
-Gemini is still supported as an optional fallback. To use it, set:
-
-```text
+LLM_PROVIDER=gemini
 GEMINI_API_KEY=<your Google AI Studio key>
 GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-If Ollama and Gemini are both unavailable, typed assistant questions show an LLM-unavailable message instead of returning canned answers.
+Local Ollama remains available as an optional override if you want local inference:
+
+```text
+LLM_PROVIDER=ollama
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=llama3.1:8b
+```
+
+If all configured providers are unavailable, typed assistant questions show an LLM-unavailable message instead of returning canned answers.
 
 ## Deploy
 
@@ -139,7 +140,7 @@ Build command: pip install -r requirements.txt
 Start command: gunicorn app:app
 ```
 
-Local Ollama runs on your own computer by default. On Render, use Gemini or point `OLLAMA_BASE_URL` to a reachable Ollama server you control.
+On Render, the default hosted Pollinations provider works without an API key. You can still set `GEMINI_API_KEY` or point `OLLAMA_BASE_URL` to a reachable Ollama server if you want another provider.
 
 ### GitHub Pages
 
