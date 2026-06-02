@@ -2278,6 +2278,8 @@ const assistantPanel = document.getElementById('assistant-panel');
 const assistantBody = document.getElementById('assistant-body');
 const assistantForm = document.getElementById('assistant-form');
 const assistantInput = document.getElementById('assistant-input');
+const assistantSubmit = assistantForm ? assistantForm.querySelector('button[type="submit"]') : null;
+let assistantBusy = false;
 
 const ASSISTANT_KNOWLEDGE = [
   {{
@@ -2426,7 +2428,7 @@ async function callDashboardLLM(question) {{
   }});
   const data = await response.json().catch(() => ({{}}));
   if (!response.ok) throw new Error(data.error || 'Assistant API unavailable');
-  if (!data || !data.answer) throw new Error('Assistant returned no answer');
+  if (!data || !data.answer) throw new Error(data.error || `Assistant returned no answer from ${{data.mode || 'the configured provider'}}`);
   return {{
     title: data.mode === 'pollinations' ? 'Hosted AI Agent' : (data.mode === 'ollama' ? 'Ollama Agent' : (data.mode === 'gemini' ? 'Gemini Assistant' : 'Dashboard AI')),
     answer: data.answer
@@ -2450,7 +2452,10 @@ function addAssistantMessage(role, title, text) {{
 }}
 async function submitAssistantQuestion(question) {{
   const q = question.trim();
-  if (!q) return;
+  if (!q || assistantBusy) return;
+  assistantBusy = true;
+  if (assistantSubmit) assistantSubmit.disabled = true;
+  if (assistantInput) assistantInput.disabled = true;
   addAssistantMessage('user', '', q);
   const pending = addAssistantMessage('bot', 'Dashboard AI', 'Thinking...');
   try {{
@@ -2460,6 +2465,11 @@ async function submitAssistantQuestion(question) {{
   }} catch (err) {{
     pending.querySelector('strong').textContent = 'LLM unavailable';
     pending.querySelector('span').textContent = `${{err.message}} The assistant only answers through a live LLM API; please try again in a moment or configure another provider.`;
+  }} finally {{
+    assistantBusy = false;
+    if (assistantSubmit) assistantSubmit.disabled = false;
+    if (assistantInput) assistantInput.disabled = false;
+    setTimeout(() => assistantInput && assistantInput.focus(), 50);
   }}
 }}
 if (assistantButton) assistantButton.addEventListener('click', () => {{
@@ -2476,6 +2486,7 @@ if (assistantForm) {{
 }}
 document.querySelectorAll('.assistant-chip').forEach(btn => {{
   btn.addEventListener('click', () => {{
+    if (assistantBusy) return;
     openAssistant();
     submitAssistantQuestion(btn.dataset.question || btn.textContent || '');
   }});

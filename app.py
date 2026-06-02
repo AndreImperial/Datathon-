@@ -1,5 +1,6 @@
 import json
 import os
+import threading
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -20,6 +21,7 @@ DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite"
 DEFAULT_POLLINATIONS_MODEL = "openai"
 DEFAULT_OLLAMA_MODEL = "llama3.1:8b"
 OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
+POLLINATIONS_LOCK = threading.Lock()
 
 app = Flask(__name__, static_folder=str(PUBLIC_DIR), static_url_path="")
 
@@ -222,6 +224,10 @@ def _backend_data_context():
     return context
 
 
+def _prompt_json(value):
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
 def _scope_prompt(context, data_context, message):
     return f"""
 You are the AI assistant for an educational marketing analytics dashboard.
@@ -239,10 +245,10 @@ If the exact row-level answer is not present in the summaries, say what table co
 When causality, attribution, or ROI comes up, mention that the dashboard is directional unless a holdout/experiment proves lift.
 
 Dashboard context:
-{json.dumps(context, indent=2)}
+{_prompt_json(context)}
 
 Backend data context:
-{json.dumps(data_context, indent=2)}
+{_prompt_json(data_context)}
 
 User question:
 {message}
@@ -315,16 +321,26 @@ def _call_pollinations(prompt):
     )
 
     try:
-        with urllib.request.urlopen(req, timeout=75) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
+        with POLLINATIONS_LOCK:
+            with urllib.request.urlopen(req, timeout=75) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
         return None, f"Pollinations API error {exc.code}: {detail[:300]}"
     except Exception as exc:
         return None, f"Pollinations request failed: {exc}"
 
+    answer = ""
     try:
-        answer = data["choices"][0]["message"]["content"].strip()
+        choice = data["choices"][0]
+        message = choice.get("message") or {}
+        content = message.get("content") or choice.get("text") or data.get("response")
+        if isinstance(content, list):
+            content = "".join(
+                part.get("text", "") if isinstance(part, dict) else str(part)
+                for part in content
+            )
+        answer = str(content or "").strip()
     except (KeyError, IndexError, TypeError, AttributeError):
         answer = ""
 
@@ -430,6 +446,8 @@ def chat():
     answer, mode, error = _call_llm(prompt)
     if error:
         return jsonify({"error": error, "mode": mode}), 503
+    if not answer:
+        return jsonify({"error": f"{mode} returned no answer.", "mode": mode}), 502
     return jsonify({"answer": answer, "mode": mode})
 
 
