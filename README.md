@@ -77,21 +77,43 @@ Open the static dashboard directly:
 public/index.html
 ```
 
-The Render deployment is configured as a static web service that publishes the `public` folder.
+The dashboard also includes an optional AI assistant. For free local LLM answers with no API key, install Ollama, pull a model, and run the Python web app:
 
-The dashboard also includes an optional AI assistant. For full LLM answers, deploy the Python web app and set:
+```bash
+ollama pull llama3.1:8b
+python app.py
+```
+
+Then open:
+
+```text
+http://localhost:8050
+```
+
+Optional Ollama settings:
+
+```text
+OLLAMA_BASE_URL=http://127.0.0.1:11434
+OLLAMA_MODEL=llama3.1:8b
+LLM_PROVIDER=ollama
+```
+
+For a lighter local model, pull `llama3.2:3b` and set:
+
+```text
+OLLAMA_MODEL=llama3.2:3b
+```
+
+The assistant sends Ollama a scoped agent prompt with both the dashboard context and compact summaries of the backend Parquet datasets: channel pipeline, attribution, cohort analysis, account coverage, targeting matrix, creative performance, journey sequences, win probability, and raw source table summaries.
+
+Gemini is still supported as an optional fallback. To use it, set:
 
 ```text
 GEMINI_API_KEY=<your Google AI Studio key>
-```
-
-Optional:
-
-```text
 GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-When configured, the assistant uses Gemini with both the dashboard context and compact summaries of the backend Parquet datasets: channel pipeline, attribution, cohort analysis, account coverage, targeting matrix, creative performance, journey sequences, win probability, and raw source table summaries. If the API key or backend is unavailable, the dashboard falls back to built-in static marketing answers.
+If Ollama and Gemini are both unavailable, the dashboard falls back to built-in static marketing answers.
 
 ## Deploy
 
@@ -107,7 +129,7 @@ public/index.html
 
 1. Connect this GitHub repository to Render.
 2. Create a Blueprint or web service from the repo.
-3. Add `GEMINI_API_KEY` as an environment variable if you want live LLM answers.
+3. Add `GEMINI_API_KEY` as an environment variable if you want hosted live LLM answers.
 
 Expected settings:
 
@@ -116,6 +138,8 @@ Runtime: Python
 Build command: pip install -r requirements.txt
 Start command: gunicorn app:app
 ```
+
+Local Ollama runs on your own computer by default. On Render, use Gemini or point `OLLAMA_BASE_URL` to a reachable Ollama server you control.
 
 ### GitHub Pages
 

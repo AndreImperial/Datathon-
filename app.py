@@ -15,7 +15,9 @@ CLEANED_DATA_DIR = ROOT / "data" / "cleaned"
 INTEGRATED_DATA_DIR = ROOT / "data" / "integrated"
 
 GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-DEFAULT_MODEL = "gemini-2.5-flash-lite"
+DEFAULT_GEMINI_MODEL = "gemini-2.5-flash-lite"
+DEFAULT_OLLAMA_MODEL = "llama3.1:8b"
+OLLAMA_BASE_URL = os.environ.get("OLLAMA_BASE_URL", "http://127.0.0.1:11434").rstrip("/")
 
 app = Flask(__name__, static_folder=str(PUBLIC_DIR), static_url_path="")
 
@@ -250,7 +252,7 @@ def _call_gemini(prompt):
     if not api_key:
         return None, "GEMINI_API_KEY is not configured."
 
-    model = os.environ.get("GEMINI_MODEL", DEFAULT_MODEL)
+    model = os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL)
     url = GEMINI_API_URL.format(model=model)
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
@@ -290,6 +292,74 @@ def _call_gemini(prompt):
     return answer, None
 
 
+def _ollama_available():
+    try:
+        with urllib.request.urlopen(f"{OLLAMA_BASE_URL}/api/tags", timeout=1.5):
+            return True
+    except Exception:
+        return False
+
+
+def _call_ollama(prompt):
+    model = os.environ.get("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL)
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "options": {
+            "temperature": 0.2,
+            "num_predict": 700,
+        },
+    }
+    body = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        f"{OLLAMA_BASE_URL}/api/generate",
+        data=body,
+        method="POST",
+        headers={"Content-Type": "application/json"},
+    )
+
+    try:
+        with urllib.request.urlopen(req, timeout=80) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        return None, f"Ollama API error {exc.code}: {detail[:300]}"
+    except urllib.error.URLError as exc:
+        reason = getattr(exc, "reason", None) or str(exc)
+        return None, f"Ollama is not reachable at {OLLAMA_BASE_URL}. Start Ollama or set OLLAMA_BASE_URL. Detail: {reason}"
+    except Exception as exc:
+        return None, f"Ollama request failed: {exc}"
+
+    answer = str(data.get("response", "")).strip()
+    if not answer:
+        return None, "Ollama returned an empty response."
+    return answer, None
+
+
+def _provider_order():
+    provider = os.environ.get("LLM_PROVIDER", "ollama").strip().lower()
+    if provider == "gemini":
+        return ["gemini", "ollama"]
+    return ["ollama", "gemini"]
+
+
+def _call_llm(prompt):
+    errors = []
+    for provider in _provider_order():
+        if provider == "ollama":
+            answer, error = _call_ollama(prompt)
+            if answer:
+                return answer, "ollama", None
+            errors.append(error)
+        elif provider == "gemini":
+            answer, error = _call_gemini(prompt)
+            if answer:
+                return answer, "gemini", None
+            errors.append(error)
+    return None, "fallback", " | ".join(err for err in errors if err)
+
+
 @app.get("/")
 def index():
     return send_from_directory(PUBLIC_DIR, "index.html")
@@ -307,10 +377,10 @@ def chat():
     context = _load_context()
     data_context = _backend_data_context()
     prompt = _scope_prompt(context, data_context, message)
-    answer, error = _call_gemini(prompt)
+    answer, mode, error = _call_llm(prompt)
     if error:
-        return jsonify({"error": error, "mode": "fallback"}), 503
-    return jsonify({"answer": answer, "mode": "gemini"})
+        return jsonify({"error": error, "mode": mode}), 503
+    return jsonify({"answer": answer, "mode": mode})
 
 
 @app.get("/health")
@@ -319,7 +389,12 @@ def health():
         "ok": True,
         "context": CONTEXT_PATH.exists(),
         "backend_data": CLEANED_DATA_DIR.exists() and INTEGRATED_DATA_DIR.exists(),
+        "llm_provider": os.environ.get("LLM_PROVIDER", "ollama"),
+        "ollama_available": _ollama_available(),
+        "ollama_base_url": OLLAMA_BASE_URL,
+        "ollama_model": os.environ.get("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL),
         "gemini_configured": bool(os.environ.get("GEMINI_API_KEY")),
+        "gemini_model": os.environ.get("GEMINI_MODEL", DEFAULT_GEMINI_MODEL),
     })
 
 
