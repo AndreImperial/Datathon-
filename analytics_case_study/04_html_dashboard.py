@@ -2114,7 +2114,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div class="assistant-head">
     <div class="assistant-title">
       <i data-lucide="bot" aria-hidden="true"></i>
-      <div><strong>Dashboard AI</strong><span>Answers from this analysis only</span></div>
+      <div><strong>Dashboard AI</strong><span>Marketing questions grounded in this analysis</span></div>
     </div>
     <button class="action-button" id="close-assistant" type="button"><i data-lucide="x" aria-hidden="true"></i><span>Close</span></button>
   </div>
@@ -2123,13 +2123,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <button class="assistant-chip" type="button" data-question="What is the main recommendation?">Main recommendation</button>
     <button class="assistant-chip" type="button" data-question="Why is coverage important?">Coverage</button>
     <button class="assistant-chip" type="button" data-question="What is marketing sourced vs influenced?">Attribution</button>
-    <button class="assistant-chip" type="button" data-question="What are the caveats?">Caveats</button>
+    <button class="assistant-chip" type="button" data-question="How should we explain ABM?">ABM</button>
+    <button class="assistant-chip" type="button" data-question="How should we test this strategy?">Testing</button>
   </div>
   <form class="assistant-form" id="assistant-form">
-    <input class="assistant-input" id="assistant-input" type="text" autocomplete="off" placeholder="Ask about ROI, attribution, coverage, or next steps" aria-label="Ask the dashboard assistant">
+    <input class="assistant-input" id="assistant-input" type="text" autocomplete="off" placeholder="Ask about ABM, ROI, ICP, attribution, coverage, or next steps" aria-label="Ask the dashboard assistant">
     <button class="action-button" type="submit"><i data-lucide="send" aria-hidden="true"></i><span>Ask</span></button>
   </form>
-  <div class="assistant-footnote">This static assistant uses dashboard facts and rules. It does not call an external model or send data anywhere.</div>
+  <div class="assistant-footnote">This static assistant answers marketing questions around this dashboard. It does not call an external model or send data anywhere.</div>
 </aside>
 
 <script>
@@ -2205,8 +2206,18 @@ const assistantInput = document.getElementById('assistant-input');
 const ASSISTANT_KNOWLEDGE = [
   {{
     title: 'Main Recommendation',
-    keywords: ['main','recommendation','recommend','next','action','strategy','summary','should','do'],
+    keywords: ['main','recommendation','recommend','next','action','strategy','summary','should','do','marketing','plan'],
     answer: 'The main recommendation is targeted growth, not blanket budget expansion. Protect pipeline quality first, expand coverage to unreached strong-fit accounts, and use attribution plus tracked-spend scenarios to size controlled tests. The three headline signals are {influenced_pipeline} influenced pipeline, {unreached_pct} unreached target accounts, and a cohort win-rate move from {cohort_start_rate} to {cohort_end_rate}.'
+  }},
+  {{
+    title: 'ABM Explanation',
+    keywords: ['abm','account','based','marketing','target','accounts','6sense','intent','explain'],
+    answer: 'ABM means marketing and sales focus on a defined list of target accounts instead of advertising broadly to everyone. In this dashboard, ABM shows up through target account coverage, 6sense display touches, email engagement, account profile fit, and opportunity creation. The strategic question is not just "which channel got credit?" It is "which target accounts should we activate next, and how do we prove lift?"'
+  }},
+  {{
+    title: 'ICP and Targeting',
+    keywords: ['icp','ideal','customer','profile','fit','segment','targeting','industry','enterprise','commercial','mid'],
+    answer: 'ICP is the definition of accounts that are most worth pursuing. Here, ICP decisions should use segment, industry, 6sense profile fit, win rate, and deal size together. The dashboard recommendation is to prioritize strong-fit unreached accounts first, because broad expansion could worsen the win-rate quality issue.'
   }},
   {{
     title: 'Coverage Gap',
@@ -2220,13 +2231,43 @@ const ASSISTANT_KNOWLEDGE = [
   }},
   {{
     title: 'Pipeline Quality',
-    keywords: ['quality','win','rate','cohort','decline','risk','pipeline','conversion'],
+    keywords: ['quality','win','rate','cohort','decline','risk','pipeline','conversion','funnel','stage'],
     answer: 'Pipeline quality is the main risk. Cohort win rate moved from {cohort_start_rate} in {cohort_start_quarter} to {cohort_end_rate} in {cohort_end_quarter}, while pipeline volume rose. That means growth should be paired with ICP and qualification review before increasing broad top-of-funnel spend.'
+  }},
+  {{
+    title: 'Funnel vs Pipeline',
+    keywords: ['funnel','pipeline','stage','volume','opportunity','conversion','deals','created'],
+    answer: 'Funnel volume tells you how much activity is happening. Pipeline tells you the dollar value of opportunities created. The dashboard keeps those ideas separate because more activity is not automatically better. The key concern is that pipeline grew while cohort win rate moved from {cohort_start_rate} to {cohort_end_rate}, so conversion quality matters as much as volume.'
   }},
   {{
     title: 'Budget and ROI',
     keywords: ['budget','roi','spend','reallocate','allocation','scenario','cost','efficiency'],
     answer: 'Budget scenarios are directional planning tools, not forecasts. They only model tracked-spend channels ({tracked_spend_channels}) and assume historical efficiency holds at higher spend. The safe move is phased budget testing with marginal pipeline-per-dollar tracking, not one big reallocation.'
+  }},
+  {{
+    title: 'Experiment Design',
+    keywords: ['test','testing','experiment','holdout','lift','causal','causality','incremental','measure'],
+    answer: 'Use a holdout test. Pick a set of unreached strong-fit accounts, split them into treatment and holdout groups, then run email-first coverage with a tested 6sense overlay for treatment only. Measure account coverage, opportunity creation, meetings, pipeline, and win-rate quality. That turns the dashboard insight into evidence of incremental lift.'
+  }},
+  {{
+    title: 'Email and Creative Strategy',
+    keywords: ['email','creative','ads','ctr','click','open','message','copy','seniority','campaign'],
+    answer: 'Use email and creative metrics as engagement signals, not final revenue proof. Strong email or ad engagement tells you which audiences and messages deserve follow-up. For ABM, tailor email by seniority, reuse high-CTR creative patterns, and connect engagement to account-level next steps rather than judging campaigns by clicks alone.'
+  }},
+  {{
+    title: '6sense Role',
+    keywords: ['6sense','display','intent','overlay','journey','sequence','touchpoint'],
+    answer: '6sense is best framed as an ABM coverage and journey-support channel. The recommendation is not simply to spend more on 6sense; it is to test a 6sense overlay after email engagement, especially for strong-fit unreached accounts. That keeps the strategy targeted and measurable.'
+  }},
+  {{
+    title: 'Executive Talk Track',
+    keywords: ['presentation','present','judge','executive','talk','story','slide','explain','defend'],
+    answer: 'Use this talk track: first, marketing influence is larger than CRM source credit ({influenced_pipeline} influenced vs {sourced_pipeline} sourced). Second, the biggest growth lever is coverage because {unreached_pct} of target accounts are unreached. Third, protect quality because win rate moved from {cohort_start_rate} to {cohort_end_rate}. Then recommend a holdout-tested coverage expansion.'
+  }},
+  {{
+    title: 'Low Sample Sizes',
+    keywords: ['sample','low','small','unstable','confidence','statistical','significant','significance'],
+    answer: 'Small samples should be treated as signals to investigate, not proof. A channel or segment can show a high win rate because it has very few deals. For decisions, pair rates with deal count, pipeline size, and confidence labels. The dashboard flags low-N contexts so budget decisions do not overreact to noisy slices.'
   }},
   {{
     title: 'Caveats',
