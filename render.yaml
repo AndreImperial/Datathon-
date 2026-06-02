@@ -1,7 +1,7 @@
 services:
   - type: web
     name: marketing-analytics-dashboard
-    runtime: static
-    staticPublishPath: public
-    buildCommand: ""
+    runtime: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn app:app"
     pullRequestPreviewsEnabled: false

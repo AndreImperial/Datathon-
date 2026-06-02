@@ -1,0 +1,68 @@
+{
+  "project": "Marketing Analytics Datathon Dashboard",
+  "scope": [
+    "B2B marketing analytics",
+    "Account-Based Marketing (ABM)",
+    "Marketing attribution",
+    "Pipeline and revenue analysis",
+    "ICP, account coverage, 6sense, email, creative, and budget strategy"
+  ],
+  "guardrails": [
+    "Answer only questions related to this dashboard, marketing analytics, ABM strategy, attribution, ROI, pipeline quality, ICP, 6sense, email, creative, budget testing, data quality, or presenting the findings.",
+    "If a user asks about unrelated topics, politely redirect to dashboard and marketing questions.",
+    "Do not invent new numbers. Use the facts below and clearly label directional assumptions.",
+    "Attribution and ROI are planning signals, not proof of causality."
+  ],
+  "metrics": {
+    "total_pipeline": "$25.0M",
+    "won_revenue": "$5.4M",
+    "total_opportunities": "3,288",
+    "win_rate": "32.6%",
+    "marketing_sourced_pipeline": "$4.2M",
+    "marketing_sourced_share": "16.8%",
+    "marketing_influenced_pipeline": "$6.5M",
+    "sourced_pipeline": "$4.2M",
+    "unreached_accounts": "3,256",
+    "unreached_pct": "67.9%",
+    "target_accounts": "4,797",
+    "email_only_opportunity_rate": "45.9%",
+    "both_channels_opportunity_rate": "42.6%",
+    "not_reached_opportunity_rate": "17.5%",
+    "cohort_start_win_rate": "37%",
+    "cohort_end_win_rate": "15%",
+    "cohort_start_quarter": "2022Q1",
+    "cohort_end_quarter": "2024Q4",
+    "model_auc": "0.796",
+    "model_validation": "time-based 80/20 holdout",
+    "open_scored_deals": "545",
+    "domain_match_rate": "96.4%",
+    "missing_create_dates": "0",
+    "unknown_channel_pct": "34.1%",
+    "top3_pipeline_share": "83.2%",
+    "attribution_reconciliation": "1.5x",
+    "tracked_spend_channels": "6sense_display, linkedin"
+  },
+  "recommendation": {
+    "headline": "Targeted growth, not blanket budget expansion.",
+    "actions": [
+      "Protect pipeline quality by reviewing ICP and qualification before scaling broad top-of-funnel volume.",
+      "Expand coverage to unreached strong-fit target accounts.",
+      "Start with email coverage and test a 6sense overlay.",
+      "Use sourced and influenced attribution together, with sourced as conservative credit and influenced as journey context.",
+      "Run holdout or phased tests to measure incremental lift before large budget changes."
+    ]
+  },
+  "caveats": [
+    "Attribution is directional and does not prove causality.",
+    "Spend ROI only covers channels with reliable tracked spend.",
+    "Low-volume channels and segments can be unstable.",
+    "Web traffic is partially anonymous unless matched to account domains.",
+    "Win probability supports prioritization, not guaranteed outcomes."
+  ],
+  "marketing_concepts": {
+    "abm": "ABM focuses sales and marketing on a defined target account list instead of broad demand generation.",
+    "icp": "ICP defines the accounts most worth pursuing using profile fit, segment, industry, win rate, and deal size.",
+    "sourced_vs_influenced": "Sourced is conservative CRM origin credit; influenced is broader account journey impact from marketing touches before opportunity creation.",
+    "holdout_test": "Use treatment and holdout groups to measure whether coverage expansion creates incremental meetings, opportunities, pipeline, and win-rate quality."
+  }
+}

@@ -25,6 +25,8 @@ OUTPUT_HTML = os.path.join(
     os.path.dirname(__file__), "..", "outputs", "dashboard", "Marketing_Analytics_Dashboard.html"
 )
 PUBLIC_HTML = os.path.join(os.path.dirname(__file__), "..", "public", "index.html")
+OUTPUT_CONTEXT = os.path.join(os.path.dirname(__file__), "..", "outputs", "dashboard", "dashboard_context.json")
+PUBLIC_CONTEXT = os.path.join(os.path.dirname(__file__), "..", "public", "dashboard_context.json")
 
 # â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Data loaders
@@ -820,6 +822,80 @@ def clean_generated_html(html: str) -> str:
     for bad, good in replacements.items():
         html = html.replace(bad, good)
     return html
+
+
+def build_dashboard_context():
+    quality_vals = dashboard_quality_vals()
+    coverage_vals = coverage_summary_vals()
+    cohort_vals = cohort_summary_vals()
+    return {
+        "project": "Marketing Analytics Datathon Dashboard",
+        "scope": [
+            "B2B marketing analytics",
+            "Account-Based Marketing (ABM)",
+            "Marketing attribution",
+            "Pipeline and revenue analysis",
+            "ICP, account coverage, 6sense, email, creative, and budget strategy",
+        ],
+        "guardrails": [
+            "Answer only questions related to this dashboard, marketing analytics, ABM strategy, attribution, ROI, pipeline quality, ICP, 6sense, email, creative, budget testing, data quality, or presenting the findings.",
+            "If a user asks about unrelated topics, politely redirect to dashboard and marketing questions.",
+            "Do not invent new numbers. Use the facts below and clearly label directional assumptions.",
+            "Attribution and ROI are planning signals, not proof of causality.",
+        ],
+        "metrics": {
+            "total_pipeline": fmt(total_pipeline),
+            "won_revenue": fmt(won_pipeline),
+            "total_opportunities": f"{total_deals:,}",
+            "win_rate": f"{win_rate:.1%}",
+            "marketing_sourced_pipeline": fmt(mktg_pipeline),
+            "marketing_sourced_share": f"{mktg_pct:.1%}",
+            "marketing_influenced_pipeline": influenced_pipeline_val(),
+            "sourced_pipeline": sourced_pipeline_val(),
+            "unreached_accounts": coverage_vals["unreached_accounts"],
+            "unreached_pct": coverage_vals["unreached_pct"],
+            "target_accounts": coverage_vals["target_accounts"],
+            "email_only_opportunity_rate": coverage_vals["email_only_rate"],
+            "both_channels_opportunity_rate": coverage_vals["both_rate"],
+            "not_reached_opportunity_rate": coverage_vals["not_reached_rate"],
+            "cohort_start_win_rate": cohort_vals["cohort_start_rate"],
+            "cohort_end_win_rate": cohort_vals["cohort_end_rate"],
+            "cohort_start_quarter": cohort_vals["cohort_start_quarter"],
+            "cohort_end_quarter": cohort_vals["cohort_end_quarter"],
+            "model_auc": model_auc_text(),
+            "model_validation": model_validation_text(),
+            "open_scored_deals": f"{open_deals:,}",
+            "domain_match_rate": quality_vals["domain_match_rate"],
+            "missing_create_dates": quality_vals["missing_create_dates"],
+            "unknown_channel_pct": quality_vals["unknown_channel_pct"],
+            "top3_pipeline_share": quality_vals["top3_pipeline_share"],
+            "attribution_reconciliation": quality_vals["attribution_reconciliation"],
+            "tracked_spend_channels": tracked_spend_channels_text(),
+        },
+        "recommendation": {
+            "headline": "Targeted growth, not blanket budget expansion.",
+            "actions": [
+                "Protect pipeline quality by reviewing ICP and qualification before scaling broad top-of-funnel volume.",
+                "Expand coverage to unreached strong-fit target accounts.",
+                "Start with email coverage and test a 6sense overlay.",
+                "Use sourced and influenced attribution together, with sourced as conservative credit and influenced as journey context.",
+                "Run holdout or phased tests to measure incremental lift before large budget changes.",
+            ],
+        },
+        "caveats": [
+            "Attribution is directional and does not prove causality.",
+            "Spend ROI only covers channels with reliable tracked spend.",
+            "Low-volume channels and segments can be unstable.",
+            "Web traffic is partially anonymous unless matched to account domains.",
+            "Win probability supports prioritization, not guaranteed outcomes.",
+        ],
+        "marketing_concepts": {
+            "abm": "ABM focuses sales and marketing on a defined target account list instead of broad demand generation.",
+            "icp": "ICP defines the accounts most worth pursuing using profile fit, segment, industry, win rate, and deal size.",
+            "sourced_vs_influenced": "Sourced is conservative CRM origin credit; influenced is broader account journey impact from marketing touches before opportunity creation.",
+            "holdout_test": "Use treatment and holdout groups to measure whether coverage expansion creates incremental meetings, opportunities, pipeline, and win-rate quality.",
+        },
+    }
 
 
 HTML_TEMPLATE = """<!DOCTYPE html>
@@ -2130,7 +2206,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <input class="assistant-input" id="assistant-input" type="text" autocomplete="off" placeholder="Ask about ABM, ROI, ICP, attribution, coverage, or next steps" aria-label="Ask the dashboard assistant">
     <button class="action-button" type="submit"><i data-lucide="send" aria-hidden="true"></i><span>Ask</span></button>
   </form>
-  <div class="assistant-footnote">This static assistant answers marketing questions around this dashboard. It does not call an external model or send data anywhere.</div>
+  <div class="assistant-footnote">Uses the Gemini proxy when configured; otherwise falls back to built-in dashboard answers.</div>
 </aside>
 
 <script>
@@ -2335,6 +2411,20 @@ function answerDashboardQuestion(question) {{
   }}
   return best;
 }}
+async function callDashboardLLM(question) {{
+  const response = await fetch('/api/chat', {{
+    method: 'POST',
+    headers: {{'Content-Type': 'application/json'}},
+    body: JSON.stringify({{message: question}})
+  }});
+  if (!response.ok) throw new Error('Assistant API unavailable');
+  const data = await response.json();
+  if (!data || !data.answer) throw new Error('Assistant returned no answer');
+  return {{
+    title: data.mode === 'gemini' ? 'Gemini Assistant' : 'Dashboard AI',
+    answer: data.answer
+  }};
+}}
 function addAssistantMessage(role, title, text) {{
   if (!assistantBody) return;
   const msg = document.createElement('div');
@@ -2349,13 +2439,22 @@ function addAssistantMessage(role, title, text) {{
   msg.appendChild(body);
   assistantBody.appendChild(msg);
   assistantBody.scrollTop = assistantBody.scrollHeight;
+  return msg;
 }}
-function submitAssistantQuestion(question) {{
+async function submitAssistantQuestion(question) {{
   const q = question.trim();
   if (!q) return;
   addAssistantMessage('user', '', q);
-  const result = answerDashboardQuestion(q);
-  addAssistantMessage('bot', result.title, result.answer);
+  const pending = addAssistantMessage('bot', 'Dashboard AI', 'Thinking...');
+  try {{
+    const result = await callDashboardLLM(q);
+    pending.querySelector('strong').textContent = result.title;
+    pending.querySelector('span').textContent = result.answer;
+  }} catch (err) {{
+    const result = answerDashboardQuestion(q);
+    pending.querySelector('strong').textContent = result.title;
+    pending.querySelector('span').textContent = result.answer;
+  }}
 }}
 if (assistantButton) assistantButton.addEventListener('click', () => {{
   if (document.body.classList.contains('assistant-open')) closeAssistantPanel();
@@ -2907,12 +3006,17 @@ def main():
 
     with open(OUTPUT_HTML, "w", encoding="utf-8") as f:
         f.write(html)
+    context = build_dashboard_context()
+    with open(OUTPUT_CONTEXT, "w", encoding="utf-8") as f:
+        json.dump(context, f, indent=2)
     os.makedirs(os.path.dirname(PUBLIC_HTML), exist_ok=True)
     shutil.copyfile(OUTPUT_HTML, PUBLIC_HTML)
+    shutil.copyfile(OUTPUT_CONTEXT, PUBLIC_CONTEXT)
 
     size_kb = os.path.getsize(OUTPUT_HTML) / 1024
     print(f"  OK Saved -> {OUTPUT_HTML}")
     print(f"  OK Copied -> {PUBLIC_HTML}")
+    print(f"  OK Context -> {PUBLIC_CONTEXT}")
     print(f"  File size: {size_kb:.0f} KB")
     print("\n  Open in any browser â€” no server required.")
 

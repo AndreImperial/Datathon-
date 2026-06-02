@@ -79,6 +79,20 @@ public/index.html
 
 The Render deployment is configured as a static web service that publishes the `public` folder.
 
+The dashboard also includes an optional AI assistant. For full LLM answers, deploy the Python web app and set:
+
+```text
+GEMINI_API_KEY=<your Google AI Studio key>
+```
+
+Optional:
+
+```text
+GEMINI_MODEL=gemini-2.5-flash-lite
+```
+
+When configured, the assistant uses Gemini with both the dashboard context and compact summaries of the backend Parquet datasets: channel pipeline, attribution, cohort analysis, account coverage, targeting matrix, creative performance, journey sequences, win probability, and raw source table summaries. If the API key or backend is unavailable, the dashboard falls back to built-in static marketing answers.
+
 ## Deploy
 
 This repo is ready for static deployment. The dashboard entrypoint is:
@@ -92,15 +106,15 @@ public/index.html
 `render.yaml` is included. To deploy on Render:
 
 1. Connect this GitHub repository to Render.
-2. Create a Blueprint or static web service from the repo.
-3. Render will publish the `public` folder.
+2. Create a Blueprint or web service from the repo.
+3. Add `GEMINI_API_KEY` as an environment variable if you want live LLM answers.
 
 Expected settings:
 
 ```text
-Runtime: Static
-Publish directory: public
-Build command: empty
+Runtime: Python
+Build command: pip install -r requirements.txt
+Start command: gunicorn app:app
 ```
 
 ### GitHub Pages
