@@ -2282,8 +2282,8 @@ const assistantInput = document.getElementById('assistant-input');
 const ASSISTANT_KNOWLEDGE = [
   {{
     title: 'Main Recommendation',
-    keywords: ['main','recommendation','recommend','next','action','strategy','summary','should','do','marketing','plan'],
-    answer: 'The main recommendation is targeted growth, not blanket budget expansion. Protect pipeline quality first, expand coverage to unreached strong-fit accounts, and use attribution plus tracked-spend scenarios to size controlled tests. The three headline signals are {influenced_pipeline} influenced pipeline, {unreached_pct} unreached target accounts, and a cohort win-rate move from {cohort_start_rate} to {cohort_end_rate}.'
+    keywords: ['main','recommendation','recommend','next','action','strategy','summary','should','do','marketing','plan','ultimate','conclusion','takeaway','bottom','line','finding','findings','result','results','based','data'],
+    answer: 'The ultimate conclusion is targeted growth, not blanket budget expansion. Marketing has meaningful journey impact ({influenced_pipeline} influenced vs. {sourced_pipeline} sourced), but the biggest practical lever is account coverage: {unreached_pct} of target accounts are unreached. The caution is quality: cohort win rate moved from {cohort_start_rate} to {cohort_end_rate}. So the best recommendation is to protect ICP/qualification, expand to unreached strong-fit accounts, start with email, test a 6sense overlay, and use a holdout to prove incremental lift.'
   }},
   {{
     title: 'ABM Explanation',
@@ -2394,10 +2394,17 @@ function tokenizeAssistant(text) {{
 }}
 function answerDashboardQuestion(question) {{
   const tokens = tokenizeAssistant(question);
+  const normalizedQuestion = question.toLowerCase();
+  const conclusionPhrases = ['ultimate conclusion', 'based on this data', 'based on the data', 'bottom line', 'main takeaway', 'final takeaway', 'overall conclusion', 'what does this mean'];
+  const directConclusion = conclusionPhrases.some(phrase => normalizedQuestion.includes(phrase)) ||
+    (tokens.includes('conclusion') && (tokens.includes('data') || tokens.includes('ultimate') || tokens.includes('overall')));
+  if (directConclusion) {{
+    return ASSISTANT_KNOWLEDGE.find(item => item.title === 'Main Recommendation');
+  }}
   let best = null;
   let bestScore = 0;
   ASSISTANT_KNOWLEDGE.forEach(item => {{
-    const score = item.keywords.reduce((sum, kw) => sum + (tokens.includes(kw) || question.toLowerCase().includes(kw) ? 1 : 0), 0);
+    const score = item.keywords.reduce((sum, kw) => sum + (tokens.includes(kw) || normalizedQuestion.includes(kw) ? 1 : 0), 0);
     if (score > bestScore) {{
       best = item;
       bestScore = score;
