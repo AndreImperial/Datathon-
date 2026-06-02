@@ -113,7 +113,7 @@ GEMINI_API_KEY=<your Google AI Studio key>
 GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-If Ollama and Gemini are both unavailable, the dashboard falls back to built-in static marketing answers.
+If Ollama and Gemini are both unavailable, typed assistant questions show an LLM-unavailable message instead of returning canned answers.
 
 ## Deploy
 

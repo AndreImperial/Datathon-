@@ -2206,7 +2206,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <input class="assistant-input" id="assistant-input" type="text" autocomplete="off" placeholder="Ask about ABM, ROI, ICP, attribution, coverage, or next steps" aria-label="Ask the dashboard assistant">
     <button class="action-button" type="submit"><i data-lucide="send" aria-hidden="true"></i><span>Ask</span></button>
   </form>
-  <div class="assistant-footnote">Uses local Ollama when available, then Gemini if configured; otherwise falls back to built-in dashboard answers.</div>
+  <div class="assistant-footnote">Uses local Ollama when available, then Gemini if configured. Typed answers require a live LLM.</div>
 </aside>
 
 <script>
@@ -2424,8 +2424,8 @@ async function callDashboardLLM(question) {{
     headers: {{'Content-Type': 'application/json'}},
     body: JSON.stringify({{message: question}})
   }});
-  if (!response.ok) throw new Error('Assistant API unavailable');
-  const data = await response.json();
+  const data = await response.json().catch(() => ({{}}));
+  if (!response.ok) throw new Error(data.error || 'Assistant API unavailable');
   if (!data || !data.answer) throw new Error('Assistant returned no answer');
   return {{
     title: data.mode === 'ollama' ? 'Ollama Agent' : (data.mode === 'gemini' ? 'Gemini Assistant' : 'Dashboard AI'),
@@ -2458,9 +2458,8 @@ async function submitAssistantQuestion(question) {{
     pending.querySelector('strong').textContent = result.title;
     pending.querySelector('span').textContent = result.answer;
   }} catch (err) {{
-    const result = answerDashboardQuestion(q);
-    pending.querySelector('strong').textContent = result.title;
-    pending.querySelector('span').textContent = result.answer;
+    pending.querySelector('strong').textContent = 'LLM unavailable';
+    pending.querySelector('span').textContent = `${{err.message}} Run Ollama locally with "ollama pull llama3.1:8b" and "ollama serve", then refresh this dashboard.`;
   }}
 }}
 if (assistantButton) assistantButton.addEventListener('click', () => {{

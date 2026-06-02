@@ -357,7 +357,7 @@ def _call_llm(prompt):
             if answer:
                 return answer, "gemini", None
             errors.append(error)
-    return None, "fallback", " | ".join(err for err in errors if err)
+    return None, "unavailable", " | ".join(err for err in errors if err)
 
 
 @app.get("/")
