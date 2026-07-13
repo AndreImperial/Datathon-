@@ -125,6 +125,10 @@ To enable it:
 3. Set Source to `GitHub Actions`.
 4. Push to `main` or run the workflow manually.
 
+The repository owner must do the Settings > Pages step once. The workflow deploys
+the static dashboard after Pages is enabled, but GitHub may block Actions from
+creating the Pages site automatically.
+
 ## Validate Before Deployment
 
 Before deploying a regenerated dashboard, run:
