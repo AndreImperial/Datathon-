@@ -77,7 +77,7 @@ Open the static dashboard directly:
 public/index.html
 ```
 
-The dashboard also includes an AI assistant. For live LLM answers with no API key, run the Python web app:
+Or run the lightweight Flask preview server:
 
 ```bash
 python app.py
@@ -89,32 +89,7 @@ Then open:
 http://localhost:8050
 ```
 
-By default, the assistant uses the hosted free Pollinations OpenAI-compatible endpoint:
-
-```text
-LLM_PROVIDER=pollinations
-POLLINATIONS_MODEL=openai
-```
-
-The assistant sends a scoped agent prompt with both the dashboard context and compact summaries of the backend Parquet datasets: channel pipeline, attribution, cohort analysis, account coverage, targeting matrix, creative performance, journey sequences, win probability, and raw source table summaries. Typed questions are answered by a live LLM, not hardcoded fallback logic.
-
-Gemini is still supported as an optional provider. To prefer it, set:
-
-```text
-LLM_PROVIDER=gemini
-GEMINI_API_KEY=<your Google AI Studio key>
-GEMINI_MODEL=gemini-2.5-flash-lite
-```
-
-Local Ollama remains available as an optional override if you want local inference:
-
-```text
-LLM_PROVIDER=ollama
-OLLAMA_BASE_URL=http://127.0.0.1:11434
-OLLAMA_MODEL=llama3.1:8b
-```
-
-If all configured providers are unavailable, typed assistant questions show an LLM-unavailable message instead of returning canned answers.
+The dashboard is intentionally self-contained: no API keys or external model services are required.
 
 ## Deploy
 
@@ -130,7 +105,6 @@ public/index.html
 
 1. Connect this GitHub repository to Render.
 2. Create a Blueprint or web service from the repo.
-3. Add `GEMINI_API_KEY` as an environment variable if you want hosted live LLM answers.
 
 Expected settings:
 
@@ -139,8 +113,6 @@ Runtime: Python
 Build command: pip install -r requirements.txt
 Start command: gunicorn app:app
 ```
-
-On Render, the default hosted Pollinations provider works without an API key. You can still set `GEMINI_API_KEY` or point `OLLAMA_BASE_URL` to a reachable Ollama server if you want another provider.
 
 ### GitHub Pages
 
