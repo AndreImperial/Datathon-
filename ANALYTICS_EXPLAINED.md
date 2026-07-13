@@ -1,161 +1,112 @@
-# Marketing Analytics — Plain English Guide
+# Marketing Analytics Plain-English Guide
 
-## What is this company doing?
+## What This Project Is About
 
-This is a **B2B ABM (Account-Based Marketing) company**. Instead of advertising to random people, they pick specific companies ("target accounts") and run coordinated marketing campaigns at those companies across multiple channels — display ads, email, LinkedIn, events. The goal is to get those companies to eventually buy.
+This is a B2B account-based marketing (ABM) analytics project. Instead of judging marketing by one last-click or lead-source field, the analysis combines CRM opportunities, account coverage, 6sense activity, email engagement, web activity, creative performance, and attribution models.
 
-Think of it like fishing with a spear (ABM) instead of a net (traditional marketing). You aim at specific fish.
+The main decision is: which target accounts should marketing and sales activate next, and how should the team prove that the activation creates better pipeline?
 
----
-
-## What data do we have?
+## Data Sources
 
 | Dataset | What it contains | Size |
+|---|---:|---:|
+| Opportunities | Sales deals, amount, stage, win/loss, lead source, dates | 3,288 deals |
+| Accounts | Company attributes, industry, segment, profile fit | 5,264 companies |
+| 6sense Campaign Accounts | Account-level display reach and engagement | 63,096 rows |
+| Ad Metrics | Creative-level impressions, clicks, CTR, spend | 4,626 rows |
+| Email Engagements | Opens, clicks, registrations, campaign details | 17,130 rows |
+| Web Engagements | Website sessions, sources, pages, goal completions | 36,931 rows |
+| ICP Database | Contacts, job titles, seniority, account domains | 36,860 contacts |
+| 6sense Segments | Account buying-stage and intent segmentation | 7,934 rows |
+
+Most datasets are connected through company domain. Opportunity and account data also connect through Salesforce account IDs.
+
+## Key Numbers
+
+| Metric | Value | Meaning |
+|---|---:|---|
+| Total pipeline | $25.0M | Total opportunity value in the dataset |
+| Won revenue | $5.4M | Opportunity value from closed-won deals |
+| Total opportunities | 3,288 | Deduplicated CRM opportunities |
+| Overall win rate | 32.6% | Share of opportunities that closed won |
+| Marketing-sourced pipeline | $4.2M | Pipeline where CRM lead source is a marketing channel |
+| Marketing-influenced pipeline | $6.5M | Pipeline where a tracked marketing touch appeared before opportunity creation |
+| Target accounts | 4,797 | Account domains used in the coverage analysis |
+| Unreached target accounts | 3,256, or 67.9% | Target accounts with no tracked email or 6sense touch |
+| Email-only opportunity rate | 45.9% | Share of email-reached accounts with at least one opportunity |
+| Both-channel opportunity rate | 42.6% | Share of accounts reached by both email and 6sense with at least one opportunity |
+| Not-reached opportunity rate | 17.5% | Share of unreached accounts with at least one opportunity |
+| Cohort win-rate movement | 37% in 2022Q1 to 15% in 2024Q4 | Pipeline volume is rising while recent win rate is lower |
+| Win model AUC | 0.796 | Time-based holdout model for prioritizing open deals |
+
+## Ultimate Marketing Conclusion
+
+The strongest conclusion is not "spend more everywhere." The best conclusion is targeted ABM growth with quality control:
+
+1. Expand coverage to unreached strong-fit target accounts.
+2. Start with email because it has the strongest observed reach signal in this dataset.
+3. Test 6sense display as an overlay after email engagement, using a holdout group before scaling.
+4. Report marketing-sourced and marketing-influenced pipeline side by side.
+5. Protect pipeline quality because pipeline is growing while recent cohort win rate is weaker.
+
+## Why ABM Is The Right Frame
+
+ABM focuses marketing and sales effort on a defined list of target accounts. In this dashboard, ABM shows up through:
+
+- target account coverage,
+- email engagement,
+- 6sense display reach,
+- account profile fit,
+- opportunity creation,
+- win probability scoring,
+- and pipeline quality over time.
+
+The ABM question is not just "which channel got credit?" It is "which accounts should we activate next, and can we prove incremental lift?"
+
+## Attribution Interpretation
+
+Attribution should be treated as a planning signal, not proof of causality.
+
+| Model | What it answers | How to use it |
 |---|---|---|
-| **Opportunities** | Every sales deal — amount, stage, whether it was won or lost, where the lead came from | 3,288 unique deals |
-| **Accounts** | The companies being targeted — industry, size, country, how well they fit the ideal customer profile | 5,264 companies |
-| **6sense Campaign** | How many times each target company saw a display ad and whether they clicked | 63,096 rows |
-| **Ad Metrics** | Performance details for each individual ad creative (CTR, spend, clicks) | 4,626 rows |
-| **Email Engagements** | Every email interaction — who opened, who clicked, who registered | 17,130 rows |
-| **Web Engagements** | Website visits — where traffic came from, which pages, whether they completed a goal | 36,931 rows |
-| **ICP Database** | The specific people (contacts) at target companies, their job title and seniority | 36,860 contacts |
-| **6sense Segments** | How 6sense groups companies by buying intent (e.g., "in-market", "awareness") | 7,934 rows |
+| Marketing sourced | What did CRM explicitly label as marketing-originated? | Conservative executive reporting |
+| Marketing influenced | Where did marketing touch accounts before opportunity creation? | Broader journey contribution |
+| First-touch | Which channel appeared first in the tracked journey? | Awareness and account-opening signal |
+| Last-touch | Which channel appeared closest to opportunity creation? | Late-stage engagement signal |
+| Linear | How would credit look if touchpoints shared credit equally? | Balanced contribution view |
+| Time-decay | Which recent touchpoints get more weight? | Late-journey planning signal |
 
-**How they connect:** Every dataset is linked by **company domain** (e.g., `microsoft.com`). The deal data links to the account data via a Salesforce account ID.
+Marketing-sourced pipeline is $4.2M. Marketing-influenced pipeline is $6.5M. Both are valid, but they answer different questions.
 
----
+## What To Do Next
 
-## Key Numbers (after cleaning)
+| Priority | Action | Why | Measurement |
+|---|---|---|---|
+| P1 | Build a coverage plan for unreached strong-fit accounts | 67.9% of target accounts are unreached | Coverage rate, opportunity rate, pipeline created |
+| P1 | Tighten ICP and qualification review | Recent win rate is weaker while pipeline grows | Win rate, stage conversion, disqualification reasons |
+| P2 | Test 6sense overlay after email engagement | Email often opens the journey and 6sense appears later | Holdout lift in meetings, opportunities, pipeline, win rate |
+| P2 | Report sourced and influenced pipeline together | Source credit understates broader journey contribution | Sourced pipeline, influenced pipeline, influenced won revenue |
+| P3 | Use top creative patterns as test briefs | CTR indicates message engagement, not guaranteed revenue | CTR, CPC, form fills, account engagement, downstream lift |
 
-| Metric | Value | What it means |
-|---|---|---|
-| Total pipeline | $25.0M | All deals in the funnel combined |
-| Won revenue | $5.4M | Deals that were actually closed and won |
-| Overall win rate | 33% | 1 in 3 deals closes |
-| Marketing-sourced deals | 511 / 3,288 | 16% of deals came from marketing channels |
-| Marketing-sourced win rate | 10% | Lower because marketing finds earlier-stage, exploratory prospects |
-| Total ad impressions | 135M | How many times ads were shown |
-| Total ad spend | $1.22M | What was actually spent on ads |
-| Email engagements | 17,130 | Opens + clicks + registrations |
-| Email click rate | 4.5% | 766 clicks out of 17,130 engagements |
-| Form fills / goal completions | 1,286 | People who took a meaningful action on the website |
+## Important Caveats
 
----
+- Attribution does not prove a channel caused a deal.
+- Spend ROI only covers channels with reliable tracked spend.
+- Email-only opportunity rate is slightly higher than both-channel opportunity rate, so 6sense overlay should be tested rather than assumed.
+- Relationship-led channels and existing-client motion are major contributors, so paid media should not be judged as the whole growth engine.
+- Web sessions are only useful for account-level journey analysis when a company domain can be matched.
+- Low-volume segments and channels should be treated as investigation signals, not final budget mandates.
 
-## What is each marketing channel?
+## How To Present This In A Datathon
 
-**6sense Display** — Banner ads shown to people at target companies across the internet. 6sense uses AI to figure out which companies are "in-market" (actively researching solutions like yours) and shows them ads. You don't know exactly who at the company saw the ad, just that someone at that company did.
+Start with the business tension:
 
-**Email MQA (Marketing Qualified Account)** — Emails sent to contacts at companies that have shown intent signals. "MQA" means the whole company (account) has been qualified by marketing, not just an individual.
+"Marketing directly sourced $4.2M of pipeline and influenced $6.5M, but 67.9% of target accounts are still unreached. The best move is not blanket budget expansion. It is to activate strong-fit unreached accounts, lead with email, test 6sense overlay with a holdout, and protect win rate as pipeline grows."
 
-**6sense Channel** — Deals that came in through 6sense's partner/channel program (resellers, partners).
+Then explain why the recommendation is credible:
 
-**6sense Event** — Deals sourced at events organized or sponsored through 6sense programs.
-
-**Web Inbound** — Companies that came to the website on their own and started a conversation.
-
-**Referral** — Someone at an existing client or partner recommended the company.
-
-**Existing Client** — Upsells and expansions to companies already buying from you.
-
-**Event** — Deals sourced from trade shows and conferences.
-
----
-
-## What is Attribution?
-
-**The problem:** A company might see 20 of your ads, get 3 emails, visit your website 5 times, then attend a webinar — and THEN become a customer. Which of those marketing touches gets "credit" for the deal?
-
-Attribution models answer this question differently:
-
-### Marketing Sourced
-**Simple answer:** The CRM says the lead originally came from marketing. Only counts deals where the `LeadSource` field is a marketing channel.
-- **Our number:** $4.16M pipeline, 511 deals
-
-### Marketing Influenced
-**Simple answer:** Marketing touched this account BEFORE the deal was created, even if sales ultimately sourced it. Includes any deal where marketing had contact with that company within 365 days of the deal being created.
-- **Our number:** $6.29M pipeline, 708 deals influenced
-- This is always bigger than Sourced because it captures deals where marketing "warmed up" an account that sales then closed
-
-### First-Touch
-**The idea:** Give 100% of credit to whichever channel made FIRST contact with the account.
-- **Why useful:** Shows which channels are best at finding new accounts
-- **Our number:** Email gets the most credit ($4.0M) — email is often how prospects are first identified
-
-### Last-Touch
-**The idea:** Give 100% of credit to the LAST marketing touchpoint before the deal was created.
-- **Why useful:** Shows which channels close/convert accounts
-- **Our number:** 6sense Display gets more credit ($3.3M) — ads are often the last thing an account sees before they reach out
-
-### Linear
-**The idea:** Split credit equally among ALL channels that touched the account before the deal.
-- If email + 6sense display + web all touched an account, each gets 1/3 of the deal value
-- **Why useful:** Fairest model for understanding contribution of each channel
-- **Our number:** Email $3.6M, 6sense $2.7M, Web $250K
-
-### Time-Decay
-**The idea:** More recent touches get more credit, older touches get less (credit decays over time like radioactive material — half-life of 30 days).
-- **Why useful:** Rewards channels that are active at the end of the buying cycle
-- **Our number:** 6sense Display $3.5M (lots of late-stage ad activity), Email $2.8M
-
----
-
-## What the data tells us
-
-**1. Email is the top first-touch channel** — Email is where most accounts first make contact with marketing. This means email campaigns are effective at finding new opportunities.
-
-**2. 6sense Display is strong at the end of the funnel** — 6sense gets more credit in Last-Touch and Time-Decay models than First-Touch. This means display ads are keeping the brand visible when accounts are actively evaluating options.
-
-**3. Existing clients and referrals dominate pipeline** — 1,366 deals from existing clients (42% of all deals) and 291 from referrals (9%). Together they account for $6M in pipeline. This is normal for B2B companies — expand and refer is the most efficient growth engine.
-
-**4. Marketing-sourced deals have a lower win rate (10%) but that's expected** — Marketing finds prospects earlier in their journey. They're not ready to buy yet. Sales-sourced deals (especially referrals) close at 29% because those people are already warm. Don't judge marketing by the same win rate standard as referrals.
-
-**5. Ad spend ROI** — $1.22M in ad spend generated $89K in 6sense display pipeline (sourced) — but $3.5M+ when you include influenced pipeline (time-decay). Raw ROI looks low when you only count sourced deals; it looks much better when you count how many deals ads touched along the way.
-
----
-
-## What does the dashboard show?
-
-The dashboard at **http://localhost:8080/Marketing_Analytics_Dashboard.html** has 6 sections:
-
-1. **Executive Summary** — Top-line KPIs and pipeline by channel
-2. **Attribution Models** — How pipeline credit changes depending on which model you use
-3. **Channel Performance** — Spend vs pipeline scatter, win rates by channel
-4. **Funnel** — Step-by-step conversion from impression to closed deal
-5. **Segment & Email** — Win rates by company segment, email engagement by job level
-6. **Creative & Budget** — Which ad creatives perform best, budget scenarios
-
-All charts are interactive — hover for exact numbers, click legend items to hide/show channels.
-
----
-
-## What does the presentation cover?
-
-The 17-slide PowerPoint deck tells this story:
-1. What we did and how (methodology)
-2. How attribution models work (with examples)
-3. What marketing is contributing to pipeline (sourced + influenced)
-4. Which channels perform (6sense, email, web, events)
-5. Which ad creatives work best
-6. Who in target accounts responds most (seniority analysis)
-7. Budget recommendation — where to shift money based on ROI
-8. 30/90-day action plan
-
----
-
-## What should the company do next?
-
-Based on the data:
-
-**Invest more in:**
-- Email campaigns (highest first-touch, strong linear credit)
-- 6sense Display (strong last-touch and time-decay, keeps brand top-of-mind)
-
-**Reduce or investigate:**
-- LinkedIn (only 1 deal, minimal data)
-- Some "other" catch-all lead sources (need better CRM hygiene to tag properly)
-
-**Fix the data:**
-- Web sessions are almost entirely anonymous (only 330 of 36,931 sessions have a matched company domain). Add better domain resolution or identity resolution tools.
-- Many deals have no dollar amount ($0 in the `_amount` field). Better pipeline hygiene = better ROI calculations.
-- Standardize lead source naming in CRM (currently 40+ raw values map to 12 channel categories — too much variation).
+- Coverage analysis sizes the growth opportunity.
+- Attribution shows marketing contribution is broader than CRM source credit.
+- Cohort analysis warns that more pipeline is not automatically better pipeline.
+- The win model adds a prioritization layer for sales follow-up.
+- Caveats are explicit, especially around causality and tracked-spend ROI.

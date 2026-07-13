@@ -877,7 +877,7 @@ def build_dashboard_context():
             "actions": [
                 "Protect pipeline quality by reviewing ICP and qualification before scaling broad top-of-funnel volume.",
                 "Expand coverage to unreached strong-fit target accounts.",
-                "Start with email coverage and test a 6sense overlay.",
+                "Start with email coverage, then test a 6sense overlay with a holdout before scaling.",
                 "Use sourced and influenced attribution together, with sourced as conservative credit and influenced as journey context.",
                 "Run holdout or phased tests to measure incremental lift before large budget changes.",
             ],
@@ -1777,7 +1777,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <strong>Industry benchmarks:</strong> Display ads average 0.05-0.1% CTR. LinkedIn ads average 0.3-0.5%. Anything above 0.5% is very good for display. These are the top-performing creatives from your $1.22M ad spend.
           <br><br>
           <strong>What to do with this:</strong> The top ads tell your creative team what visual style, message, and CTA is working. Brief new creative based on these patterns - don't start from scratch.
-          <div class="ex-insight">Key takeaway: The highest-CTR ads should be your always-on creatives. Pause the bottom performers and reallocate their budget to top performers.</div>
+          <div class="ex-insight">Key takeaway: Use the highest-CTR ads as the next creative brief, then test budget shifts before making them always-on.</div>
         </div>
       </div>
       <div class="chart-card">
@@ -1913,8 +1913,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <div class="ex-title">What this shows - Winning Touchpoint Journey Sequences</div>
           For won deals that had tracked marketing touchpoints, what was the sequence of channels in order? This shows the most common channel paths that led to a closed deal.
           <br><br>
-          <strong>How to read:</strong> "email_mqa -> 6sense_display" means: email was the first touch, then 6sense display ads followed. The most common winning sequence validates the two-stage strategy: email opens the conversation, 6sense keeps the brand visible through the evaluation period.
-          <div class="ex-insight">Key insight: Build this as a coordinated playbook - when email engagement is detected, trigger 6sense to increase impression frequency for that account. The data shows this sequence produces wins.</div>
+          <strong>How to read:</strong> "email_mqa -> 6sense_display" means: email was the first touch, then 6sense display ads followed. Common winning sequences are planning clues, not proof that the sequence caused the win.
+          <div class="ex-insight">Key insight: Build this as a controlled playbook: when email engagement is detected, test 6sense frequency against a holdout and measure meeting, opportunity, and win-rate lift.</div>
         </div>
       </div>
     </div>
@@ -1937,7 +1937,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           Blue bars = pipeline created each quarter (growing). Green line = win rate per quarter (declining). Yellow dashed = marketing's share of deals per quarter (volatile).
           <br><br>
           <strong>The critical trend:</strong> Pipeline is growing, while win rate moved from {cohort_start_rate} in {cohort_start_quarter} to {cohort_end_rate} in {cohort_end_quarter}. Marketing's share peaked at {mktg_peak_pct} and ended at {mktg_end_pct}. This suggests pipeline quality and source mix need review.
-          <div class="ex-insight">Key insight: This is the most important strategic signal in the entire dataset. Investigate why win rates are declining as pipeline grows. Is the ICP expanding too broadly? Are marketing-sourced deals being counted less? This needs executive attention.</div>
+          <div class="ex-insight">Key insight: This is the most important quality signal in the dataset. Investigate whether newer pipeline is coming from lower-fit accounts, broader qualification, or a changing source mix before scaling volume.</div>
         </div>
       </div>
     </div>
@@ -2004,7 +2004,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="section-takeaway"><strong>Final takeaway:</strong> The recommendation is targeted growth, not blanket budget expansion. <span class="evidence-badge">{influenced_pipeline} influenced</span><span class="evidence-badge orange">{unreached_pct} unreached</span><span class="evidence-badge red">{cohort_start_rate} -> {cohort_end_rate} win rate</span></div>
     <div class="conclusion-hero">
       <div class="eyebrow">Bottom-line recommendation</div>
-      <h3>Reach the right unreached accounts, start with email, test 6sense overlay, and protect win rate as pipeline grows.</h3>
+      <h3>Reach the right unreached accounts, start with email, test 6sense overlay with a holdout, and protect win rate as pipeline grows.</h3>
       <p>Marketing is not just a source channel. It influenced {influenced_pipeline} of pipeline, but the largest growth lever is coverage: {unreached_accounts} target accounts, or {unreached_pct}, have not been reached by email or 6sense.</p>
     </div>
 
@@ -2029,7 +2029,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <h3>What to do next</h3>
         <ul class="finding-list">
           <li>Expand coverage to unreached strong-fit accounts before increasing broad demand generation spend.</li>
-          <li>Trigger 6sense display when an account shows email engagement, matching the winning journey pattern.</li>
+          <li>Test 6sense display after email engagement, using a holdout to prove whether the overlay creates lift.</li>
           <li>Review ICP and qualification each quarter until win rate stabilizes.</li>
         </ul>
       </div>
@@ -2066,8 +2066,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <tr>
               <td><strong>Coordinate email engagement with 6sense display.</strong></td>
               <td><span class="confidence-pill medium">Medium</span></td>
-              <td>Journey and attribution patterns show email starts conversations while 6sense remains active later in the path.</td>
-              <td>Trigger display frequency after email engagement and measure lift in meetings or opportunities.</td>
+              <td>Journey and attribution patterns show email often starts conversations while 6sense appears later in the path.</td>
+              <td>Trigger display frequency after email engagement and measure lift in meetings, opportunities, pipeline, and win rate.</td>
             </tr>
             <tr>
               <td><strong>Tighten ICP and qualification criteria.</strong></td>
@@ -2110,7 +2110,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <tbody>
             <tr>
               <td><span class="priority-tag p1">P1</span></td>
-              <td><strong>Coverage:</strong> reach unreached target accounts with email first, then test 6sense overlay.</td>
+              <td><strong>Coverage:</strong> reach unreached target accounts with email first, then test 6sense overlay with a holdout.</td>
               <td>Email-only accounts show a {email_only_rate} opportunity rate and both-channel accounts show {both_rate}, compared with {not_reached_rate} for unreached accounts.</td>
               <td>Target account coverage, opportunity rate, incremental lift, pipeline created.</td>
             </tr>
@@ -2155,7 +2155,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="next-step-row">
         <strong>3. Recommend the move</strong>
-        <span>Prioritize strong-fit account coverage, lead with email, and test 6sense overlay before simply adding budget.</span>
+        <span>Prioritize strong-fit account coverage, lead with email, and test 6sense overlay with a holdout before simply adding budget.</span>
       </div>
       <div class="next-step-row">
         <strong>4. State confidence</strong>

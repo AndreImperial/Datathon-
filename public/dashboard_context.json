@@ -47,7 +47,7 @@
     "actions": [
       "Protect pipeline quality by reviewing ICP and qualification before scaling broad top-of-funnel volume.",
       "Expand coverage to unreached strong-fit target accounts.",
-      "Start with email coverage and test a 6sense overlay.",
+      "Start with email coverage, then test a 6sense overlay with a holdout before scaling.",
       "Use sourced and influenced attribution together, with sourced as conservative credit and influenced as journey context.",
       "Run holdout or phased tests to measure incremental lift before large budget changes."
     ]
