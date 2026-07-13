@@ -233,14 +233,14 @@ def dashboard_quality_vals():
     return defaults
 
 LAYOUT = dict(
-    font=dict(family="Inter, Arial, sans-serif", size=13, color="#F8FAFC"),
+    font=dict(family="Barlow, Arial, sans-serif", size=13, color="#F8FAFC"),
     plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
     margin=dict(l=46, r=24, t=56, b=44),
     legend=dict(bgcolor="rgba(0,0,0,0)", font_size=12),
     hoverlabel=dict(
         bgcolor="#1E293B",
         bordercolor="#334155",
-        font=dict(color="#F8FAFC", family="Inter, Arial, sans-serif", size=12),
+        font=dict(color="#F8FAFC", family="Barlow, Arial, sans-serif", size=12),
     ),
 )
 
@@ -907,7 +907,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 <script src="https://unpkg.com/lucide@latest"></script>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
 <style>
   :root{{
     --bg:#0A0F1A; --bg-2:#101827; --panel:rgba(17, 24, 39, .78);
@@ -921,12 +921,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     --shadow-soft:0 16px 40px rgba(0, 0, 0, .28);
     --shadow-hover:0 20px 54px rgba(0, 0, 0, .38), 0 0 0 1px rgba(79,140,255,.16), 0 0 34px rgba(79,140,255,.13);
     --glass-blur:blur(18px);
+    --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+    --ease:cubic-bezier(.2,.8,.2,1);
   }}
   * {{ box-sizing:border-box; margin:0; padding:0; }}
   html {{ scroll-behavior:smooth; }}
   body {{
     min-height:100vh; display:flex; color:var(--text);
-    font-family:'Inter',Arial,sans-serif; font-size:14px; line-height:1.5; letter-spacing:0;
+    font-family:'Barlow',Arial,sans-serif; font-size:14px; line-height:1.5; letter-spacing:0;
     background:
       radial-gradient(circle at 12% 0%, rgba(79,140,255,.16), transparent 32rem),
       radial-gradient(circle at 86% 12%, rgba(45,212,191,.10), transparent 30rem),
@@ -938,6 +940,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
                      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
     background-size:42px 42px; mask-image:linear-gradient(to bottom, rgba(0,0,0,.72), transparent 78%);
   }}
+  body::after {{
+    content:""; position:fixed; inset:0; pointer-events:none; z-index:-1; opacity:.28;
+    background:repeating-linear-gradient(135deg, transparent 0 10px, rgba(45,212,191,.045) 10px 11px);
+    mix-blend-mode:screen;
+  }}
+  .skip-nav {{
+    position:fixed; top:10px; left:10px; z-index:999; transform:translateY(-140%);
+    padding:9px 12px; border-radius:8px; background:#F8FAFC; color:#0F172A;
+    font-weight:800; text-decoration:none; box-shadow:0 12px 34px rgba(0,0,0,.32);
+  }}
+  .skip-nav:focus {{ transform:translateY(0); }}
   @keyframes fadeLift {{
     from {{ opacity:0; transform:translateY(10px); }}
     to {{ opacity:1; transform:translateY(0); }}
@@ -1002,7 +1015,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     background:var(--gradient-hot); background-size:180% 180%;
     -webkit-background-clip:text; background-clip:text; color:transparent;
   }}
-  .top-meta {{ display:flex; align-items:center; gap:10px; color:var(--muted); font-size:12px; }}
+  .top-meta {{ display:flex; align-items:center; gap:10px; color:var(--muted); font-size:12px; font-family:var(--mono); }}
   .top-actions {{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }}
   .dashboard-search {{
     min-height:32px; width:min(240px, 42vw); padding:0 10px; border-radius:8px;
@@ -1050,7 +1063,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     min-height:32px; display:inline-flex; align-items:center; gap:7px; padding:0 10px;
     border:1px solid var(--border); border-radius:8px; color:var(--text-soft);
     background:rgba(255,255,255,.045); font-size:12px; font-weight:800; cursor:pointer;
-    transition:background .16s ease, border-color .16s ease, transform .16s ease;
+    transition:background .16s var(--ease), border-color .16s var(--ease), transform .16s var(--ease);
   }}
   .action-button:hover {{ transform:translateY(-1px); border-color:rgba(34,211,238,.42); background:rgba(34,211,238,.08); }}
   .action-button i {{ width:15px; height:15px; }}
@@ -1090,7 +1103,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .kpi-card.orange::before {{ background:var(--accent); }}
   .kpi-card.purple::before {{ background:var(--info); }}
   .kpi-label {{ font-size:11px; color:var(--muted); font-weight:800; text-transform:uppercase; letter-spacing:.04em; }}
-  .kpi-value {{ margin-top:5px; color:var(--text); font-size:26px; font-weight:800; line-height:1.08; }}
+  .kpi-value {{ margin-top:5px; color:var(--text); font-family:var(--mono); font-size:26px; font-weight:800; line-height:1.08; }}
   .kpi-sub {{ margin-top:6px; color:var(--muted); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }}
 
   .section {{ display:none; padding:22px 32px 42px; }}
@@ -1135,6 +1148,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   }}
   .scope-chip:hover {{ transform:translateY(-1px); border-color:rgba(34,211,238,.42); background:rgba(34,211,238,.08); }}
   .scope-chip i {{ width:13px; height:13px; color:var(--info); }}
+  .command-rail {{
+    margin:12px 32px 0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px;
+  }}
+  .command-tile {{
+    position:relative; min-height:72px; padding:11px 12px 10px 14px; border:1px solid var(--border);
+    border-radius:8px; background:linear-gradient(145deg, rgba(15,23,42,.78), rgba(255,255,255,.035));
+    color:var(--text-soft); overflow:hidden;
+  }}
+  .command-tile::before {{
+    content:""; position:absolute; inset:0 auto 0 0; width:3px; background:var(--info);
+  }}
+  .command-tile.warn::before {{ background:var(--accent); }}
+  .command-tile.risk::before {{ background:var(--danger); }}
+  .command-tile strong {{
+    display:block; margin-bottom:4px; color:var(--text); font-size:12px; text-transform:uppercase; letter-spacing:.05em;
+  }}
+  .command-tile span {{ display:block; color:var(--muted); font-size:12px; line-height:1.35; }}
   .section-takeaway {{
     display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:-2px 0 15px; padding:10px 12px;
     color:var(--text-soft); font-size:13px; line-height:1.45; border-radius:8px;
@@ -1333,7 +1363,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .quality-strip {{ grid-template-columns:1fr; }}
     .decision-panel,.scope-row {{ margin-left:18px; margin-right:18px; }}
     .chart-grid.cols-2,.chart-grid.cols-3,.kpi-row,.story-strip,.decision-panel,.chart-story,
-    .conclusion-grid,.priority-grid,.evidence-grid {{ grid-template-columns:1fr; }}
+    .conclusion-grid,.priority-grid,.evidence-grid,.command-rail {{ grid-template-columns:1fr; }}
+    .command-rail {{ margin-left:18px; margin-right:18px; }}
     .decision-lead,.decision-item {{ border-right:0; border-bottom:1px solid var(--border); }}
     .decision-item:last-child {{ border-bottom:0; }}
     .next-step-row {{ grid-template-columns:1fr; gap:4px; }}
@@ -1350,6 +1381,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </style>
 </head>
 <body>
+<a class="skip-nav" href="#main">Skip to dashboard</a>
 <div id="nav-progress" aria-hidden="true"><span></span></div>
 
 <!-- Sidebar -->
@@ -1437,6 +1469,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <span class="scope-chip"><i data-lucide="target" aria-hidden="true"></i>Audience: executive marketing review</span>
     <span class="scope-chip"><i data-lucide="mouse-pointer-click" aria-hidden="true"></i>Judge path: Essential, Attribution, Channel ROI, Recommendation</span>
     <span class="scope-chip"><i data-lucide="shield-check" aria-hidden="true"></i>Confidence labels separate observed facts from testable hypotheses</span>
+  </div>
+  <div class="command-rail" aria-label="Dashboard reading path">
+    <div class="command-tile"><strong>Start</strong><span>Read the essential view before opening deep-dive charts.</span></div>
+    <div class="command-tile warn"><strong>Check</strong><span>Use attribution as planning evidence, not causality proof.</span></div>
+    <div class="command-tile risk"><strong>Watch</strong><span>Quality risk matters because recent cohort win rate softened.</span></div>
+    <div class="command-tile"><strong>Decide</strong><span>Use the recommendation page to defend next actions.</span></div>
   </div>
 
   <div class="story-strip">
@@ -2254,7 +2292,6 @@ if (resetButton) {{
     if (first) showSection(first, 's-essential');
     setMode('analyst');
     closeCaveatsDrawer();
-    closeAssistantPanel();
     window.scrollTo({{top:0, behavior:'smooth'}});
   }});
 }}
@@ -2272,7 +2309,6 @@ document.addEventListener('keydown', (event) => {{
   }}
   if (event.key === 'Escape') {{
     closeCaveatsDrawer();
-    closeAssistantPanel();
   }}
 }});
 
