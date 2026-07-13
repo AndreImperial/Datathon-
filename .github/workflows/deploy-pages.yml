@@ -26,6 +26,13 @@ jobs:
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Verify static dashboard artifact
+        run: |
+          test -f public/index.html
+          test -f public/.nojekyll
 
       - name: Upload static dashboard
         uses: actions/upload-pages-artifact@v3
