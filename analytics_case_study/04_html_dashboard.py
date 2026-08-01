@@ -129,6 +129,50 @@ def coverage_summary_vals():
         "not_reached_rate": opp_rate("Not Reached"),
     }
 
+
+def opportunity_cohort_view():
+    """Rebuild cohort quality from opportunity-level data with maturity context.
+
+    The pipeline extract contains open opportunities, so won / all opportunities
+    understates recent cohorts simply because many deals are unresolved.  Use
+    closed-only win rate for quality and expose the resolved share separately.
+    """
+    required = {"_opportunity_id", "_amount", "_createdate (Date)", "_current_stage"}
+    if opps.empty or not won_col or not required.issubset(opps.columns):
+        return pd.DataFrame()
+
+    df = opps.dropna(subset=["_createdate (Date)"]).copy()
+    created = pd.to_datetime(df["_createdate (Date)"], errors="coerce")
+    df = df.loc[created.notna()].copy()
+    df["quarter"] = created.loc[created.notna()].dt.to_period("Q").astype(str)
+    df["is_closed"] = df["_current_stage"].astype(str).str.contains(
+        "closed|discontinued", case=False, na=False
+    )
+    df["is_won"] = df[won_col].fillna(False).astype(bool)
+    if "is_marketing_sourced" not in df.columns:
+        df["is_marketing_sourced"] = False
+
+    grouped = df.groupby("quarter", as_index=False).agg(
+        deals=("_opportunity_id", "count"),
+        won=("is_won", "sum"),
+        closed=("is_closed", "sum"),
+        pipeline=("_amount", "sum"),
+        marketing_sourced=("is_marketing_sourced", "sum"),
+    )
+    closed_wins = (
+        df[df["is_closed"]]
+        .groupby("quarter")["is_won"]
+        .sum()
+        .rename("won_closed")
+    )
+    grouped = grouped.merge(closed_wins, on="quarter", how="left")
+    grouped["won_closed"] = grouped["won_closed"].fillna(0)
+    grouped["closed_win_rate"] = grouped["won_closed"] / grouped["closed"].replace(0, np.nan)
+    grouped["closed_share"] = grouped["closed"] / grouped["deals"].replace(0, np.nan)
+    grouped["mktg_pct"] = grouped["marketing_sourced"] / grouped["deals"].replace(0, np.nan)
+    return grouped.sort_values("quarter")
+
+
 def cohort_summary_vals():
     defaults = {
         "cohort_start_rate": "N/A",
@@ -138,20 +182,24 @@ def cohort_summary_vals():
         "mktg_peak_pct": "N/A",
         "mktg_end_pct": "N/A",
     }
-    if cohort.empty or "win_rate" not in cohort.columns or "quarter" not in cohort.columns:
+    cohort_view = opportunity_cohort_view()
+    if cohort_view.empty:
         return defaults
-    recent = cohort.dropna(subset=["win_rate"]).copy()
+    recent = cohort_view.dropna(subset=["closed_win_rate"]).copy()
     if recent.empty:
         return defaults
     recent_2022 = recent[recent["quarter"].astype(str) >= "2022Q1"].copy()
     if not recent_2022.empty:
         recent = recent_2022
-    start = recent.iloc[0]
-    end = recent.iloc[-1]
+    mature = recent[recent["closed_share"] >= 0.80].copy()
+    if mature.empty:
+        mature = recent
+    start = mature.iloc[0]
+    end = mature.iloc[-1]
     peak = recent["mktg_pct"].max() if "mktg_pct" in recent.columns else np.nan
     return {
-        "cohort_start_rate": f"{start['win_rate']:.0%}",
-        "cohort_end_rate": f"{end['win_rate']:.0%}",
+        "cohort_start_rate": f"{start['closed_win_rate']:.0%}",
+        "cohort_end_rate": f"{end['closed_win_rate']:.0%}",
         "cohort_start_quarter": str(start["quarter"]),
         "cohort_end_quarter": str(end["quarter"]),
         "mktg_peak_pct": f"{peak:.0%}" if pd.notna(peak) else "N/A",
@@ -260,7 +308,8 @@ def channel_bar():
         orientation="h",
         marker_color=colors,
         text=[fmt(v) for v in df["total_pipeline"]],
-        textposition="auto",
+        textposition="outside",
+        cliponaxis=False,
         hovertemplate="<b>%{y}</b><br>Pipeline: $%{x:,.0f}<extra></extra>",
     ))
     fig.update_layout(title="Pipeline by Channel", xaxis_title="", **LAYOUT)
@@ -310,11 +359,12 @@ def funnel_fig():
 
 
 def attribution_comparison():
-    """Heatmap: compact comparison of pipeline credit by channel and model."""
+    """Compare common touchpoint channels across multi-touch model roles."""
     if attribution.empty: return go.Figure()
-    model_order = ["Marketing Sourced", "Marketing Influenced", "First-Touch", "Last-Touch", "Linear", "Time-Decay"]
+    model_order = ["First-Touch", "Last-Touch", "Linear", "Time-Decay"]
     models = [m for m in model_order if m in attribution["attribution_model"].unique()]
-    pivot = attribution.pivot_table(
+    role_rows = attribution[attribution["attribution_model"].isin(models)].copy()
+    pivot = role_rows.pivot_table(
         index="channel",
         columns="attribution_model",
         values="attributed_pipeline",
@@ -322,19 +372,25 @@ def attribution_comparison():
     ).fillna(0)
     pivot = pivot.reindex(columns=models)
     pivot = pivot.loc[pivot.sum(axis=1).sort_values(ascending=True).index]
-    text = [[fmt(v) if v > 0 else "" for v in row] for row in pivot.values]
-    fig = go.Figure(go.Heatmap(
-        z=pivot.values,
-        x=pivot.columns.tolist(),
-        y=pivot.index.tolist(),
-        colorscale="Blues",
-        text=text,
-        texttemplate="%{text}",
-        hovertemplate="<b>%{y}</b><br>Model: %{x}<br>Pipeline: $%{z:,.0f}<extra></extra>",
-    ))
+    palette = ["#2563EB", "#0F766E", "#D97706", "#7C3AED"]
+    patterns = ["", "/", ".", "x"]
+    fig = go.Figure()
+    for idx, model in enumerate(models):
+        values = pivot[model]
+        fig.add_trace(go.Bar(
+            name=model,
+            y=pivot.index,
+            x=values,
+            orientation="h",
+            marker=dict(color=palette[idx], pattern=dict(shape=patterns[idx])),
+            text=[fmt(v) for v in values],
+            textposition="outside",
+            hovertemplate=f"<b>%{{y}}</b><br>{model}: $%{{x:,.0f}}<extra></extra>",
+        ))
     fig.update_layout(
-        title="Attribution Model Comparison - Pipeline Credit by Channel",
-        xaxis_title="Attribution Model", yaxis_title="Channel",
+        title="Multi-Touch Attribution by Channel and Model<br><sup>Common touchpoint-linked channels; sourced and influenced totals are shown separately</sup>",
+        xaxis_title="Attributed Pipeline ($)", yaxis_title="",
+        barmode="group",
         **LAYOUT,
     )
     return fig
@@ -371,7 +427,7 @@ def attribution_waterfall():
     lt = attribution[attribution["attribution_model"] == "Last-Touch"].set_index("channel")["attributed_pipeline"]
     channels = list(set(ft.index.tolist() + lt.index.tolist()))
     delta = [(lt.get(c, 0) - ft.get(c, 0)) for c in channels]
-    colors = ["#15803D" if d >= 0 else "#C24141" for d in delta]
+    colors = ["#0F766E" if d >= 0 else "#D97706" for d in delta]
     fig = go.Figure(go.Bar(
         x=channels, y=delta,
         marker_color=colors,
@@ -424,11 +480,19 @@ def monthly_pipeline_trend():
     if not opp_date_col: return go.Figure()
     df = opps.dropna(subset=[opp_date_col, "_amount", "channel_category"]).copy()
     df["month"] = pd.to_datetime(df[opp_date_col], errors="coerce").dt.to_period("M").astype(str)
-    monthly = df.groupby(["month", "channel_category"])["_amount"].sum().reset_index()
-    fig = px.area(monthly, x="month", y="_amount", color="channel_category",
-                  color_discrete_sequence=COLORS,
+    top_channels = (
+        df.groupby("channel_category")["_amount"].sum().nlargest(5).index.tolist()
+    )
+    df["channel_group"] = np.where(
+        df["channel_category"].isin(top_channels), df["channel_category"], "Other"
+    )
+    monthly = df.groupby(["month", "channel_group"])["_amount"].sum().reset_index()
+    color_map = {c: CHANNEL_COLOR_MAP.get(c, COLORS[i % len(COLORS)]) for i, c in enumerate(top_channels)}
+    color_map["Other"] = "#64748B"
+    fig = px.area(monthly, x="month", y="_amount", color="channel_group",
+                  color_discrete_map=color_map,
                   labels={"month": "", "_amount": "Pipeline ($)"},
-                  title="Pipeline Created by Month (Stacked by Channel)")
+                  title="Monthly Pipeline Mix - Top 5 Channels + Other")
     fig.update_layout(**LAYOUT)
     return fig
 
@@ -467,26 +531,22 @@ def segment_win_rate():
         avg_deal=("_amount","mean"),
     ).reset_index()
     df["win_rate"] = df["won"] / df["deals"]
+    df = df.sort_values("win_rate", ascending=True)
 
-    fig = go.Figure(go.Scatter(
+    fig = go.Figure(go.Bar(
         x=df["win_rate"],
-        y=df["avg_deal"],
-        mode="markers+text",
-        text=df["segment__c"],
-        textposition="top center",
-        marker=dict(
-            size=np.sqrt(df["deals"]) * 3,
-            color="#2563EB",
-            opacity=0.78,
-            line=dict(color="#FFFFFF", width=1),
-        ),
-        customdata=np.stack([df["deals"], df["pipeline"]], axis=-1),
-        hovertemplate="<b>%{text}</b><br>Win Rate: %{x:.1%}<br>Avg Deal: $%{y:,.0f}<br>Deals: %{customdata[0]:,.0f}<br>Pipeline: $%{customdata[1]:,.0f}<extra></extra>",
+        y=df["segment__c"],
+        orientation="h",
+        marker_color="#2563EB",
+        text=[f"{wr:.1%} | n={int(n):,} | avg {fmt(avg)}" for wr, n, avg in zip(df["win_rate"], df["deals"], df["avg_deal"])],
+        textposition="outside",
+        customdata=np.stack([df["deals"], df["avg_deal"], df["pipeline"]], axis=-1),
+        hovertemplate="<b>%{y}</b><br>Win Rate: %{x:.1%}<br>Deals: %{customdata[0]:,.0f}<br>Avg Deal: $%{customdata[1]:,.0f}<br>Pipeline: $%{customdata[2]:,.0f}<extra></extra>",
     ))
     fig.update_layout(
-        title="Segment Tradeoff: Win Rate vs Average Deal Size",
+        title="Segment Win Rate with Deal Volume and Average Deal Context",
         xaxis=dict(title="Win Rate", tickformat=".0%"),
-        yaxis=dict(title="Average Deal ($)"),
+        yaxis=dict(title=""),
         **LAYOUT,
     )
     return fig
@@ -623,28 +683,35 @@ def account_coverage_chart():
     summary["_order"] = summary["coverage_tier"].map({v:i for i,v in enumerate(order)}).fillna(99)
     summary = summary.sort_values("_order")
 
-    colors_cov = ["#E2E8F0", "#60A5FA", "#D97706", "#0F766E"]
-    fig = go.Figure()
+    colors_cov = ["#94A3B8", "#60A5FA", "#D97706", "#0F766E"]
+    fig = make_subplots(
+        rows=2, cols=1,
+        shared_xaxes=True,
+        vertical_spacing=0.12,
+        row_heights=[0.58, 0.42],
+        subplot_titles=("Target Accounts by Coverage Tier", "Observed Opportunity Rate"),
+    )
     fig.add_trace(go.Bar(
         name="# Accounts", x=summary["coverage_tier"], y=summary["accounts"],
         marker_color=colors_cov[:len(summary)],
         text=[f"{int(v):,}<br>({p:.0%})" for v,p in zip(summary["accounts"], summary["pct"])],
         textposition="outside",
         hovertemplate="<b>%{x}</b><br>Accounts: %{y:,}<extra></extra>",
-    ))
+    ), row=1, col=1)
     if "opp_rate" in summary.columns:
         fig.add_trace(go.Scatter(
             name="Opp Rate", x=summary["coverage_tier"], y=summary["opp_rate"],
-            mode="markers+lines", marker=dict(size=10, color="#0F766E"),
-            yaxis="y2",
-            hovertemplate="<b>%{x}</b><br>Opp Rate: %{y:.0%}<extra></extra>",
-        ))
+            mode="markers+text", marker=dict(size=12, color="#0F766E", symbol="diamond"),
+            text=[f"{r:.1%} (n={int(n):,})" for r, n in zip(summary["opp_rate"], summary["accounts"])],
+            textposition="top center",
+            hovertemplate="<b>%{x}</b><br>Observed opportunity rate: %{y:.1%}<extra></extra>",
+        ), row=2, col=1)
+    fig.update_yaxes(title_text="# Accounts", rangemode="tozero", row=1, col=1)
+    fig.update_yaxes(title_text="Opportunity Rate", tickformat=".0%", range=[0, 0.6], row=2, col=1)
     fig.update_layout(
-        title="Account Coverage - How Many Target Accounts Has Marketing Reached?",
-        yaxis=dict(title="# Accounts"),
-        yaxis2=dict(title="Opportunity Rate", overlaying="y", side="right",
-                    tickformat=".0%", range=[0, 0.6]),
-        barmode="group", **LAYOUT,
+        title="Account Coverage Volume and Observed Opportunity Rate<br><sup>Association only; coverage groups are not randomized</sup>",
+        showlegend=False,
+        **LAYOUT,
     )
     return fig
 
@@ -676,14 +743,24 @@ def targeting_matrix_chart():
         return go.Figure()
     pivot = df.pivot_table(values="win_rate", index="segment__c",
                            columns="accountprofilefit6sense__c", aggfunc="mean").fillna(0)
-    text_vals = [[f"{v:.0%}" if v > 0 else "" for v in row] for row in pivot.values]
+    counts = df.pivot_table(values="deals", index="segment__c",
+                            columns="accountprofilefit6sense__c", aggfunc="sum").fillna(0)
+    counts = counts.reindex(index=pivot.index, columns=pivot.columns).fillna(0)
+    text_vals = []
+    for rate_row, count_row in zip(pivot.values, counts.values):
+        row = []
+        for rate, n in zip(rate_row, count_row):
+            low_n = "<br>Low N" if n < 30 else ""
+            row.append(f"{rate:.0%}<br>n={int(n):,}{low_n}")
+        text_vals.append(row)
     fig = go.Figure(go.Heatmap(
         z=pivot.values, x=pivot.columns.tolist(), y=pivot.index.tolist(),
-        colorscale="Blues",
+        colorscale="Blues", zmin=0, zmax=0.55,
         text=text_vals, texttemplate="%{text}",
-        hovertemplate="Segment: %{y}<br>Profile: %{x}<br>Win Rate: %{z:.0%}<extra></extra>",
+        customdata=counts.values,
+        hovertemplate="Segment: %{y}<br>Profile: %{x}<br>Win Rate: %{z:.1%}<br>Deals: %{customdata:,.0f}<extra></extra>",
     ))
-    fig.update_layout(title="Win Rate Heatmap: Segment x 6sense Profile Fit<br><sup>Darker = Higher Win Rate = Better ABM Target</sup>",
+    fig.update_layout(title="Win Rate by Segment and 6sense Profile Fit<br><sup>Every cell shows deal count; cells below n=30 are exploratory</sup>",
                       **LAYOUT)
     return fig
 
@@ -712,7 +789,8 @@ def win_prob_chart():
 # -----------------------------------------------------------------------------
 def deal_velocity_chart():
     if deal_velocity.empty: return go.Figure()
-    df = deal_velocity.sort_values("median_days")
+    df = deal_velocity[deal_velocity["deal_count"] >= 5].sort_values("median_days")
+    if df.empty: return go.Figure()
     fig = go.Figure(go.Bar(
         name="Median Days",
         y=df["channel_category"],
@@ -731,20 +809,23 @@ def deal_velocity_chart():
         customdata=np.stack([df["p25"], df["p75"]], axis=-1),
         hovertemplate="<b>%{y}</b><br>Median days: %{x}<br>IQR: %{customdata[0]:.0f}-%{customdata[1]:.0f} days<extra></extra>",
     ))
-    fig.update_layout(title="Deal Velocity - Median Days to Close with IQR",
+    fig.update_layout(title="Deal Velocity - Median Days to Close with IQR<br><sup>Channels with at least 5 won deals</sup>",
                       xaxis_title="Days to Close", **LAYOUT)
     return fig
 
 
 def cohort_chart():
-    if cohort.empty: return go.Figure()
-    df = cohort.copy()
+    df = opportunity_cohort_view()
+    if df.empty: return go.Figure()
+    recent = df[df["quarter"].astype(str) >= "2022Q1"].copy()
+    if not recent.empty:
+        df = recent
     fig = make_subplots(
         rows=2, cols=1,
         shared_xaxes=True,
         vertical_spacing=0.08,
         row_heights=[0.58, 0.42],
-        subplot_titles=("Pipeline Created", "Conversion Quality"),
+        subplot_titles=("Pipeline Created", "Closed-Deal Quality and Cohort Maturity"),
     )
     fig.add_trace(go.Bar(
         name="Pipeline ($)",
@@ -757,25 +838,27 @@ def cohort_chart():
         hovertemplate="<b>%{x}</b><br>Pipeline: $%{y:,.0f}<extra></extra>",
     ), row=1, col=1)
     fig.add_trace(go.Scatter(
-        name="Win Rate",
+        name="Closed-Only Win Rate",
         x=df["quarter"],
-        y=df["win_rate"],
+        y=df["closed_win_rate"],
         mode="lines+markers",
         marker=dict(size=7, color="#D97706"),
-        hovertemplate="<b>%{x}</b><br>Win Rate: %{y:.0%}<extra></extra>",
+        line=dict(dash="solid"),
+        customdata=df["closed"],
+        hovertemplate="<b>%{x}</b><br>Closed-only win rate: %{y:.0%}<br>Resolved deals: %{customdata:,.0f}<extra></extra>",
     ), row=2, col=1)
     fig.add_trace(go.Scatter(
-        name="Mktg % of Deals",
+        name="Cohort Resolved Share",
         x=df["quarter"],
-        y=df["mktg_pct"],
+        y=df["closed_share"],
         mode="lines+markers",
-        marker=dict(size=7, color="#0F766E"),
+        marker=dict(size=7, color="#0F766E", symbol="diamond-open"),
         line=dict(dash="dash"),
-        hovertemplate="<b>%{x}</b><br>Marketing %: %{y:.0%}<extra></extra>",
+        hovertemplate="<b>%{x}</b><br>Resolved share: %{y:.0%}<extra></extra>",
     ), row=2, col=1)
     fig.update_yaxes(title_text="Pipeline ($)", row=1, col=1)
-    fig.update_yaxes(title_text="Rate", tickformat=".0%", range=[0, 0.75], row=2, col=1)
-    fig.update_layout(title="Pipeline Cohort Analysis - Volume and Quality", **LAYOUT)
+    fig.update_yaxes(title_text="Rate", tickformat=".0%", range=[0, 1.0], row=2, col=1)
+    fig.update_layout(title="Pipeline Cohorts - Volume, Closed-Deal Win Rate, and Maturity<br><sup>Recent cohorts with low resolved share are provisional</sup>", **LAYOUT)
     return fig
 
 
@@ -925,11 +1008,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     --ease:cubic-bezier(.2,.8,.2,1);
   }}
   * {{ box-sizing:border-box; margin:0; padding:0; }}
-  html {{ scroll-behavior:smooth; }}
+  html {{ scroll-behavior:smooth; overflow-x:clip; }}
   body {{
     min-height:100vh; display:flex; color:var(--text);
     font-family:'Barlow',Arial,sans-serif; font-size:14px; line-height:1.5; letter-spacing:0;
-    background:
+    overflow-x:clip; background:
       radial-gradient(circle at 12% 0%, rgba(79,140,255,.16), transparent 32rem),
       radial-gradient(circle at 86% 12%, rgba(45,212,191,.10), transparent 30rem),
       linear-gradient(135deg, #070B13 0%, #111827 52%, #131A2A 100%);
@@ -951,6 +1034,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     font-weight:800; text-decoration:none; box-shadow:0 12px 34px rgba(0,0,0,.32);
   }}
   .skip-nav:focus {{ transform:translateY(0); }}
+  .sr-only {{
+    position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+    clip:rect(0,0,0,0); white-space:nowrap; border:0;
+  }}
   @keyframes fadeLift {{
     from {{ opacity:0; transform:translateY(10px); }}
     to {{ opacity:1; transform:translateY(0); }}
@@ -1026,7 +1113,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .dashboard-search:focus {{ border-color:rgba(34,211,238,.55); box-shadow:0 0 0 3px rgba(34,211,238,.10); }}
   .status-strip {{
     display:flex; flex-wrap:wrap; align-items:center; gap:8px;
-    padding:10px 32px 0; color:var(--muted); font-size:11px;
+    padding:8px 32px 0; color:var(--muted); font-size:11px;
   }}
   .status-chip {{
     display:inline-flex; align-items:center; gap:6px; min-height:26px; padding:0 10px;
@@ -1034,6 +1121,14 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     color:var(--text-soft); font-weight:800;
   }}
   .status-chip i {{ width:13px; height:13px; color:var(--success); }}
+  .data-health {{ margin:8px 32px 0; }}
+  .data-health summary {{
+    display:inline-flex; align-items:center; min-height:32px; cursor:pointer; color:var(--text-soft);
+    font-size:11px; font-weight:800; list-style:none;
+  }}
+  .data-health summary::-webkit-details-marker {{ display:none; }}
+  .data-health summary::before {{ content:"+"; display:inline-grid; place-items:center; width:18px; height:18px; margin-right:7px; border:1px solid var(--border); border-radius:50%; color:var(--info); }}
+  .data-health[open] summary::before {{ content:"−"; }}
   .quality-strip {{
     display:grid; grid-template-columns:repeat(5,minmax(150px,1fr)); gap:10px;
     padding:12px 32px 0;
@@ -1091,10 +1186,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     min-width:0; border-radius:8px; padding:15px 16px 14px;
     transition:transform .18s ease, box-shadow .18s ease, border-color .18s ease, background .18s ease;
   }}
-  .kpi-card:hover, .chart-card:hover, .story-card:hover, .priority-card:hover, .evidence-card:hover {{
+  .chart-card:hover {{
     transform:translateY(-3px); box-shadow:var(--shadow-hover); border-color:rgba(79,140,255,.52);
   }}
-  .kpi-card:hover::after, .chart-card:hover::after, .story-card:hover::after, .priority-card:hover::after, .evidence-card:hover::after {{ opacity:1; }}
+  .chart-card:hover::after {{ opacity:1; }}
   .kpi-card::before {{
     content:""; display:block; width:34px; height:3px; border-radius:999px;
     background:var(--gradient-hot); margin-bottom:11px; box-shadow:0 0 18px rgba(79,140,255,.34);
@@ -1144,9 +1239,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     display:inline-flex; align-items:center; gap:6px; min-height:28px; padding:0 10px;
     border:1px solid var(--border); border-radius:999px; background:rgba(255,255,255,.055);
     color:var(--text-soft); font-weight:800;
-    transition:transform .16s ease, border-color .16s ease, background .16s ease;
   }}
-  .scope-chip:hover {{ transform:translateY(-1px); border-color:rgba(34,211,238,.42); background:rgba(34,211,238,.08); }}
   .scope-chip i {{ width:13px; height:13px; color:var(--info); }}
   .command-rail {{
     margin:12px 32px 0; display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px;
@@ -1246,12 +1339,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .model-pill.td {{ background:var(--violet); }}
 
   .dash-table {{ width:100%; border-collapse:separate; border-spacing:0; color:var(--text-soft); font-size:13px; }}
+  .dash-table caption {{
+    caption-side:top; padding:9px 12px; text-align:left; color:var(--muted); background:rgba(255,255,255,.035);
+    border-bottom:1px solid var(--border); font-size:11px; line-height:1.4;
+  }}
   .dash-table th {{
     position:sticky; top:0; z-index:1; padding:9px 12px; text-align:left; white-space:nowrap;
     color:var(--text); background:rgba(15, 23, 42, .96); border-bottom:1px solid var(--border);
     font-weight:800;
   }}
   .dash-table th[data-sort] {{ cursor:pointer; user-select:none; }}
+  .dash-table th[data-sort]:focus-visible {{ outline:2px solid rgba(34,211,238,.85); outline-offset:-2px; }}
   .dash-table th[data-sort]::after {{ content:""; opacity:.55; margin-left:6px; font-size:10px; }}
   .dash-table th.sort-asc::after {{ content:"^"; }}
   .dash-table th.sort-desc::after {{ content:"v"; }}
@@ -1356,10 +1454,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     body.sidebar-open #sidebar {{ transform:translateX(0); }}
     .menu-button {{ display:inline-flex; }}
     #main {{ margin-left:0; }}
-    .top-bar {{ align-items:flex-start; gap:8px; flex-direction:column; padding:14px 18px; }}
-    .top-meta,.top-actions,.status-strip {{ flex-wrap:wrap; gap:7px; justify-content:flex-start; }}
+    .top-bar {{ position:static; align-items:flex-start; gap:8px; flex-direction:column; padding:14px 18px; }}
+    .top-meta,.top-actions,.status-strip {{ flex-wrap:wrap; gap:8px; justify-content:flex-start; }}
     #nav-progress {{ left:0; }}
     .section,.kpi-row,.story-strip,.status-strip,.quality-strip {{ padding-left:18px; padding-right:18px; }}
+    .data-health {{ margin-left:18px; margin-right:18px; }}
     .quality-strip {{ grid-template-columns:1fr; }}
     .decision-panel,.scope-row {{ margin-left:18px; margin-right:18px; }}
     .chart-grid.cols-2,.chart-grid.cols-3,.kpi-row,.story-strip,.decision-panel,.chart-story,
@@ -1368,6 +1467,25 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .decision-lead,.decision-item {{ border-right:0; border-bottom:1px solid var(--border); }}
     .decision-item:last-child {{ border-bottom:0; }}
     .next-step-row {{ grid-template-columns:1fr; gap:4px; }}
+    .action-button,.mode-toggle,.dashboard-search {{ min-height:44px; }}
+    .lens-button {{ min-height:44px; padding-left:14px; padding-right:14px; }}
+    .dashboard-search {{ width:100%; font-size:16px; }}
+    .top-actions {{ width:100%; }}
+    .js-plotly-plot,.plot-container {{ min-height:280px; }}
+    .table-wrap {{ max-width:100%; -webkit-overflow-scrolling:touch; }}
+  }}
+  @media(max-width:520px){{
+    .top-actions {{
+      display:grid; grid-template-columns:repeat(2, minmax(0, 1fr));
+      align-items:stretch; width:100%;
+    }}
+    .top-meta,.dashboard-search {{ grid-column:1 / -1; min-width:0; }}
+    .top-meta span {{ min-width:0; white-space:normal; overflow-wrap:anywhere; line-height:1.45; }}
+    .badge-pill {{ justify-self:start; }}
+    .top-actions .action-button,.top-actions .mode-toggle {{ width:100%; justify-content:center; min-width:0; }}
+    .top-actions .mode-toggle {{ grid-column:1 / -1; }}
+    .status-strip {{ flex-direction:column; align-items:stretch; }}
+    .status-chip {{ width:100%; white-space:normal; line-height:1.3; }}
   }}
   @media print {{
     #sidebar,.top-actions,.status-strip,.scope-row,.chart-explain .learn-toggle,#nav-progress,.drawer-backdrop,.caveats-drawer {{ display:none !important; }}
@@ -1400,41 +1518,45 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 </nav>
 
 <!-- Main -->
-<div id="main">
-  <div class="top-bar">
+<main id="main" tabindex="-1">
+  <header class="top-bar">
     <h1>Marketing Analytics Dashboard</h1>
     <div class="top-actions">
       <div class="top-meta">
       <span>Data: 2021-2024 &nbsp;|&nbsp; {total_deals} Opportunities &nbsp;|&nbsp; 8 Datasets</span>
       </div>
       <span class="badge-pill">Validated</span>
-      <input class="dashboard-search" id="dashboard-search" type="search" placeholder="Search sections" aria-label="Search dashboard sections">
+      <label class="sr-only" for="dashboard-search">Filter dashboard sections</label>
+      <input class="dashboard-search" id="dashboard-search" type="search" placeholder="Filter sections" aria-describedby="search-feedback">
+      <span class="sr-only" id="search-feedback" role="status" aria-live="polite"></span>
       <button class="action-button menu-button" id="menu-button" type="button" aria-expanded="false"><i data-lucide="menu" aria-hidden="true"></i><span>Menu</span></button>
       <button class="action-button" id="print-button" type="button"><i data-lucide="printer" aria-hidden="true"></i><span>Print</span></button>
       <button class="action-button" id="reset-button" type="button"><i data-lucide="rotate-ccw" aria-hidden="true"></i><span>Reset</span></button>
-      <button class="action-button" id="caveats-button" type="button"><i data-lucide="info" aria-hidden="true"></i><span>Caveats</span></button>
       <button class="action-button" id="recommendation-button" type="button"><i data-lucide="check-circle-2" aria-hidden="true"></i><span>Recommendation</span></button>
+      <button class="action-button" id="caveats-button" type="button" aria-haspopup="dialog" aria-controls="caveats-drawer" aria-expanded="false"><i data-lucide="info" aria-hidden="true"></i><span>Caveats</span></button>
       <button class="mode-toggle" id="mode-toggle" type="button" aria-pressed="false"><i data-lucide="presentation" aria-hidden="true"></i><span>Presentation Mode</span></button>
     </div>
-  </div>
+  </header>
   <div class="status-strip" aria-label="Dashboard generation status">
-    <span class="status-chip"><i data-lucide="check-circle-2" aria-hidden="true"></i>Validation passed</span>
-    <span class="status-chip"><i data-lucide="clock-3" aria-hidden="true"></i>Generated {generated_at}</span>
-    <span class="status-chip"><i data-lucide="database" aria-hidden="true"></i>Cleaned + integrated data refreshed</span>
+    <span class="status-chip"><i data-lucide="check-circle-2" aria-hidden="true"></i>Validated data · {generated_at}</span>
+    <span class="status-chip"><i data-lucide="database" aria-hidden="true"></i>{total_deals} opportunities · 8 datasets</span>
   </div>
-  <div class="quality-strip" aria-label="Data quality scorecard">
-    <div class="quality-card"><strong>{domain_match_rate}</strong> Opportunity domain coverage</div>
-    <div class="quality-card {missing_date_class}"><strong>{missing_create_dates}</strong> opportunities missing create date</div>
-    <div class="quality-card {unknown_channel_class}"><strong>{unknown_channel_pct}</strong> unknown/other channel share</div>
-    <div class="quality-card"><strong>{top3_pipeline_share}</strong> top-3 channel concentration</div>
-    <div class="quality-card"><strong>{attribution_reconciliation}</strong> influenced vs sourced lens</div>
-  </div>
+  <details class="data-health">
+    <summary>Data Health and quality details</summary>
+    <div class="quality-strip" aria-label="Data quality scorecard">
+      <div class="quality-card"><strong>{domain_match_rate}</strong> Opportunity domain coverage</div>
+      <div class="quality-card {missing_date_class}"><strong>{missing_create_dates}</strong> opportunities missing create date</div>
+      <div class="quality-card {unknown_channel_class}"><strong>{unknown_channel_pct}</strong> unknown/other channel share</div>
+      <div class="quality-card"><strong>{top3_pipeline_share}</strong> top-3 channel concentration</div>
+      <div class="quality-card"><strong>{attribution_reconciliation}</strong> influenced vs sourced lens</div>
+    </div>
+  </details>
   <div class="metric-lens" aria-label="Metric lens controls">
     <span>Metric lens:</span>
-    <button class="lens-button active" data-lens="all" type="button">All</button>
-    <button class="lens-button" data-lens="dollars" type="button">$</button>
-    <button class="lens-button" data-lens="rates" type="button">%</button>
-    <button class="lens-button" data-lens="counts" type="button">Counts</button>
+    <button class="lens-button active" data-lens="all" type="button" aria-pressed="true">All</button>
+    <button class="lens-button" data-lens="dollars" type="button" aria-pressed="false">$</button>
+    <button class="lens-button" data-lens="rates" type="button" aria-pressed="false">%</button>
+    <button class="lens-button" data-lens="counts" type="button" aria-pressed="false">Counts</button>
   </div>
 
   <!-- KPI Row (always visible) -->
@@ -1453,7 +1575,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
     <div class="decision-item">
       <strong>1. Protect quality</strong>
-      <span>Pipeline is growing while win rate moved from {cohort_start_rate} to {cohort_end_rate}; review ICP and qualification first.</span>
+      <span>Among cohorts at least 80% resolved, closed-deal win rate moved from {cohort_start_rate} to {cohort_end_rate}; review ICP and qualification before scaling.</span>
     </div>
     <div class="decision-item">
       <strong>2. Expand coverage</strong>
@@ -1473,7 +1595,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div class="command-rail" aria-label="Dashboard reading path">
     <div class="command-tile"><strong>Start</strong><span>Read the essential view before opening deep-dive charts.</span></div>
     <div class="command-tile warn"><strong>Check</strong><span>Use attribution as planning evidence, not causality proof.</span></div>
-    <div class="command-tile risk"><strong>Watch</strong><span>Quality risk matters because recent cohort win rate softened.</span></div>
+    <div class="command-tile risk"><strong>Watch</strong><span>Quality risk matters because mature-cohort win rate softened.</span></div>
     <div class="command-tile"><strong>Decide</strong><span>Use the recommendation page to defend next actions.</span></div>
   </div>
 
@@ -1483,28 +1605,28 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <p><span class="evidence-badge">{influenced_pipeline} influenced</span> vs. <span class="evidence-badge orange">{sourced_pipeline} sourced</span> shows why the dashboard reports both views.</p>
     </div>
     <div class="story-card coverage">
-      <h2>Coverage is the clearest growth lever</h2>
-      <p><span class="evidence-badge orange">{unreached_pct} unreached</span> target accounts have no email or 6sense touch yet.</p>
+      <h2>Coverage is the clearest test opportunity</h2>
+      <p><span class="evidence-badge orange">{unreached_pct} unreached</span> target accounts define a measurable test audience, not guaranteed lift.</p>
     </div>
     <div class="story-card quality">
       <h2>Pipeline quality needs executive attention</h2>
-      <p><span class="evidence-badge red">{cohort_start_rate} -> {cohort_end_rate} win rate</span> means pipeline growth must be checked against conversion quality.</p>
+      <p><span class="evidence-badge red">{cohort_start_rate} -> {cohort_end_rate} closed win rate</span> among mature cohorts means pipeline growth must be checked against conversion quality.</p>
     </div>
   </div>
 
   <!-- Executive Summary -->
   <div id="s-essential" class="section active">
-    <div class="section-title">Essential View</div>
+    <h2 class="section-title">Essential View</h2>
     <div class="section-desc">A focused version for decision-makers: the answer, the few charts that support it, and the next actions.</div>
-    <div class="section-takeaway"><strong>Recommended path:</strong> protect pipeline quality, expand coverage to unreached target accounts, and treat attribution as directional planning evidence. <span class="evidence-badge">{influenced_pipeline} influenced</span><span class="evidence-badge orange">{unreached_pct} unreached</span><span class="evidence-badge red">{cohort_start_rate} to {cohort_end_rate} win rate</span></div>
+    <div class="section-takeaway"><strong>Recommended path:</strong> protect pipeline quality, test coverage on unreached target accounts, and treat attribution as directional planning evidence. <span class="evidence-badge">{influenced_pipeline} influenced</span><span class="evidence-badge orange">{unreached_pct} unreached</span><span class="evidence-badge red">{cohort_start_rate} to {cohort_end_rate} closed win rate</span></div>
     <div class="priority-grid">
       <div class="priority-card">
         <div class="priority-tag">Do first</div>
         <h3>Audit pipeline quality</h3>
-        <p>Pipeline volume is growing, but cohort win rate moved from {cohort_start_rate} to {cohort_end_rate}. Tighten ICP and qualification before increasing broad spend.</p>
+        <p>Among cohorts at least 80% resolved, closed-deal win rate moved from {cohort_start_rate} to {cohort_end_rate}. Tighten ICP and qualification before increasing broad spend.</p>
       </div>
       <div class="priority-card">
-        <div class="priority-tag">Growth lever</div>
+        <div class="priority-tag">Test opportunity</div>
         <h3>Reach unreached accounts</h3>
         <p>{unreached_accounts} target accounts, or {unreached_pct}, have no tracked email or 6sense touch. Prioritize strong-fit accounts and use a holdout.</p>
       </div>
@@ -1520,12 +1642,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card full"><div id="c-essential-cohort"></div></div>
     </div>
     <div class="chart-card full" style="margin-top:16px">
-      <div class="section-title" style="font-size:13px;margin-bottom:8px">Essential Action Plan</div>
+      <h3 class="section-title" style="font-size:13px;margin-bottom:8px">Essential Action Plan</h3>
       <div class="table-wrap">
         <table class="dash-table">
           <thead><tr><th>Priority</th><th>Decision</th><th>Why</th><th>Next step</th></tr></thead>
           <tbody>
-            <tr><td><span class="priority-tag">1</span></td><td>Protect quality</td><td>Win rate moved from {cohort_start_rate} to {cohort_end_rate} while pipeline grew.</td><td>Run a quarterly ICP and qualification review before scaling volume.</td></tr>
+            <tr><td><span class="priority-tag">1</span></td><td>Protect quality</td><td>Closed-deal win rate moved from {cohort_start_rate} to {cohort_end_rate} across cohorts at least 80% resolved.</td><td>Run a quarterly ICP and qualification review before scaling volume.</td></tr>
             <tr><td><span class="priority-tag">2</span></td><td>Expand coverage</td><td>{unreached_pct} of target accounts are unreached by tracked email or 6sense.</td><td>Launch email-first coverage test with a holdout group.</td></tr>
             <tr><td><span class="priority-tag">3</span></td><td>Use attribution carefully</td><td>{influenced_pipeline} influenced vs. {sourced_pipeline} sourced shows marketing has broader journey impact.</td><td>Use time-decay/linear models for planning, not as causality proof.</td></tr>
           </tbody>
@@ -1540,7 +1662,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   </div>
 
   <div id="s-exec" class="section">
-    <div class="section-title">Executive Summary</div>
+    <h2 class="section-title">Executive Summary</h2>
     <div class="section-desc">High-level pipeline, revenue, and channel overview for a B2B ABM company targeting specific accounts with 6sense display ads, email, and events.</div>
     <div class="section-takeaway"><strong>Executive takeaway:</strong> The business has meaningful pipeline volume, but the strongest story is how marketing supports future revenue beyond direct source credit. <span class="evidence-badge">{total_pipeline} pipeline</span><span class="evidence-badge green">{won_pipeline} won</span></div>
     <div class="context-box">
@@ -1569,7 +1691,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div id="c-monthly-trend"></div>
         <div class="chart-explain">
           <div class="ex-title">What this shows - Pipeline Created by Month</div>
-          Each colored band represents pipeline (deal value) created in that month, stacked by channel. A taller bar = more deals created that month. The color split shows which channels are active at different times of year.
+          Each colored band represents pipeline created in that month. The view keeps the five largest channels and groups the long tail into Other, so the total shape remains readable without a 12-series legend.
           <br><br><strong>How to use it:</strong> Look for spikes - did they follow a campaign launch? Look for drops - did a channel go quiet? This helps connect campaign activity to deal creation with a time lag.
           <div class="ex-insight">Key takeaway: Compare this chart to your campaign calendar. Spikes are useful leads for investigation, but the chart alone does not prove campaign lift.</div>
         </div>
@@ -1579,7 +1701,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <!-- Attribution Models -->
   <div id="s-attrib" class="section">
-    <div class="section-title">Attribution Analysis</div>
+    <h2 class="section-title">Attribution Analysis</h2>
     <div class="section-desc">How different models split deal credit across marketing touchpoints - the core of understanding marketing ROI.</div>
     <div class="section-takeaway"><strong>Attribution takeaway:</strong> Sourced pipeline is the conservative number; influenced pipeline is the fuller account-journey story. <span class="evidence-badge orange">{sourced_pipeline} sourced</span><span class="evidence-badge">{influenced_pipeline} influenced</span></div>
     <div class="context-box">
@@ -1613,11 +1735,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div id="c-attrib-comparison"></div>
         <div class="chart-explain">
           <div class="ex-title">What this shows - Attribution Model Comparison</div>
-          <strong>This is the most important chart.</strong> Each group of bars is one attribution model. Within each group, each colored bar is one marketing channel. The bar height = how many dollars of pipeline that channel gets credited with under that model.
+          This comparison isolates the common touchpoint-linked channels across first-touch, last-touch, linear, and time-decay models. Sourced and influenced totals are shown separately because they use different definitions and populations.
           <br><br>
           <strong>How to read it:</strong> Compare the same channel across different models. If Email's bar is tall in First-Touch but shorter in Last-Touch, Email is good at starting conversations but someone else closes them.
           <br><br>
-          <strong>Example walkthrough:</strong> Company "Acme Corp" sees 6sense ads for 3 months (6sense gets credit), gets 2 emails (Email gets credit), visits the website once (Web gets credit), then a deal worth $50K is created. Under <em>First-Touch</em>: Email gets $50K. Under <em>Last-Touch</em>: Web gets $50K. Under <em>Linear</em>: each channel gets $16.7K. Under <em>Time-Decay</em>: Web gets the most because it happened closest to the deal.
+          <strong>Example walkthrough:</strong> Company "Acme Corp" receives an email, sees 6sense ads, then visits the website before a $50K deal is created. Under <em>First-Touch</em>, Email gets $50K. Under <em>Last-Touch</em>, Web gets $50K. Under <em>Linear</em>, each channel gets $16.7K. Under <em>Time-Decay</em>, Web gets the most because it happened closest to the deal.
           <div class="ex-insight">Key takeaway: Compare first-touch, last-touch, linear, and time-decay side by side. Differences show observed journey roles, not single-channel causality.</div>
         </div>
       </div>
@@ -1651,7 +1773,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
     <!-- Attribution Table -->
     <div class="chart-card" style="margin-top:16px">
-      <div class="section-title" style="font-size:13px;margin-bottom:6px">Full Attribution Table - All Models Side by Side</div>
+      <h3 class="section-title" style="font-size:13px;margin-bottom:6px">Full Attribution Table - All Models Side by Side</h3>
       <div style="font-size:11px;color:#64748B;margin-bottom:10px">Every channel across every model in one place. The "Recommended Model" column shows which model gives that channel the most credit - use as a sanity check before budget decisions.</div>
       <div style="overflow-x:auto">
         <table class="dash-table" id="attrib-table">
@@ -1664,7 +1786,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <!-- Channel Performance -->
   <div id="s-channel" class="section">
-    <div class="section-title">Channel Performance</div>
+    <h2 class="section-title">Channel Performance</h2>
     <div class="section-desc">ROI, win rate, and funnel conversion by marketing channel - the efficiency scorecard.</div>
     <div class="section-takeaway"><strong>Channel takeaway:</strong> Relationship channels close best, while marketing channels build the net-new funnel that needs time to mature. <span class="evidence-badge green">relationship channels</span><span class="evidence-badge">net-new pipeline</span></div>
     <div class="context-box">
@@ -1709,7 +1831,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         </div>
       </div>
       <div class="chart-card full">
-        <div class="section-title" style="font-size:13px;margin-bottom:6px">Channel ROI Summary Table</div>
+        <h3 class="section-title" style="font-size:13px;margin-bottom:6px">Channel ROI Summary Table</h3>
         <div style="font-size:11px;color:#64748B;margin-bottom:10px">Pipeline ROI = total pipeline / spend. Revenue ROI = won revenue / spend. Channels with no spend tracked show - (they rely on sales effort, not ad budget).</div>
         <div style="overflow-x:auto">
           <table class="dash-table" id="channel-table">
@@ -1723,7 +1845,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <!-- Segment Analysis -->
   <div id="s-segment" class="section">
-    <div class="section-title">Segment & ICP Analysis</div>
+    <h2 class="section-title">Segment & ICP Analysis</h2>
     <div class="section-desc">Which account segments and industries have the most pipeline and highest win rates - your best ABM targeting zones.</div>
     <div class="section-takeaway"><strong>Segment takeaway:</strong> The best targeting decision balances revenue potential with win probability, not just the largest deal size. <span class="evidence-badge green">Commercial + Strong Fit wins most often</span></div>
     <div class="context-box">
@@ -1761,7 +1883,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <!-- Creative & Email -->
   <div id="s-creative" class="section">
-    <div class="section-title">Creative & Email Performance</div>
+    <h2 class="section-title">Creative & Email Performance</h2>
     <div class="section-desc">Which ad creatives and email campaigns drive the highest engagement - tells you what messaging resonates with your target accounts.</div>
     <div class="section-takeaway"><strong>Creative takeaway:</strong> Creative performance is an efficiency lever: better messages improve account engagement before opportunities appear in CRM. <span class="evidence-badge">CTR and form fills</span><span class="evidence-badge orange">seniority engagement</span></div>
     <div class="context-box">
@@ -1809,11 +1931,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <!-- Budget Scenarios -->
   <div id="s-budget" class="section">
-    <div class="section-title">Budget Recommendation & Scenarios</div>
+    <h2 class="section-title">Budget Recommendation & Scenarios</h2>
     <div class="section-desc">Three scenarios showing what happens to projected pipeline if you reallocate the marketing budget based on ROI data.</div>
     <div class="section-takeaway"><strong>Budget takeaway:</strong> Use scenarios as directional planning, not exact forecasting; the chart only models channels with tracked spend. <span class="evidence-badge">{tracked_spend_channels}</span><span class="evidence-badge orange">diminishing returns risk</span></div>
     <div class="context-box">
-      <strong>How scenario modelling works:</strong> We take each channel's current "pipeline per dollar spent" efficiency rate (observed from real data) and apply it to different spending levels. If 6sense historically generates $5 of pipeline for every $1 spent, doubling the 6sense budget should generate roughly twice the pipeline (holding all other variables equal - which is a simplification, but useful for directional planning).
+      <strong>How scenario modelling works:</strong> We take each tracked channel's current pipeline-per-dollar efficiency rate and apply it to different spending levels. Only two channels have reliable spend in this dataset, so this is a narrow sensitivity test rather than a complete marketing budget model.
       <br><br>
       <strong>Three scenarios:</strong> (1) <em>Status Quo</em> - keep tracked spend exactly as-is. (2) <em>ROI-Optimized</em> - shift 30% more to the top tracked-ROI channels, cut the bottom tracked channels by 20%. (3) <em>Growth Mode</em> - double the top tracked-spend channels and reduce lower tracked-ROI channels. This excludes channels without spend data.
     </div>
@@ -1837,7 +1959,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <!-- Advanced Analytics -->
   <div id="s-advanced" class="section">
-    <div class="section-title">Advanced Analytics</div>
+    <h2 class="section-title">Advanced Analytics</h2>
     <div class="section-desc">ML win probability model, account coverage gap, deal velocity, journey sequences, and targeting matrix - datathon-level depth.</div>
     <div class="section-takeaway"><strong>Advanced takeaway:</strong> The predictive model and coverage analysis point to the same action: focus sales and marketing on high-fit accounts that are not yet fully activated. <span class="evidence-badge">AUC {model_auc}</span><span class="evidence-badge orange">{unreached_pct} unreached</span></div>
     <div class="context-box">
@@ -1845,12 +1967,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
     <div class="evidence-grid">
       <div class="evidence-card">
-        <h3><span class="confidence-pill high">Coverage lift</span> Reached accounts perform better</h3>
-        <p>Unreached accounts show a {not_reached_rate} opportunity rate, while email-only accounts show {email_only_rate} and both-channel accounts show {both_rate}.</p>
+        <h3><span class="confidence-pill high">Observed gap</span> Reached tiers show higher observed rates</h3>
+        <p>Unreached accounts show a {not_reached_rate} opportunity rate, while email-only accounts show {email_only_rate} and both-channel accounts show {both_rate}. This association may reflect selection, so validate it with a holdout.</p>
       </div>
       <div class="evidence-card">
         <h3><span class="confidence-pill medium">Quality diagnosis</span> Growth is not automatically healthy</h3>
-        <p>Pipeline volume is rising while cohort win rate moved from {cohort_start_rate} in {cohort_start_quarter} to {cohort_end_rate} in {cohort_end_quarter}.</p>
+        <p>Among cohorts at least 80% resolved, closed-deal win rate moved from {cohort_start_rate} in {cohort_start_quarter} to {cohort_end_rate} in {cohort_end_quarter}.</p>
       </div>
       <div class="evidence-card">
         <h3><span class="confidence-pill directional">Next test</span> Validate causality</h3>
@@ -1875,8 +1997,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <div class="ex-title">What this shows - Win Probability Distribution (Open Deals)</div>
           This histogram shows {open_deals} currently open deals scored by the ML model. Each bar = number of open deals with that win probability range. Deals on the right side are higher-priority follow-up candidates.
           <br><br>
-          <strong>How to use it:</strong> Sort your CRM by win probability and have sales prioritize the top 20% (probability > 70%). Don't waste effort on deals with < 20% probability until the pipeline is healthy.
-          <div class="ex-insight">Key insight: Share this model output with your sales team as a weekly "hot deals" list. The model integrates marketing signals (email engagement, 6sense impressions) that sales reps don't see in CRM.</div>
+          <strong>How to use it:</strong> Use the score as one prioritization input alongside deal stage, account context, and seller judgment. Do not set an operating cutoff until calibration and precision/recall are validated at the proposed threshold.
+          <div class="ex-insight">Key insight: Pilot the ranking with sales, measure conversion by score band, and choose a threshold only after observed performance supports it.</div>
         </div>
       </div>
     </div>
@@ -1890,8 +2012,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <br><br>
           <strong>The critical finding:</strong> <strong>{unreached_accounts} accounts ({unreached_pct}) have never received a single marketing touchpoint.</strong> Yet accounts reached by email alone have a {email_only_rate} opportunity rate vs. {not_reached_rate} for unreached accounts.
           <br><br>
-          <strong>What to do:</strong> The {unreached_accounts} unreached accounts represent your biggest growth lever. Expand 6sense audience lists and email sequences to cover these accounts, prioritizing Strong Profile Fit ones first.
-          <div class="ex-insight">Key insight: Use this to size a test audience and holdout. The observed "Both Channels" rate is a benchmark, not a guaranteed lift rate.</div>
+          <strong>What to do:</strong> The {unreached_accounts} unreached accounts define the largest testable audience. Prioritize strong-fit accounts and compare treatment with a holdout before interpreting the higher reached-account opportunity rates as lift.
+          <div class="ex-insight">Key insight: Coverage and opportunity creation are associated, but account selection and sales activity may explain part of the gap. Only a controlled test can estimate incremental lift.</div>
         </div>
       </div>
     </div>
@@ -1924,10 +2046,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div id="c-targeting-matrix"></div>
         <div class="chart-explain">
           <div class="ex-title">What this shows - ABM Targeting Priority Matrix</div>
-          Win rate heatmap crossing Segment (Enterprise/Commercial/Mid) vs. 6sense Profile Fit (Strong/Moderate/Weak). Darker blue = higher win rate = higher-priority target.
+          Win rate heatmap crossing Segment (Enterprise/Commercial/Mid) vs. 6sense Profile Fit (Strong/Moderate/Weak). Every cell includes its deal count; cells below 30 deals are explicitly exploratory.
           <br><br>
           <strong>How to use it:</strong> The darkest cells define your Tier 1 ABM targets - where you invest your most personalized, expensive outreach. Commercial + Strong Fit (47% win rate) and Mid + Moderate (43%) are the sweet spots.
-          <div class="ex-insight">Key insight: Enterprise + Strong Fit has the highest average deal size ($15,928) AND 35% win rate. Commercial + Strong Fit wins most often (47%). Run both in parallel - Enterprise for revenue growth, Commercial for volume.</div>
+          <div class="ex-insight">Key insight: Commercial + Strong Fit combines a 47% win rate with n=388 and is the stronger planning signal. Enterprise + Strong Fit has a larger average deal but only n=26, so treat it as a hypothesis to validate.</div>
         </div>
       </div>
       <div class="chart-card">
@@ -1936,8 +2058,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <div class="ex-title">What this shows - Pipeline Cohort Analysis by Quarter</div>
           Blue bars = pipeline created each quarter (growing). Green line = win rate per quarter (declining). Yellow dashed = marketing's share of deals per quarter (volatile).
           <br><br>
-          <strong>The critical trend:</strong> Pipeline is growing, while win rate moved from {cohort_start_rate} in {cohort_start_quarter} to {cohort_end_rate} in {cohort_end_quarter}. Marketing's share peaked at {mktg_peak_pct} and ended at {mktg_end_pct}. This suggests pipeline quality and source mix need review.
-          <div class="ex-insight">Key insight: This is the most important quality signal in the dataset. Investigate whether newer pipeline is coming from lower-fit accounts, broader qualification, or a changing source mix before scaling volume.</div>
+          <strong>The quality trend:</strong> Among cohorts at least 80% resolved, closed-deal win rate moved from {cohort_start_rate} in {cohort_start_quarter} to {cohort_end_rate} in {cohort_end_quarter}. The resolved-share line shows why newer cohorts should remain provisional.
+          <div class="ex-insight">Key insight: Investigate whether the mature-cohort decline reflects ICP fit, qualification, or source mix. Do not treat unresolved recent cohorts as equivalent to fully matured cohorts.</div>
         </div>
       </div>
     </div>
@@ -1945,7 +2067,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <!-- Conclusion -->
   <div id="s-appendix" class="section">
-    <div class="section-title">Analyst Appendix</div>
+    <h2 class="section-title">Analyst Appendix</h2>
     <div class="section-desc">Extra evidence is still available, but it is no longer part of the default judging path.</div>
     <div class="section-takeaway"><strong>Use this section when challenged:</strong> it holds the supporting analysis behind the recommendation without making the opening dashboard feel crowded.</div>
     <div class="priority-grid">
@@ -1981,7 +2103,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
     </div>
     <div class="chart-card full" style="margin-top:16px">
-      <div class="section-title" style="font-size:13px;margin-bottom:8px">Case Deliverable Coverage</div>
+      <h3 class="section-title" style="font-size:13px;margin-bottom:8px">Case Deliverable Coverage</h3>
       <div class="table-wrap">
         <table class="dash-table">
           <thead><tr><th>Rubric Area</th><th>Where It Is Answered</th><th>What The Evaluator Should See</th></tr></thead>
@@ -1999,13 +2121,13 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   </div>
 
   <div id="s-conclusion" class="section">
-    <div class="section-title">Conclusion</div>
+    <h2 class="section-title">Conclusion</h2>
     <div class="section-desc">The practical readout: what the analysis says, what risks matter, and what the next actions should be.</div>
-    <div class="section-takeaway"><strong>Final takeaway:</strong> The recommendation is targeted growth, not blanket budget expansion. <span class="evidence-badge">{influenced_pipeline} influenced</span><span class="evidence-badge orange">{unreached_pct} unreached</span><span class="evidence-badge red">{cohort_start_rate} -> {cohort_end_rate} win rate</span></div>
+    <div class="section-takeaway"><strong>Final takeaway:</strong> The recommendation is targeted, measured growth rather than blanket budget expansion. <span class="evidence-badge">{influenced_pipeline} influenced</span><span class="evidence-badge orange">{unreached_pct} unreached</span><span class="evidence-badge red">{cohort_start_rate} -> {cohort_end_rate} closed win rate</span></div>
     <div class="conclusion-hero">
       <div class="eyebrow">Bottom-line recommendation</div>
       <h3>Reach the right unreached accounts, start with email, test 6sense overlay with a holdout, and protect win rate as pipeline grows.</h3>
-      <p>Marketing is not just a source channel. It influenced {influenced_pipeline} of pipeline, but the largest growth lever is coverage: {unreached_accounts} target accounts, or {unreached_pct}, have not been reached by email or 6sense.</p>
+      <p>Marketing is not just a source channel. It influenced {influenced_pipeline} of pipeline, while {unreached_accounts} target accounts ({unreached_pct}) provide a large, measurable audience for a controlled coverage test.</p>
     </div>
 
     <div class="conclusion-grid">
@@ -2020,8 +2142,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="conclusion-card">
         <h3>What is at risk</h3>
         <ul class="finding-list">
-          <li>Pipeline volume is growing, but cohort win rate moved from {cohort_start_rate} in {cohort_start_quarter} to {cohort_end_rate} in {cohort_end_quarter}.</li>
-          <li>Marketing-sourced share ended at {mktg_end_pct}, so the source mix deserves review.</li>
+          <li>Among cohorts at least 80% resolved, closed-deal win rate moved from {cohort_start_rate} in {cohort_start_quarter} to {cohort_end_rate} in {cohort_end_quarter}.</li>
+          <li>Marketing-sourced share was {mktg_end_pct} in the latest cohort meeting the 80% resolved threshold, so source mix deserves review.</li>
           <li>Most target accounts are unreached, which limits ABM learning and leaves pipeline potential untouched.</li>
         </ul>
       </div>
@@ -2051,7 +2173,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
 
     <div class="chart-card full" style="margin-bottom:16px">
-      <div class="section-title" style="font-size:13px;margin-bottom:6px">Decision Confidence</div>
+      <h3 class="section-title" style="font-size:13px;margin-bottom:6px">Decision Confidence</h3>
       <div style="font-size:11px;color:#64748B;margin-bottom:10px">This separates what the data directly supports from what should be treated as a testable business hypothesis.</div>
       <div style="overflow-x:auto">
         <table class="dash-table confidence-table">
@@ -2072,7 +2194,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <tr>
               <td><strong>Tighten ICP and qualification criteria.</strong></td>
               <td><span class="confidence-pill high">High</span></td>
-              <td>Cohort analysis shows pipeline growth alongside a win-rate move from {cohort_start_rate} to {cohort_end_rate}.</td>
+              <td>Cohort analysis shows pipeline growth alongside a mature-cohort closed-win-rate move from {cohort_start_rate} to {cohort_end_rate}.</td>
               <td>Track win rate, stage conversion, and disqualification reasons by source and profile fit.</td>
             </tr>
             <tr>
@@ -2102,7 +2224,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
 
     <div class="chart-card full">
-      <div class="section-title" style="font-size:13px;margin-bottom:6px">Recommended Action Plan</div>
+      <h3 class="section-title" style="font-size:13px;margin-bottom:6px">Recommended Action Plan</h3>
       <div style="font-size:11px;color:#64748B;margin-bottom:10px">Each row connects the dashboard evidence to a business action, so the analysis can be defended in a presentation.</div>
       <div style="overflow-x:auto">
         <table class="dash-table recommendation-table">
@@ -2117,7 +2239,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <tr>
               <td><span class="priority-tag p1">P1</span></td>
               <td><strong>Pipeline quality:</strong> tighten ICP and qualification criteria.</td>
-              <td>Quarterly pipeline is rising while win rate moved from {cohort_start_rate} to {cohort_end_rate}.</td>
+              <td>Quarterly pipeline is rising while closed-deal win rate moved from {cohort_start_rate} to {cohort_end_rate} among cohorts at least 80% resolved.</td>
               <td>Win rate, stage conversion, disqualification reasons.</td>
             </tr>
             <tr>
@@ -2144,7 +2266,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
 
     <div class="chart-card full" style="margin-top:16px">
-      <div class="section-title" style="font-size:13px;margin-bottom:8px">How to Present the Conclusion</div>
+      <h3 class="section-title" style="font-size:13px;margin-bottom:8px">How to Present the Conclusion</h3>
       <div class="next-step-row">
         <strong>1. Start with contribution</strong>
         <span>Marketing created measurable pipeline directly, but the stronger story is influence across the account journey.</span>
@@ -2169,12 +2291,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
   </div>
 
-</div><!-- /main -->
+</main><!-- /main -->
 
 <div class="drawer-backdrop" id="drawer-backdrop"></div>
-<aside class="caveats-drawer" id="caveats-drawer" aria-label="Data caveats" aria-hidden="true">
+<aside class="caveats-drawer" id="caveats-drawer" role="dialog" aria-modal="true" aria-labelledby="caveats-title" aria-hidden="true" tabindex="-1">
   <div class="drawer-head">
-    <h2>Data Caveats</h2>
+    <h2 id="caveats-title">Data Caveats</h2>
     <button class="action-button" id="close-caveats" type="button"><i data-lucide="x" aria-hidden="true"></i><span>Close</span></button>
   </div>
   <ul>
@@ -2236,6 +2358,7 @@ function setMode(mode) {{
   if (modeToggle) {{
     modeToggle.setAttribute('aria-pressed', String(presentation));
     modeToggle.querySelector('span').textContent = presentation ? 'Analyst Mode' : 'Presentation Mode';
+    modeToggle.setAttribute('aria-label', presentation ? 'Switch to analyst mode' : 'Switch to presentation mode');
   }}
   localStorage.setItem('dashboardMode', mode);
 }}
@@ -2252,18 +2375,33 @@ const resetButton = document.getElementById('reset-button');
 const caveatsButton = document.getElementById('caveats-button');
 const menuButton = document.getElementById('menu-button');
 const dashboardSearch = document.getElementById('dashboard-search');
+const searchFeedback = document.getElementById('search-feedback');
 const closeCaveats = document.getElementById('close-caveats');
 const drawerBackdrop = document.getElementById('drawer-backdrop');
 const caveatsDrawer = document.getElementById('caveats-drawer');
 const recommendationButton = document.getElementById('recommendation-button');
+let caveatsReturnFocus = null;
+
+function getDrawerFocusables() {{
+  return caveatsDrawer ? Array.from(caveatsDrawer.querySelectorAll('a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])')) : [];
+}}
 
 function openCaveats() {{
+  caveatsReturnFocus = document.activeElement;
   document.body.classList.add('drawer-open');
-  if (caveatsDrawer) caveatsDrawer.setAttribute('aria-hidden', 'false');
+  if (caveatsDrawer) {{
+    caveatsDrawer.setAttribute('aria-hidden', 'false');
+    const focusables = getDrawerFocusables();
+    (focusables[0] || caveatsDrawer).focus();
+  }}
+  if (caveatsButton) caveatsButton.setAttribute('aria-expanded', 'true');
 }}
 function closeCaveatsDrawer() {{
+  const wasOpen = document.body.classList.contains('drawer-open');
   document.body.classList.remove('drawer-open');
   if (caveatsDrawer) caveatsDrawer.setAttribute('aria-hidden', 'true');
+  if (caveatsButton) caveatsButton.setAttribute('aria-expanded', 'false');
+  if (wasOpen && caveatsReturnFocus && typeof caveatsReturnFocus.focus === 'function') caveatsReturnFocus.focus();
 }}
 if (printButton) printButton.addEventListener('click', () => window.print());
 if (caveatsButton) caveatsButton.addEventListener('click', openCaveats);
@@ -2280,10 +2418,15 @@ if (menuButton) {{
 if (dashboardSearch) {{
   dashboardSearch.addEventListener('input', () => {{
     const q = dashboardSearch.value.trim().toLowerCase();
-    document.querySelectorAll('.nav-link').forEach(link => {{
+    const links = Array.from(document.querySelectorAll('.nav-link'));
+    let matches = 0;
+    links.forEach(link => {{
       const label = link.textContent.toLowerCase();
-      link.classList.toggle('hidden-by-search', Boolean(q) && !label.includes(q));
+      const match = !q || label.includes(q);
+      link.classList.toggle('hidden-by-search', !match);
+      if (match) matches += 1;
     }});
+    if (searchFeedback) searchFeedback.textContent = q ? `${{matches}} matching section${{matches === 1 ? '' : 's'}}${{matches ? '' : '. Clear the filter to show all sections.'}}` : 'All dashboard sections are shown.';
   }});
 }}
 if (resetButton) {{
@@ -2297,6 +2440,18 @@ if (resetButton) {{
 }}
 
 document.addEventListener('keydown', (event) => {{
+  if (document.body.classList.contains('drawer-open')) {{
+    if (event.key === 'Escape') {{ event.preventDefault(); closeCaveatsDrawer(); return; }}
+    if (event.key === 'Tab') {{
+      const focusables = getDrawerFocusables();
+      if (!focusables.length) {{ event.preventDefault(); caveatsDrawer?.focus(); return; }}
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (event.shiftKey && document.activeElement === first) {{ event.preventDefault(); last.focus(); }}
+      else if (!event.shiftKey && document.activeElement === last) {{ event.preventDefault(); first.focus(); }}
+    }}
+    return;
+  }}
   if (['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)) return;
   const links = Array.from(document.querySelectorAll('.nav-link'));
   const active = document.querySelector('.nav-link.active');
@@ -2397,31 +2552,31 @@ const CHARTS = {{
 
 const CHART_META = {{
   "c-essential-contribution": ["Question: is marketing impact larger than CRM source credit?", "Population: sourced and influenced attribution views.", "Decision use: report both numbers, with sourced as conservative and influenced as journey context."],
-  "c-essential-coverage": ["Question: where is the biggest growth lever?", "Population: target account domains.", "Decision use: expand coverage with a holdout instead of scaling broad spend immediately."],
-  "c-essential-cohort": ["Question: is growth protecting conversion quality?", "Population: opportunities by create quarter.", "Decision use: tighten ICP and qualification before increasing volume."],
+  "c-essential-coverage": ["Question: where is the largest measurable coverage test?", "Population: target account domains; groups are observational, not randomized.", "Decision use: test coverage with a holdout before claiming incremental lift."],
+  "c-essential-cohort": ["Question: is growth protecting conversion quality?", "Population: opportunities by create quarter; win rate uses resolved deals only.", "Decision use: compare mature cohorts and keep low-resolution recent cohorts provisional."],
   "c-essential-targeting": ["Question: which account cells deserve ABM focus?", "Population: opportunities with segment and profile fit.", "Decision use: prioritize high-fit cells before expanding reach."],
   "c-essential-budget": ["Question: what budget tests are worth considering?", "Population: tracked-spend channels only.", "Decision use: use scenarios to size tests, not to promise revenue."],
   "c-bar-channel": ["Question: which CRM-sourced channels create the most pipeline?", "Population: all deduplicated opportunities.", "Benchmark: compare each bar against total pipeline share."],
   "c-donut-won": ["Question: which channels actually closed revenue?", "Population: closed-won opportunities only.", "Caution: low-volume channels can swing sharply."],
-  "c-monthly-trend": ["Question: is pipeline creation changing over time?", "Population: opportunities with a create date.", "Benchmark: look for sustained trend, not one-month spikes."],
-  "c-attrib-comparison": ["Question: how does credit change by attribution model?", "Population: attributed opportunity touchpoints.", "Caution: model choice changes the answer."],
+  "c-monthly-trend": ["Question: is pipeline creation changing over time?", "Population: opportunities with a create date; top five channels plus Other.", "Benchmark: look for sustained movement, not one-month spikes."],
+  "c-attrib-comparison": ["Question: how does multi-touch credit change by model?", "Population: common touchpoint-linked channels across first-touch, last-touch, linear, and time-decay.", "Caution: sourced and influenced use different definitions and are shown separately."],
   "c-sourced-influenced": ["Question: how much contribution is visible in CRM vs broader account influence?", "Population: sourced and influenced attribution views.", "Benchmark: influenced should be reported beside sourced."],
   "c-attrib-waterfall": ["Question: which channels gain or lose credit near conversion?", "Population: first-touch vs last-touch attribution.", "Caution: this describes journey role, not causality."],
   "c-spend-pipeline": ["Question: where does tracked spend appear efficient?", "Population: channels with reliable spend.", "Caution: ROI excludes untracked channels."],
   "c-funnel": ["Question: what is the volume by channel activity and opportunity outcome?", "Population: separate activity populations, not one sequential funnel.", "Caution: do not read cross-channel bars as conversion steps."],
   "c-seg-heatmap": ["Question: which segment/industry cells hold pipeline?", "Population: opportunities with segment and industry values.", "Benchmark: prioritize cells with both value and enough volume."],
-  "c-seg-winrate": ["Question: which segments balance win rate and deal size?", "Population: deduplicated opportunities by segment.", "Caution: small segments need validation."],
+  "c-seg-winrate": ["Question: which segments convert most reliably?", "Population: deduplicated opportunities by segment; labels include deal count and average deal.", "Caution: this is a three-segment comparison, not a relationship analysis."],
   "c-creative-ctr": ["Question: which ad creatives earn attention?", "Population: creative rows with impressions and clicks.", "Benchmark: compare CTR before scaling spend."],
   "c-creative-attr": ["Question: which creative attributes correlate with engagement?", "Population: grouped creative metadata.", "Caution: this is correlation, not message causality."],
   "c-email-seniority": ["Question: which seniority engages with email?", "Population: email engagement records.", "Benchmark: opens and clicks answer different questions."],
   "c-budget-scenario": ["Question: what could happen under budget shifts?", "Population: tracked-spend channels only.", "Caution: scenario assumes historical efficiency."],
   "c-feat-imp": ["Question: what signals drive the win model?", "Population: closed opportunities used for training.", "Caution: importance is predictive, not causal."],
   "c-win-prob": ["Question: how are open deals distributed by win probability?", "Population: currently open scored deals.", "Benchmark: use bands for prioritization."],
-  "c-account-coverage": ["Question: where is the account coverage gap?", "Population: target account domains.", "Benchmark: compare opportunity rate by coverage tier."],
-  "c-deal-velocity": ["Question: how long do won deals take by channel?", "Population: closed-won opportunities with valid close dates.", "Caution: low-N channels need flags."],
+  "c-account-coverage": ["Question: where is the account coverage gap?", "Population: target account domains; volume and opportunity rate use separate panels.", "Caution: reached-account rates are observational and may reflect selection or sales activity."],
+  "c-deal-velocity": ["Question: how long do won deals take by channel?", "Population: closed-won opportunities with valid close dates and at least five wins per channel.", "Caution: medians describe historical cases, not guaranteed sales-cycle timing."],
   "c-journey": ["Question: what touchpoint sequences appear before wins?", "Population: won deals with linked pre-opportunity touchpoints.", "Caution: sequences are descriptive."],
-  "c-targeting-matrix": ["Question: which segment/profile-fit cells deserve ABM priority?", "Population: opportunities with segment and profile fit.", "Benchmark: dark cells need enough deal count."],
-  "c-cohort": ["Question: is pipeline growth protecting conversion quality?", "Population: opportunities by create quarter.", "Benchmark: compare pipeline trend against win-rate trend."]
+  "c-targeting-matrix": ["Question: which segment/profile-fit cells deserve ABM priority?", "Population: opportunities with segment and profile fit; every cell shows n.", "Caution: cells below 30 deals are exploratory regardless of color."],
+  "c-cohort": ["Question: is pipeline growth protecting conversion quality?", "Population: opportunities by create quarter; win rate uses resolved deals only.", "Benchmark: use the resolved-share line to identify provisional cohorts."]
 }};
 
 const CHART_STORY = {{
@@ -2432,12 +2587,12 @@ const CHART_STORY = {{
   }},
   "c-essential-coverage": {{
     finding: "A large share of target accounts still has no tracked email or 6sense touch.",
-    meaning: "The easiest growth lever is not more channels; it is reaching the right accounts already in the ICP universe.",
-    action: "Launch a strong-fit account coverage test with a holdout group."
+    meaning: "The largest measurable opportunity is testing coverage among strong-fit accounts already in the ICP universe.",
+    action: "Launch a strong-fit account coverage test with a holdout group before claiming lift."
   }},
   "c-essential-cohort": {{
-    finding: "Pipeline volume rises while win-rate quality weakens in recent cohorts.",
-    meaning: "Growth is at risk of becoming lower quality if qualification and ICP fit are not tightened.",
+    finding: "Pipeline volume rises while closed-deal win rate softens across sufficiently resolved cohorts.",
+    meaning: "Recent unresolved cohorts cannot be compared directly with mature cohorts, but the mature trend still warrants review.",
     action: "Audit ICP and qualification before scaling broad top-of-funnel spend."
   }},
   "c-essential-targeting": {{
@@ -2535,15 +2690,25 @@ function parseCellValue(text) {{
 
 function makeTablesSortable() {{
   document.querySelectorAll('.dash-table').forEach(table => {{
+    if (!table.querySelector('caption')) {{
+      const caption = document.createElement('caption');
+      const sectionTitle = table.closest('.section')?.querySelector('.section-title')?.textContent?.trim() || 'Dashboard data';
+      caption.textContent = `${{sectionTitle}} table. Sort by any column or download it as CSV.`;
+      table.prepend(caption);
+    }}
     const headers = Array.from(table.querySelectorAll('thead th'));
     headers.forEach((th, idx) => {{
       th.dataset.sort = 'true';
-      th.addEventListener('click', () => {{
+      th.setAttribute('tabindex', '0');
+      th.setAttribute('aria-sort', 'none');
+      th.setAttribute('aria-label', `${{th.textContent.trim()}}. Activate to sort.`);
+      const sortTable = () => {{
         const tbody = table.querySelector('tbody');
         if (!tbody) return;
         const nextAsc = !th.classList.contains('sort-asc');
-        headers.forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+        headers.forEach(h => {{ h.classList.remove('sort-asc', 'sort-desc'); h.setAttribute('aria-sort', 'none'); }});
         th.classList.add(nextAsc ? 'sort-asc' : 'sort-desc');
+        th.setAttribute('aria-sort', nextAsc ? 'ascending' : 'descending');
         const rows = Array.from(tbody.querySelectorAll('tr'));
         rows.sort((a, b) => {{
           const av = parseCellValue(a.children[idx]?.textContent || '');
@@ -2552,6 +2717,10 @@ function makeTablesSortable() {{
           return nextAsc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
         }});
         rows.forEach(row => tbody.appendChild(row));
+      }};
+      th.addEventListener('click', sortTable);
+      th.addEventListener('keydown', event => {{
+        if (event.key === 'Enter' || event.key === ' ') {{ event.preventDefault(); sortTable(); }}
       }});
     }});
   }});
@@ -2569,7 +2738,11 @@ function showTableEmptyStates() {{
 }}
 
 function applyMetricLens(lens) {{
-  document.querySelectorAll('.lens-button').forEach(btn => btn.classList.toggle('active', btn.dataset.lens === lens));
+  document.querySelectorAll('.lens-button').forEach(btn => {{
+    const active = btn.dataset.lens === lens;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', String(active));
+  }});
   document.querySelectorAll('.dash-table').forEach(table => {{
     const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.toLowerCase());
     table.querySelectorAll('tr').forEach(row => {{

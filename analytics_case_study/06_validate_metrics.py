@@ -8,6 +8,7 @@ in sync with the generated dashboard.
 import hashlib
 import os
 import ast
+import json
 import sys
 
 import pandas as pd
@@ -18,6 +19,7 @@ from analytics_case_study.config import CLEANED_DATA_DIR, INTEGRATED_DATA_DIR, O
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 PUBLIC_HTML = os.path.join(BASE_DIR, "public", "index.html")
+PUBLIC_CONTEXT = os.path.join(BASE_DIR, "public", "dashboard_context.json")
 DASHBOARD_HTML = os.path.join(OUTPUTS_DIR, "dashboard", "Marketing_Analytics_Dashboard.html")
 PRESENTATION_DECK = os.path.join(OUTPUTS_DIR, "presentation", "Marketing_Analytics_Executive_Deck_v4.pptx")
 DASHBOARD_SOURCE = os.path.join(BASE_DIR, "analytics_case_study", "04_html_dashboard.py")
@@ -169,10 +171,56 @@ def _validate_outputs(errors, warnings):
             "menu-button",
             "export-button",
             "prefers-reduced-motion",
+            "Cohort Resolved Share",
+            "cells below n=30 are exploratory",
+            "Association only; coverage groups are not randomized",
+            "common touchpoint-linked channels",
         ]
         missing_fragments = [fragment for fragment in required_fragments if fragment not in dashboard_text]
         if missing_fragments:
             errors.append(f"dashboard HTML missing UX/audit fragments: {', '.join(missing_fragments)}")
+
+    if os.path.exists(PUBLIC_CONTEXT):
+        with open(PUBLIC_CONTEXT, "r", encoding="utf-8") as f:
+            context = json.load(f)
+        opp_path = os.path.join(CLEANED_DATA_DIR, "opportunities.parquet")
+        if os.path.exists(opp_path):
+            opps = pd.read_parquet(opp_path)
+            won_col = next((c for c in ["iswon", "_iswon"] if c in opps.columns), None)
+            required = {"_opportunity_id", "_createdate (Date)", "_current_stage"}
+            if won_col and required.issubset(opps.columns):
+                created = pd.to_datetime(opps["_createdate (Date)"], errors="coerce")
+                cohort_rows = opps.loc[created.notna()].copy()
+                cohort_rows["quarter"] = created.loc[created.notna()].dt.to_period("Q").astype(str)
+                cohort_rows["is_closed"] = cohort_rows["_current_stage"].astype(str).str.contains(
+                    "closed|discontinued", case=False, na=False
+                )
+                cohort_rows["is_won"] = cohort_rows[won_col].fillna(False).astype(bool)
+                totals = cohort_rows.groupby("quarter").agg(
+                    deals=("_opportunity_id", "count"),
+                    closed=("is_closed", "sum"),
+                )
+                closed_wins = cohort_rows[cohort_rows["is_closed"]].groupby("quarter")["is_won"].sum()
+                totals["won_closed"] = closed_wins.reindex(totals.index).fillna(0)
+                totals["closed_share"] = totals["closed"] / totals["deals"]
+                totals["closed_win_rate"] = totals["won_closed"] / totals["closed"].replace(0, pd.NA)
+                mature = totals[(totals.index >= "2022Q1") & (totals["closed_share"] >= 0.80)].dropna(
+                    subset=["closed_win_rate"]
+                )
+                if not mature.empty:
+                    expected = {
+                        "cohort_start_quarter": str(mature.index[0]),
+                        "cohort_end_quarter": str(mature.index[-1]),
+                        "cohort_start_win_rate": f"{mature.iloc[0]['closed_win_rate']:.0%}",
+                        "cohort_end_win_rate": f"{mature.iloc[-1]['closed_win_rate']:.0%}",
+                    }
+                    actual = context.get("metrics", {})
+                    mismatches = [
+                        f"{key}: expected {value}, got {actual.get(key)}"
+                        for key, value in expected.items() if actual.get(key) != value
+                    ]
+                    if mismatches:
+                        errors.append("dashboard mature-cohort metrics do not reconcile: " + "; ".join(mismatches))
 
     analysis_dir = os.path.join(OUTPUTS_DIR, "analysis")
     expected_workbooks = [
