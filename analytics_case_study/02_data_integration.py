@@ -9,6 +9,7 @@ import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from analytics_case_study.config import CLEANED_DATA_DIR, INTEGRATED_DATA_DIR, CHANNEL_LEADSOURCE_MAP
+from analytics_case_study.utils.metrics import resolved_stage_mask
 
 
 def _load(name: str) -> pd.DataFrame:
@@ -148,11 +149,18 @@ def build_channel_pipeline(opps: pd.DataFrame, campaign6s: pd.DataFrame, ad_metr
         opps["iswon"] = False
         iswon_col = "iswon"
 
+    opps = opps.copy()
+    stage_col = next((c for c in opps.columns if "current_stage" in c.lower()), None)
+    opps["_is_resolved"] = resolved_stage_mask(opps[stage_col]) if stage_col else True
+    opps["_is_zero_amount"] = opps["_amount"].fillna(0).eq(0)
+
     result = (opps.groupby("channel_category")
               .agg(
                   deal_count=("_opportunity_id", "count"),
+                  resolved_count=("_is_resolved", "sum"),
                   total_pipeline=("_amount", "sum"),
                   avg_deal_size=("_amount", "mean"),
+                  zero_amount_deals=("_is_zero_amount", "sum"),
               ).reset_index())
 
     won = (opps[opps[iswon_col] == True]
@@ -164,7 +172,8 @@ def build_channel_pipeline(opps: pd.DataFrame, campaign6s: pd.DataFrame, ad_metr
     result = result.merge(won, on="channel_category", how="left")
     result["won_count"] = result["won_count"].fillna(0).astype(int)
     result["won_pipeline"] = result["won_pipeline"].fillna(0)
-    result["win_rate"] = (result["won_count"] / result["deal_count"]).round(4)
+    result["win_rate"] = (result["won_count"] / result["resolved_count"].replace(0, np.nan)).round(4)
+    result["resolved_share"] = (result["resolved_count"] / result["deal_count"].replace(0, np.nan)).round(4)
     result["pipeline_pct"] = (result["total_pipeline"] / result["total_pipeline"].sum()).round(4)
 
     # Ad spend per channel
@@ -240,12 +249,20 @@ def build_funnel_metrics(campaign6s: pd.DataFrame, ad_metrics: pd.DataFrame,
     email_opens = email["is_open"].sum() if "is_open" in email.columns else 0
     email_clicks = email["is_click"].sum() if "is_click" in email.columns else 0
     email_registers = email["is_register"].sum() if "is_register" in email.columns else 0
-    add_funnel("Email", [
-        ("Engagement Events", email_engagements),
+    add_funnel("Email Event Mix", [
         ("Opens", email_opens),
         ("Clicks", email_clicks),
         ("Registrations", email_registers),
     ])
+
+    # The email extract is an engagement-event log, not a send/delivery table.
+    # Store the event denominator explicitly and never describe these shares as
+    # standard email open or click rates.
+    for row in rows:
+        if row["channel"] == "Email Event Mix":
+            row["event_share"] = row["count"] / email_engagements if email_engagements else np.nan
+            row["metric_type"] = "event_composition"
+            row["conversion_from_prev"] = np.nan
 
     if web is not None and not web.empty:
         web_sessions = len(web)

@@ -1,195 +1,98 @@
 # Marketing Analytics Datathon
 
-End-to-end account-based marketing analytics project for a datathon case study. The project cleans raw marketing and CRM exports, builds integrated account-level datasets, analyzes channel performance and attribution, generates an interactive dashboard, and produces an executive presentation.
+An end-to-end B2B marketing analytics case study that turns eight CRM and marketing exports into validated analysis marts, executive workbooks, a self-contained interactive dashboard, and a 12-slide decision deck.
 
-## What This Includes
+## Executive answer
 
-- Data cleaning pipeline for opportunity, account, campaign, ad, email, web, ICP, and segment files.
-- Integrated account and funnel datasets saved as Parquet files.
-- Attribution, channel ROI, creative performance, segment conversion, cohort, coverage, velocity, and win probability analyses.
-- Static interactive HTML dashboard published from `public/index.html`.
-- Executive slide deck and supporting methodology notes.
+The data supports targeted, measured growth—not blanket budget expansion.
 
-## Repo Structure
+- Protect quality: closed-deal win rate moved from 38% in 2022 Q1 to 22% in 2024 Q2 among cohorts at least 80% resolved.
+- Expand coverage: 67.9% of target account domains have no tracked email or 6sense touch.
+- Measure before scaling: only two paid channels have tracked spend; one has a single opportunity and neither has recorded won revenue.
+- Repair measurement: 65.3% of won opportunities have zero amount, and only 11.7% of won opportunities link to eligible pre-opportunity touches.
+
+These limitations are surfaced in the dashboard, deck, workbooks, and automated validation—not hidden in footnotes.
+
+## Deliverables
+
+- Dashboard: [`public/index.html`](public/index.html), a self-contained Plotly artifact with no CDN runtime dependency.
+- Executive deck: [`outputs/presentation/Marketing_Analytics_Executive_Deck.pptx`](outputs/presentation/Marketing_Analytics_Executive_Deck.pptx), 12 slides with source and methodology notes on every slide.
+- Analysis workbooks: `outputs/analysis/`, including attribution coverage, data quality, email event semantics, and budget-neutral measurement plans.
+- Reproducible marts: `data/cleaned/` and `data/integrated/`.
+- Automated audit: `analytics_case_study/06_validate_metrics.py`.
+
+## Repository structure
 
 ```text
 Analytics Case Study/          Raw Excel source files
-analytics_case_study/          Python analysis pipeline
-data/cleaned/                  Cleaned intermediate Parquet outputs
-data/integrated/               Integrated analysis-ready Parquet outputs
-outputs/analysis/              Generated Excel analysis workbooks
-outputs/dashboard/             Generated dashboard HTML
-outputs/presentation/          Generated PowerPoint deck
-public/index.html              Static dashboard entry point for Render
-render.yaml                    Render static site configuration
+analytics_case_study/          Cleaning, integration, analysis, dashboard, deck, validation
+data/cleaned/                  Latest-state cleaned Parquet datasets
+data/integrated/               Analysis-ready marts and diagnostics
+outputs/analysis/              Generated Excel workbooks
+outputs/dashboard/             Canonical generated dashboard
+outputs/presentation/          Canonical executive deck
+public/                        Deployment-ready dashboard copy and context
+run_pipeline.py                One-command orchestration
 ```
 
-## Setup
-
-Create a virtual environment and install dependencies:
+## Reproduce the analysis
 
 ```bash
 python -m venv .venv
-.venv\Scripts\activate
+```
+
+Windows:
+
+```powershell
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
-
-On macOS or Linux, activate with:
-
-```bash
-source .venv/bin/activate
-```
-
-## Run The Pipeline
-
-Run the full pipeline from the repository root:
-
-```bash
 python run_pipeline.py
 ```
 
-Preview the steps without executing them:
+macOS or Linux:
 
 ```bash
-python run_pipeline.py --dry-run
+source .venv/bin/activate
+pip install -r requirements.txt
+python run_pipeline.py
 ```
 
-The runner executes the scripts below in order:
+The runner executes cleaning, integration, core analysis, attribution, advanced analytics, dashboard generation, presentation generation, and validation in order. `python run_pipeline.py --dry-run` prints the plan without changing artifacts.
 
-```bash
-python analytics_case_study/01_data_cleaning.py
-python analytics_case_study/02_data_integration.py
-python analytics_case_study/03_analysis.py
-python analytics_case_study/03b_attribution.py
-python analytics_case_study/03c_advanced_analytics.py
-python analytics_case_study/04_html_dashboard.py
-python analytics_case_study/05_presentation.py
-python analytics_case_study/06_validate_metrics.py
-```
+The presentation generator uses Node.js and `@oai/artifact-tool`. In the Codex desktop workspace the bundled runtime is discovered automatically; `NODE_EXE` and `CODEX_PRESENTATIONS_SKILL_DIR` can be set for another compatible runtime.
 
-The project uses relative paths from the repo root, so it can be cloned and run without editing local machine-specific paths.
+## Metric definitions that matter
 
-## View The Dashboard
+| Metric | Definition |
+|---|---|
+| Closed-deal win rate | Won opportunities / resolved opportunities; resolved means closed won, closed lost, or discontinued. |
+| Recorded pipeline | Sum of CRM opportunity amount. Zero amounts remain visible as a quality issue. |
+| Marketing sourced | CRM origin credit mapped to marketing source categories. |
+| Marketing influenced | Pipeline for the subset linked to eligible pre-opportunity touches within 365 days. Touches are normalized to one account-channel presence per ISO week. |
+| Email event share | Event-type rows / all supplied engagement-event rows. It is not a send-based open or click rate. |
+| Account opportunity rate | Accounts with an opportunity / accounts in the coverage tier. Observational; Wilson intervals are shown. |
 
-Open the static dashboard directly:
+Full definitions and limitations are in [`ANALYSIS_METHODOLOGY.md`](ANALYSIS_METHODOLOGY.md).
 
-```text
-public/index.html
-```
+## View and deploy
 
-Or run the lightweight Flask preview server:
+Open `public/index.html` directly, or run:
 
 ```bash
 python app.py
 ```
 
-Then open:
+Then visit `http://localhost:8050`. `analytics_case_study/04_dashboard.py` is a compatibility launcher for the same canonical artifact; the repository does not maintain a second dashboard implementation.
 
-```text
-http://localhost:8050
-```
+Deployment options:
 
-The dashboard is intentionally self-contained: no API keys or external model services are required.
+- Render: use `render.yaml` with `gunicorn app:app`.
+- GitHub Pages: enable Pages with GitHub Actions; `.github/workflows/deploy-pages.yml` publishes `public/`.
 
-## Deploy
-
-This repo is ready for static deployment. The dashboard entrypoint is:
-
-```text
-public/index.html
-```
-
-### Render
-
-`render.yaml` is included. To deploy on Render:
-
-1. Connect this GitHub repository to Render.
-2. Create a Blueprint or web service from the repo.
-
-Expected settings:
-
-```text
-Runtime: Python
-Build command: pip install -r requirements.txt
-Start command: gunicorn app:app
-```
-
-### GitHub Pages
-
-A GitHub Pages workflow is included at `.github/workflows/deploy-pages.yml`.
-
-To enable it:
-
-1. Go to the repository on GitHub.
-2. Open Settings > Pages.
-3. Set Source to `GitHub Actions`.
-4. Push to `main` or run the workflow manually.
-
-The repository owner must do the Settings > Pages step once. The workflow deploys
-the static dashboard after Pages is enabled, but GitHub may block Actions from
-creating the Pages site automatically.
-
-## Validate Before Deployment
-
-Before deploying a regenerated dashboard, run:
+## Validate before sharing
 
 ```bash
-python analytics_case_study/04_html_dashboard.py
 python analytics_case_study/06_validate_metrics.py
 ```
 
-GitHub Actions also validates the committed artifacts on push and pull request:
-
-```text
-.github/workflows/validate.yml
-```
-
-The dashboard generator also copies the generated HTML into the static publish folder:
-
-```bash
-python analytics_case_study/04_html_dashboard.py
-```
-
-If you ever need to copy it manually, use:
-
-```powershell
-Copy-Item outputs\dashboard\Marketing_Analytics_Dashboard.html public\index.html -Force
-```
-
-There is also a local Dash app:
-
-```bash
-python analytics_case_study/04_dashboard.py
-```
-
-Then open:
-
-```text
-http://localhost:8050
-```
-
-## Key Analysis Areas
-
-- Channel contribution and pipeline performance.
-- Marketing-sourced and marketing-influenced opportunity analysis.
-- Multi-touch attribution comparisons.
-- Segment and account coverage analysis.
-- Deal velocity by source/channel.
-- Win probability modeling for open opportunities.
-- Executive-ready recommendations for targeting, budget allocation, and funnel quality.
-
-## Notes
-
-This repository includes generated outputs so the dashboard and presentation can be reviewed without rerunning the full pipeline. For a lighter production-style repo, the generated `data/` and `outputs/` folders could be excluded and rebuilt from the raw source files.
-
-The dashboard audit backlog is tracked in:
-
-```text
-AUDIT_BACKLOG.md
-```
-
-The case prompt and grading rubric alignment are tracked in:
-
-```text
-RUBRIC_ALIGNMENT.md
-```
+Validation checks resolved-denominator semantics, active-only model scoring, attribution scope, email event semantics, budget neutrality, self-contained dashboard delivery, dashboard/public synchronization, workbook presence, deck slide count, and slide source notes. CI runs the same audit on push and pull request.

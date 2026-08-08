@@ -168,7 +168,7 @@ def clean_6sense_campaign() -> pd.DataFrame:
             df[c] = safe_datetime(df[c])
 
     if "_date" in df.columns:
-        df["month_year"] = df["_date"].dt.to_period("M").astype(str)
+        df["month_year"] = df["_date"].dt.strftime("%Y-%m")
 
     if "_clicks" in df.columns and "_impressions" in df.columns:
         df["ctr"] = derive_ctr(df["_clicks"], df["_impressions"])
@@ -215,7 +215,7 @@ def clean_ad_metrics() -> pd.DataFrame:
         df["landing_cvr"] = derive_ctr(df["pageviews"], df["_clicks"])
 
     if "day" in df.columns:
-        df["month_year"] = df["day"].dt.to_period("M").astype(str)
+        df["month_year"] = df["day"].dt.strftime("%Y-%m")
 
     out = os.path.join(CLEANED_DATA_DIR, "ad_metrics.parquet")
     df.to_parquet(out, index=False)
@@ -258,7 +258,7 @@ def clean_email_engagements() -> pd.DataFrame:
         df["days_to_engage"] = (df["_timestamp"] - df["_campaignSentDate"]).dt.days
 
     if "_timestamp" in df.columns:
-        df["month_year"] = df["_timestamp"].dt.to_period("M").astype(str)
+        df["month_year"] = df["_timestamp"].dt.strftime("%Y-%m")
 
     drop_cols = [c for c in ["_sdc_sequence", "_sdc_table_version"] if c in df.columns]
     df.drop(columns=drop_cols, inplace=True)
@@ -282,7 +282,7 @@ def clean_web_engagements() -> pd.DataFrame:
 
     if "_timestamp" in df.columns:
         df["_timestamp"] = safe_datetime(df["_timestamp"])
-        df["month_year"] = df["_timestamp"].dt.to_period("M").astype(str)
+        df["month_year"] = df["_timestamp"].dt.strftime("%Y-%m")
 
     if "_domain" in df.columns:
         df["_domain"] = normalize_domain(df["_domain"])

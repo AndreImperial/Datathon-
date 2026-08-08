@@ -8,7 +8,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from analytics_case_study.config import INTEGRATED_DATA_DIR, CLEANED_DATA_DIR, ANALYSIS_DIR
+from analytics_case_study.config import INTEGRATED_DATA_DIR, CLEANED_DATA_DIR, ANALYSIS_DIR, RAW_FILES
+from analytics_case_study.utils.metrics import resolved_stage_mask
 
 
 def _load_int(name: str) -> pd.DataFrame:
@@ -39,21 +40,22 @@ def _won_col(df: pd.DataFrame):
 # 1. Channel ROI
 # ---------------------------------------------------------------------------
 def analyze_channel_roi():
-    print("\n[1/5] Channel ROI")
+    print("\n[1/6] Channel ROI")
     cp = _load_int("channel_pipeline")
     cp = cp.sort_values("total_pipeline", ascending=False)
 
     summary = cp[[
-        "channel_category", "deal_count", "total_pipeline", "won_pipeline",
-        "won_count", "win_rate", "avg_deal_size", "pipeline_pct",
+        "channel_category", "deal_count", "resolved_count", "total_pipeline", "won_pipeline",
+        "won_count", "win_rate", "resolved_share", "avg_deal_size", "pipeline_pct",
         "channel_spend", "pipeline_roi", "revenue_roi", "cost_per_opp",
     ]].copy()
     summary.columns = [
-        "Channel", "Deals", "Total Pipeline ($)", "Won Revenue ($)",
-        "Won Deals", "Win Rate", "Avg Deal Size ($)", "Pipeline Share",
+        "Channel", "Deals", "Resolved Deals", "Total Pipeline ($)", "Won Revenue ($)",
+        "Won Deals", "Closed-Deal Win Rate", "Resolved Share", "Avg Deal Size ($)", "Pipeline Share",
         "Channel Spend ($)", "Pipeline ROI (x)", "Revenue ROI (x)", "Cost per Opp ($)",
     ]
-    summary["Win Rate"] = summary["Win Rate"].apply(lambda v: f"{v:.1%}" if pd.notna(v) else "")
+    summary["Closed-Deal Win Rate"] = summary["Closed-Deal Win Rate"].apply(lambda v: f"{v:.1%}" if pd.notna(v) else "")
+    summary["Resolved Share"] = summary["Resolved Share"].apply(lambda v: f"{v:.1%}" if pd.notna(v) else "")
     summary["Pipeline Share"] = summary["Pipeline Share"].apply(lambda v: f"{v:.1%}" if pd.notna(v) else "")
 
     _write_excel({"Channel ROI Summary": summary}, "channel_roi.xlsx")
@@ -64,14 +66,16 @@ def analyze_channel_roi():
 # 2. Segment Conversion
 # ---------------------------------------------------------------------------
 def analyze_segment_conversion():
-    print("\n[2/5] Segment Conversion")
+    print("\n[2/6] Segment Conversion")
     master = _load_int("master_account")
     opps = _load_clean("opportunities")
 
     # Win rate by segment
     won_col = _won_col(opps)
     if "segment__c" in opps.columns and won_col and "_amount" in opps.columns:
-        seg = (opps.groupby("segment__c")
+        stage_col = next((c for c in opps.columns if "current_stage" in c.lower()), None)
+        resolved = opps[resolved_stage_mask(opps[stage_col])].copy() if stage_col else opps.copy()
+        seg = (resolved.groupby("segment__c")
                .agg(
                    deal_count=("_opportunity_id", "count"),
                    won_count=(won_col, lambda x: (x == True).sum()),
@@ -79,7 +83,7 @@ def analyze_segment_conversion():
                    avg_deal_size=("_amount", "mean"),
                ).reset_index())
         seg["win_rate"] = (seg["won_count"] / seg["deal_count"]).round(4)
-        seg.columns = ["Segment", "Deals", "Won Deals", "Pipeline ($)", "Avg Deal ($)", "Win Rate"]
+        seg.columns = ["Segment", "Resolved Deals", "Won Deals", "Resolved Pipeline ($)", "Avg Deal ($)", "Closed-Deal Win Rate"]
     else:
         seg = pd.DataFrame()
 
@@ -121,7 +125,7 @@ def analyze_segment_conversion():
 # 3. Creative Performance
 # ---------------------------------------------------------------------------
 def analyze_creative_performance():
-    print("\n[3/5] Creative Performance")
+    print("\n[3/6] Creative Performance")
     cp = _load_int("creative_performance")
     if cp.empty:
         print("  No creative data — skipping")
@@ -172,7 +176,7 @@ def analyze_creative_performance():
 # 4. Email Campaign Performance
 # ---------------------------------------------------------------------------
 def analyze_email_performance():
-    print("\n[4/5] Email Campaign Performance")
+    print("\n[4/6] Email Campaign Performance")
     email = _load_clean("email_engagements")
 
     if email.empty:
@@ -180,57 +184,59 @@ def analyze_email_performance():
         return
 
     sheets = {}
+    person_col = "_prospectID" if "_prospectID" in email.columns else "_email"
 
-    # By campaign
+    def summarize(group_col, include_subject=False):
+        source = email.copy()
+        source[group_col] = source[group_col].fillna("Unknown").astype(str)
+        agg = {
+            "engagement_events": (group_col, "count"),
+            "engaged_people": (person_col, "nunique"),
+            "open_events": ("is_open", "sum"),
+            "click_events": ("is_click", "sum"),
+            "registration_events": ("is_register", "sum"),
+        }
+        if "days_to_engage" in source.columns:
+            agg["median_days_to_engage"] = ("days_to_engage", "median")
+        if include_subject and "_campaign_subject" in source.columns:
+            agg["subject"] = ("_campaign_subject", "first")
+        result = source.groupby(group_col).agg(**agg).reset_index()
+        denominator = result["engagement_events"].replace(0, np.nan)
+        result["open_event_share"] = (result["open_events"] / denominator).round(4)
+        result["click_event_share"] = (result["click_events"] / denominator).round(4)
+        result["registration_event_share"] = (result["registration_events"] / denominator).round(4)
+        result["click_events_per_open_event"] = (
+            result["click_events"] / result["open_events"].replace(0, np.nan)
+        ).round(4)
+        return result.sort_values(["click_events", "engaged_people"], ascending=False)
+
     if "_campaignID" in email.columns:
-        camp_grp = email.groupby("_campaignID").agg(
-            total_events=("_campaignID", "count"),
-            opens=("is_open", "sum") if "is_open" in email.columns else ("_campaignID", "count"),
-            clicks=("is_click", "sum") if "is_click" in email.columns else ("_campaignID", "count"),
-            registers=("is_register", "sum") if "is_register" in email.columns else ("_campaignID", "count"),
-            subject=("_campaign_subject", "first") if "_campaign_subject" in email.columns else ("_campaignID", "first"),
-        ).reset_index()
-        camp_grp["open_rate"] = (camp_grp["opens"] / camp_grp["total_events"]).round(4)
-        camp_grp["click_rate"] = (camp_grp["clicks"] / camp_grp["total_events"]).round(4)
-        camp_grp["register_rate"] = (camp_grp["registers"] / camp_grp["total_events"]).round(4)
-        camp_grp["ctor"] = (camp_grp["clicks"] / camp_grp["opens"].replace(0, np.nan)).round(4)
-        camp_grp = camp_grp.sort_values("click_rate", ascending=False)
-        sheets["By Campaign"] = camp_grp
-
-    # By seniority
+        sheets["By Campaign"] = summarize("_campaignID", include_subject=True)
     if "_seniority" in email.columns:
-        sen_grp = email.groupby("_seniority").agg(
-            total=("_seniority", "count"),
-            opens=("is_open", "sum") if "is_open" in email.columns else ("_seniority", "count"),
-            clicks=("is_click", "sum") if "is_click" in email.columns else ("_seniority", "count"),
-        ).reset_index()
-        sen_grp["open_rate"] = (sen_grp["opens"] / sen_grp["total"]).round(4)
-        sen_grp["click_rate"] = (sen_grp["clicks"] / sen_grp["total"]).round(4)
-        sen_grp = sen_grp.sort_values("click_rate", ascending=False)
-        sheets["By Seniority"] = sen_grp
-
-    # By industry
+        sheets["By Seniority"] = summarize("_seniority")
     if "_industry" in email.columns:
-        ind_grp = email.groupby("_industry").agg(
-            total=("_industry", "count"),
-            opens=("is_open", "sum") if "is_open" in email.columns else ("_industry", "count"),
-            clicks=("is_click", "sum") if "is_click" in email.columns else ("_industry", "count"),
-        ).reset_index()
-        ind_grp["open_rate"] = (ind_grp["opens"] / ind_grp["total"]).round(4)
-        ind_grp["click_rate"] = (ind_grp["clicks"] / ind_grp["total"]).round(4)
-        ind_grp = ind_grp.sort_values("click_rate", ascending=False).head(20)
-        sheets["By Industry"] = ind_grp
-
-    # By quarter
+        sheets["By Industry"] = summarize("_industry").head(20)
     if "_quater_segment" in email.columns:
-        qtr = email.groupby("_quater_segment").agg(
-            total=("_quater_segment", "count"),
-            opens=("is_open", "sum") if "is_open" in email.columns else ("_quater_segment", "count"),
-            clicks=("is_click", "sum") if "is_click" in email.columns else ("_quater_segment", "count"),
-        ).reset_index()
-        qtr["open_rate"] = (qtr["opens"] / qtr["total"]).round(4)
-        qtr["click_rate"] = (qtr["clicks"] / qtr["total"]).round(4)
-        sheets["By Quarter"] = qtr
+        sheets["By Quarter"] = summarize("_quater_segment")
+
+    definition = pd.DataFrame([
+        {
+            "Metric": "Engagement events",
+            "Definition": "Rows in the supplied email engagement log (Opened, Clicked, or Register).",
+            "Safe interpretation": "Observed activity mix among recorded engagements.",
+        },
+        {
+            "Metric": "Open/click/registration event share",
+            "Definition": "Event-type rows divided by all engagement-event rows in the same group.",
+            "Safe interpretation": "Composition of the event log; not a send-based open or click rate.",
+        },
+        {
+            "Metric": "Engaged people",
+            "Definition": "Distinct prospect IDs with at least one recorded engagement.",
+            "Safe interpretation": "Reach among people who engaged; the delivered audience is unavailable.",
+        },
+    ])
+    sheets["Metric Definitions"] = definition
 
     if sheets:
         _write_excel(sheets, "email_campaign_performance.xlsx")
@@ -240,7 +246,7 @@ def analyze_email_performance():
 # 5. Budget Recommendation
 # ---------------------------------------------------------------------------
 def analyze_budget_recommendation():
-    print("\n[5/5] Budget Recommendation")
+    print("\n[5/6] Budget Recommendation")
     cp = _load_int("channel_pipeline")
 
     channels_with_spend = cp[cp["channel_spend"] > 0].copy()
@@ -251,50 +257,149 @@ def analyze_budget_recommendation():
         return
 
     channels_with_spend["current_spend_pct"] = channels_with_spend["channel_spend"] / total_spend
-    channels_with_spend["pipeline_per_dollar"] = (
-        channels_with_spend["total_pipeline"] / channels_with_spend["channel_spend"].replace(0, np.nan)
+    channels_with_spend["evidence_status"] = np.where(
+        (channels_with_spend["won_count"] >= 10) & (channels_with_spend["deal_count"] >= 30),
+        "Decision-grade",
+        "Insufficient outcome evidence",
     )
+    evidence = channels_with_spend[[
+        "channel_category", "channel_spend", "deal_count", "resolved_count",
+        "won_count", "total_pipeline", "won_pipeline", "pipeline_roi",
+        "revenue_roi", "evidence_status",
+    ]].copy()
 
-    # Scenario 1: Status Quo
-    s1 = channels_with_spend[["channel_category", "channel_spend", "total_pipeline", "pipeline_roi"]].copy()
-    s1.columns = ["Channel", "Current Spend ($)", "Pipeline ($)", "Pipeline ROI (x)"]
+    # Spend coverage is too narrow for a defensible optimizer.  Provide three
+    # budget-neutral measurement plans instead of projecting pipeline from one
+    # highly unstable historical observation.
+    scenario_specs = {
+        "Status Quo": (1.00, 0.00, 0.00),
+        "10% Holdout": (0.90, 0.10, 0.00),
+        "Measurement First": (0.80, 0.10, 0.10),
+    }
+    rows = []
+    for scenario, (active_share, holdout_share, experiment_share) in scenario_specs.items():
+        for _, row in channels_with_spend.iterrows():
+            spend = float(row["channel_spend"])
+            rows.append({
+                "Scenario": scenario,
+                "Channel": row["channel_category"],
+                "Active Spend ($)": spend * active_share,
+                "Holdout Reserve ($)": spend * holdout_share,
+                "Experiment Pool ($)": spend * experiment_share,
+                "Total Budget ($)": spend,
+                "Evidence Status": row["evidence_status"],
+            })
+    scenarios = pd.DataFrame(rows)
+    scenarios.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "budget_scenarios.parquet"), index=False)
 
-    # Scenario 2: ROI-optimized (+30% to top 2, -20% from bottom)
-    ranked = channels_with_spend.sort_values("pipeline_roi", ascending=False)
-    s2_spend = channels_with_spend.set_index("channel_category")["channel_spend"].to_dict()
-    top_channels = ranked.head(2)["channel_category"].tolist()
-    bot_channels = ranked.tail(2)["channel_category"].tolist()
-    for ch in top_channels:
-        s2_spend[ch] = s2_spend.get(ch, 0) * 1.30
-    for ch in bot_channels:
-        s2_spend[ch] = s2_spend.get(ch, 0) * 0.80
-
-    ppl_per_dollar = channels_with_spend.set_index("channel_category")["pipeline_per_dollar"].to_dict()
-    s2_rows = []
-    for ch, spend in s2_spend.items():
-        proj = spend * ppl_per_dollar.get(ch, 0)
-        s2_rows.append({"Channel": ch, "Recommended Spend ($)": spend, "Projected Pipeline ($)": proj})
-    s2 = pd.DataFrame(s2_rows)
-
-    # Scenario 3: Growth (double top tracked-spend channels, cut low-ROI in half)
-    s3_spend = channels_with_spend.set_index("channel_category")["channel_spend"].to_dict()
-    for ch in top_channels:
-        if ch in s3_spend:
-            s3_spend[ch] *= 2.0
-    for ch in bot_channels:
-        s3_spend[ch] = s3_spend.get(ch, 0) * 0.50
-    s3_rows = []
-    for ch, spend in s3_spend.items():
-        proj = spend * ppl_per_dollar.get(ch, 0)
-        s3_rows.append({"Channel": ch, "Aggressive Spend ($)": spend, "Projected Pipeline ($)": proj})
-    s3 = pd.DataFrame(s3_rows)
+    assumptions = pd.DataFrame([
+        {"Rule": "Budget neutrality", "Definition": "Every scenario preserves the current tracked-spend total."},
+        {"Rule": "No pipeline forecast", "Definition": "Historical ROI is not extrapolated because only two channels have spend and one has a single opportunity."},
+        {"Rule": "Decision gate", "Definition": "Scale only after a pre-registered holdout shows incremental opportunity or pipeline lift with acceptable win-rate quality."},
+    ])
 
     sheets = {
-        "Scenario 1 - Status Quo": s1,
-        "Scenario 2 - ROI Optimized": s2,
-        "Scenario 3 - Growth Mode": s3,
+        "Tracked Spend Evidence": evidence,
+        "Measurement Scenarios": scenarios,
+        "Assumptions": assumptions,
     }
     _write_excel(sheets, "budget_recommendation.xlsx")
+
+
+# ---------------------------------------------------------------------------
+# 6. Data quality and source reconciliation
+# ---------------------------------------------------------------------------
+def analyze_data_quality():
+    print("\n[6/6] Data Quality and Source Reconciliation")
+    opps = _load_clean("opportunities")
+    accounts = _load_clean("accounts")
+    email = _load_clean("email_engagements")
+    web = _load_clean("web_engagements")
+    ad = _load_clean("ad_metrics")
+    campaign6s = _load_clean("6sense_campaign")
+
+    won_col = _won_col(opps)
+    stage_col = next((c for c in opps.columns if "current_stage" in c.lower()), None)
+    resolved = resolved_stage_mask(opps[stage_col]) if stage_col else pd.Series(True, index=opps.index)
+    active = ~resolved
+    zero_amount = opps["_amount"].fillna(0).eq(0)
+    won = opps[won_col].eq(True) if won_col else pd.Series(False, index=opps.index)
+
+    domain_series = pd.Series(index=opps.index, dtype="object")
+    if "_domain" in opps.columns:
+        domain_series = opps["_domain"]
+    elif {"_account_id"}.issubset(opps.columns) and {"accountid", "domain__c"}.issubset(accounts.columns):
+        domain_map = accounts.drop_duplicates("accountid").set_index("accountid")["domain__c"]
+        domain_series = opps["_account_id"].map(domain_map)
+
+    create_col = next((c for c in opps.columns if "createdate" in c.lower()), None)
+    created = pd.to_datetime(opps[create_col], errors="coerce", utc=True) if create_col else pd.Series(dtype="datetime64[ns, UTC]")
+
+    metrics = [
+        {"metric": "deduplicated_opportunities", "value": len(opps), "denominator": len(opps), "rate": 1.0, "severity": "info", "interpretation": "One latest-state row per opportunity."},
+        {"metric": "resolved_opportunities", "value": int(resolved.sum()), "denominator": len(opps), "rate": float(resolved.mean()), "severity": "info", "interpretation": "Closed won, closed lost, and discontinued outcomes."},
+        {"metric": "active_opportunities", "value": int(active.sum()), "denominator": len(opps), "rate": float(active.mean()), "severity": "info", "interpretation": "Eligible population for win-probability scoring."},
+        {"metric": "zero_amount_opportunities", "value": int(zero_amount.sum()), "denominator": len(opps), "rate": float(zero_amount.mean()), "severity": "high", "interpretation": "Pipeline and average-deal metrics are incomplete for these records."},
+        {"metric": "zero_amount_won_opportunities", "value": int((zero_amount & won).sum()), "denominator": int(won.sum()), "rate": float((zero_amount & won).sum() / won.sum()) if won.sum() else np.nan, "severity": "critical", "interpretation": "Won revenue and revenue ROI are understated until CRM amounts are backfilled."},
+        {"metric": "opportunity_domain_coverage", "value": int(domain_series.notna().sum()), "denominator": len(opps), "rate": float(domain_series.notna().mean()), "severity": "medium", "interpretation": "Domain coverage limits account-level attribution matching."},
+    ]
+    quality = pd.DataFrame(metrics)
+    quality.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "data_quality_summary.parquet"), index=False)
+
+    email_semantics = pd.DataFrame({
+        "event_type": ["Open events", "Click events", "Registration events"],
+        "events": [int(email.get("is_open", pd.Series(dtype=int)).sum()), int(email.get("is_click", pd.Series(dtype=int)).sum()), int(email.get("is_register", pd.Series(dtype=int)).sum())],
+    })
+    email_semantics["share_of_engagement_log"] = email_semantics["events"] / len(email) if len(email) else np.nan
+    email_semantics["denominator_note"] = "Share of supplied engagement-event rows; delivered-email counts are unavailable."
+
+    matched_web = web[web["_domain"].notna()].copy() if "_domain" in web.columns else web.iloc[0:0].copy()
+    utm_complete = pd.Series(False, index=matched_web.index)
+    if {"_utmsource", "_utmcampaign"}.issubset(matched_web.columns):
+        source_ok = matched_web["_utmsource"].fillna("").astype(str).str.strip().ne("")
+        campaign_ok = matched_web["_utmcampaign"].fillna("").astype(str).str.strip().ne("")
+        utm_complete = source_ok | campaign_ok
+    web_identity = pd.DataFrame([
+        {"metric": "web_sessions", "value": len(web)},
+        {"metric": "domain_matched_sessions", "value": len(matched_web)},
+        {"metric": "unique_matched_domains", "value": matched_web["_domain"].nunique() if "_domain" in matched_web.columns else 0},
+        {"metric": "matched_sessions_with_utm", "value": int(utm_complete.sum())},
+    ])
+
+    ad_6sense_spend = float(ad.loc[ad.get("_platform", pd.Series(index=ad.index)).eq("6sense"), "_spend"].sum()) if "_spend" in ad.columns else 0.0
+    campaign_6sense_spend = float(campaign6s.get("_spend", pd.Series(dtype=float)).sum())
+    spend_reconciliation = pd.DataFrame([
+        {"source": "ad_metrics", "scope": "6sense platform creative/ad rows", "spend": ad_6sense_spend, "controlling_use": "Paid-channel ROI"},
+        {"source": "6sense_campaign", "scope": "6sense campaign-account rows", "spend": campaign_6sense_spend, "controlling_use": "Campaign reporting only"},
+    ])
+    spend_reconciliation["difference_vs_ad_metrics"] = spend_reconciliation["spend"] - ad_6sense_spend
+
+    date_scope = pd.DataFrame([{
+        "opportunity_create_date_min": created.min().tz_convert(None) if len(created) and pd.notna(created.min()) else pd.NaT,
+        "opportunity_create_date_max": created.max().tz_convert(None) if len(created) and pd.notna(created.max()) else pd.NaT,
+        "timezone": "UTC",
+    }])
+    raw_snapshot_rows = pd.DataFrame()
+    try:
+        raw_opps = pd.read_excel(RAW_FILES["opportunities"])
+        raw_snapshot_rows = pd.DataFrame([{
+            "raw_snapshot_rows": len(raw_opps),
+            "deduplicated_opportunities": len(opps),
+            "rows_removed_as_historical_snapshots": len(raw_opps) - len(opps),
+        }])
+    except Exception:
+        pass
+
+    sheets = {
+        "Quality Summary": quality,
+        "Email Event Semantics": email_semantics,
+        "Web Identity": web_identity,
+        "Spend Reconciliation": spend_reconciliation,
+        "Date Scope": date_scope,
+    }
+    if not raw_snapshot_rows.empty:
+        sheets["Opportunity Dedup"] = raw_snapshot_rows
+    _write_excel(sheets, "data_quality_report.xlsx")
 
 
 # ---------------------------------------------------------------------------
@@ -311,6 +416,7 @@ def main():
     analyze_creative_performance()
     analyze_email_performance()
     analyze_budget_recommendation()
+    analyze_data_quality()
 
     print("\nOK Analysis complete ->", ANALYSIS_DIR)
 

@@ -34,6 +34,9 @@ def classify_web_touchpoint(source, campaign):
     src = str(source or "").strip().lower()
     camp = str(campaign or "").strip().lower()
 
+    if not src and not camp:
+        return "web_unclassified"
+
     for value in (camp, src):
         if value in SOURCE_CHANNEL_MAP:
             return SOURCE_CHANNEL_MAP[value]
@@ -52,7 +55,7 @@ def classify_web_touchpoint(source, campaign):
         return "6sense_display"
     if "linkedin" in src or "linkedin" in camp:
         return "linkedin"
-    return "web_inbound"
+    return "web_unclassified"
 
 
 # ---------------------------------------------------------------------------
@@ -83,6 +86,7 @@ def build_touchpoints() -> pd.DataFrame:
                 "channel": "6sense_display",
                 "touchpoint_type": "ad_impression",
                 "campaign_id": row.get("_campaignid", ""),
+                "is_marketing_touch": True,
             })
 
     # --- Email engagements: clicks are highest-intent touchpoints ---
@@ -99,6 +103,7 @@ def build_touchpoints() -> pd.DataFrame:
                 "channel": "email_mqa",
                 "touchpoint_type": tp_type,
                 "campaign_id": row.get("_campaignID", ""),
+                "is_marketing_touch": True,
             })
 
     # --- Web engagements: marketing-attributed sessions only ---
@@ -116,13 +121,41 @@ def build_touchpoints() -> pd.DataFrame:
                 "channel": ch,
                 "touchpoint_type": tp_type,
                 "campaign_id": str(row.get("_utmcampaign", "")),
+                "is_marketing_touch": ch != "web_unclassified",
             })
 
     tp_df = pd.DataFrame(rows)
     tp_df["touchpoint_date"] = pd.to_datetime(tp_df["touchpoint_date"], utc=True, errors="coerce")
     tp_df = tp_df.dropna(subset=["domain", "touchpoint_date"])
-    print(f"  Built touchpoint table: {len(tp_df):,} rows across {tp_df['domain'].nunique():,} unique domains")
-    return tp_df
+    tp_df["domain"] = tp_df["domain"].astype(str).str.lower().str.strip()
+
+    quality = (
+        tp_df.groupby(["channel", "is_marketing_touch"], dropna=False)
+        .agg(raw_rows=("domain", "size"), domains=("domain", "nunique"))
+        .reset_index()
+    )
+    quality.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "attribution_touchpoint_quality.parquet"), index=False)
+
+    marketing = tp_df[tp_df["is_marketing_touch"]].copy()
+    raw_marketing_rows = len(marketing)
+    # Normalize the source grain before cross-channel weighting: at most one
+    # presence per account, channel, and calendar week.  This prevents 6sense
+    # impression-row density from overwhelming email actions purely because the
+    # source systems log at different grains.
+    marketing["touchpoint_week"] = marketing["touchpoint_date"].dt.strftime("%G-W%V")
+    marketing = (
+        marketing.sort_values("touchpoint_date")
+        .drop_duplicates(["domain", "channel", "touchpoint_week"], keep="last")
+        .drop(columns=["touchpoint_week"])
+    )
+    print(
+        f"  Built normalized marketing touchpoints: {len(marketing):,} account-channel-weeks "
+        f"from {raw_marketing_rows:,} raw marketing rows across {marketing['domain'].nunique():,} domains"
+    )
+    excluded = len(tp_df) - raw_marketing_rows
+    if excluded:
+        print(f"  Excluded {excluded:,} unclassified web rows from marketing attribution")
+    return marketing
 
 
 # ---------------------------------------------------------------------------
@@ -311,6 +344,8 @@ def apply_attribution_models(linked: pd.DataFrame, opps_full: pd.DataFrame) -> d
         results["Linear"] = lin
 
     # --- Time-Decay (half-life = 30 days, exponential weighting) ---
+    # ``linked`` is already normalized to account-channel-week grain, so the
+    # weights measure repeated weekly presence rather than raw source-row volume.
     HALF_LIFE = 30
     ld = linked.copy()
     ld["decay_weight"] = np.exp(-np.log(2) / HALF_LIFE * ld["days_before_opp"].clip(lower=0))
@@ -358,6 +393,38 @@ def build_comparison(model_results: dict) -> pd.DataFrame:
     return pivot.reset_index()
 
 
+def build_attribution_coverage(linked: pd.DataFrame, opps: pd.DataFrame) -> pd.DataFrame:
+    """Document the exact eligible and linked attribution populations."""
+    iswon_col = "iswon" if "iswon" in opps.columns else ("_iswon" if "_iswon" in opps.columns else None)
+    eligible = opps[
+        opps.get("opp_domain", pd.Series(index=opps.index, dtype="object")).fillna("").astype(str).str.strip().ne("")
+        & opps.get("_opp_create_date", pd.Series(pd.NaT, index=opps.index)).notna()
+        & opps["_amount"].notna()
+    ].copy()
+    linked_ids = set(linked["_opportunity_id"].dropna().unique()) if not linked.empty else set()
+    linked_opps = eligible[eligible["_opportunity_id"].isin(linked_ids)].copy()
+    total_won = int(opps[iswon_col].eq(True).sum()) if iswon_col else 0
+    eligible_won = int(eligible[iswon_col].eq(True).sum()) if iswon_col else 0
+    linked_won = int(linked_opps[iswon_col].eq(True).sum()) if iswon_col else 0
+    coverage = pd.DataFrame([{
+        "lookback_days": ATTRIBUTION_WINDOW_DAYS,
+        "all_opportunities": len(opps),
+        "eligible_domain_date_amount": len(eligible),
+        "linked_opportunities": len(linked_opps),
+        "linked_share_of_all_opportunities": len(linked_opps) / len(opps) if len(opps) else np.nan,
+        "all_won_opportunities": total_won,
+        "eligible_won_opportunities": eligible_won,
+        "linked_won_opportunities": linked_won,
+        "linked_share_of_won_opportunities": linked_won / total_won if total_won else np.nan,
+        "linked_pipeline": float(linked_opps["_amount"].sum()),
+        "linked_won_revenue": float(linked_opps.loc[linked_opps[iswon_col].eq(True), "_amount"].sum()) if iswon_col else 0.0,
+        "touchpoint_grain": "one account-channel presence per ISO week",
+        "web_rule": "blank-UTM web sessions excluded from marketing attribution",
+    }])
+    coverage.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "attribution_coverage.parquet"), index=False)
+    return coverage
+
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -380,6 +447,7 @@ def main():
 
     print("\n[3/4] Applying attribution models ...")
     model_results = apply_attribution_models(linked, opps_full)
+    coverage = build_attribution_coverage(linked, opps_full)
 
     print("\n[4/4] Writing outputs ...")
     out_path = os.path.join(ANALYSIS_DIR, "attribution_models.xlsx")
@@ -393,6 +461,13 @@ def main():
 
         comparison = build_comparison(model_results)
         comparison.to_excel(writer, sheet_name="Model Comparison", index=False)
+        coverage.to_excel(writer, sheet_name="Coverage and Scope", index=False)
+        pd.DataFrame([
+            {"Assumption": "Lookback window", "Definition": f"Marketing touchpoint occurred 0-{ATTRIBUTION_WINDOW_DAYS} days before opportunity creation."},
+            {"Assumption": "Touchpoint normalization", "Definition": "One account-channel presence per ISO week; source-row frequency is not treated as cross-channel importance."},
+            {"Assumption": "Web classification", "Definition": "Sessions without a non-blank UTM source or campaign are excluded from marketing attribution."},
+            {"Assumption": "Interpretation", "Definition": "Attribution describes observed journey association and credit allocation; it does not estimate incremental causal lift."},
+        ]).to_excel(writer, sheet_name="Method Definitions", index=False)
 
     print(f"  Saved -> {out_path}")
 

@@ -1,6 +1,6 @@
 """
-Phase 3c: Advanced Analytics — Datathon differentiators
-  1. Win Probability Model (Random Forest) — score every open deal
+Phase 3c: Advanced Analytics — decision-grade extensions
+  1. Leakage-controlled win model — evaluate resolved outcomes, score active deals
   2. Account Coverage Analysis — which target accounts has marketing reached?
   3. Deal Velocity by Channel — which channels close fastest?
   4. Journey Sequence Analysis — what touchpoint order leads to wins?
@@ -13,16 +13,18 @@ Outputs:
   data/integrated/account_coverage.parquet
   data/integrated/journey_sequences.parquet
   data/integrated/deal_velocity.parquet
+  data/integrated/model_stats.parquet
+  data/integrated/targeting_matrix.parquet
+  data/integrated/cohort_analysis.parquet
   outputs/analysis/advanced_analytics.xlsx
 """
 import os, sys
 import numpy as np
 import pandas as pd
-import warnings
-warnings.filterwarnings("ignore")
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from analytics_case_study.config import CLEANED_DATA_DIR, INTEGRATED_DATA_DIR, ANALYSIS_DIR
+from analytics_case_study.utils.metrics import resolved_stage_mask, wilson_interval
 
 # ── loaders ────────────────────────────────────────────────────────────────
 def _lc(n): p=os.path.join(CLEANED_DATA_DIR,f"{n}.parquet"); return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
@@ -74,182 +76,144 @@ def _opportunities_with_domain(df):
 # 1. WIN PROBABILITY MODEL
 # ============================================================
 def build_win_probability():
-    print("\n[1/7] Win Probability Model ...")
+    """Train a leakage-reduced, time-validated model and score active deals.
+
+    The model intentionally excludes current account intent, contact-count, and
+    current-stage fields because the supplied account table is a present-day
+    snapshot.  Those fields may have been populated after an historical deal
+    closed and would create look-ahead bias.
+    """
+    print("\n[1/7] Win Probability Model (leakage-reduced) ...")
+    from sklearn.compose import ColumnTransformer
     from sklearn.ensemble import RandomForestClassifier
-    from sklearn.preprocessing import LabelEncoder
-    from sklearn.model_selection import cross_val_score
-    from sklearn.metrics import roc_auc_score, accuracy_score
+    from sklearn.impute import SimpleImputer
+    from sklearn.metrics import (
+        accuracy_score,
+        brier_score_loss,
+        confusion_matrix,
+        precision_score,
+        recall_score,
+        roc_auc_score,
+    )
+    from sklearn.pipeline import Pipeline
+    from sklearn.preprocessing import OneHotEncoder
 
-    # Merge opps with master account features
-    account_feature_cols = ["accountid","segment__c","industry","tier","accountprofilefit6sense__c",
-              "account6qa6sense__c","accountintentscore6sense__c","annualrevenue",
-              "numberofemployees","c_level_contacts","vp_contacts","director_contacts"]
-    ma2 = ma[[c for c in account_feature_cols if c in ma.columns]].copy()
-    ma2 = ma2.rename(columns={"accountid":"_account_id"})
-
-    # Only bring in columns from ma that don't already exist in opps
-    if "_account_id" in opps.columns and "_account_id" in ma2.columns:
-        new_cols = [c for c in ma2.columns if c not in opps.columns or c == "_account_id"]
-        df = opps.merge(ma2[new_cols], on="_account_id", how="left")
-    else:
-        df = opps.copy()
-
-    # Build feature list from what's actually available after merge
-    CANDIDATE_FEATURES = [
-        "channel_category","segment__c","industry","tier",
-        "accountprofilefit6sense__c","account6qa6sense__c",
-        "accountintentscore6sense__c","annualrevenue","numberofemployees",
-        "c_level_contacts","vp_contacts","director_contacts",
-        "_amount",
-    ]
-    FEATURES = [f for f in CANDIDATE_FEATURES if f in df.columns]
-    print(f"  Features used: {FEATURES}")
-
-    # Determine stage — closed (won or lost) vs open
+    df = opps.copy()
     stage_col = next((c for c in df.columns if "current_stage" in c.lower()), None)
-    if stage_col:
-        df["is_closed"] = df[stage_col].isin(
-            [s for s in df[stage_col].dropna().unique()
-             if any(x in str(s).lower() for x in ["closed","won","lost"])]
-        )
-    else:
-        df["is_closed"] = True  # treat all as closed if no stage
+    create_col = next((c for c in df.columns if "createdate" in c.lower()), None)
+    won_col = _won_col(df)
+    if not stage_col or not create_col or not won_col:
+        print("  Required stage, create-date, or won fields are unavailable - skipping")
+        return pd.DataFrame(), pd.DataFrame(), {"auc": np.nan, "accuracy": np.nan, "validation": "not run"}
 
-    closed = df[df["is_closed"]].copy()
-    open_  = df[~df["is_closed"]].copy()
-    print(f"  Closed deals (train): {len(closed):,}  |  Open deals (score): {len(open_):,}")
+    df["_model_create_date"] = pd.to_datetime(df[create_col], utc=True, errors="coerce")
+    df["create_year"] = df["_model_create_date"].dt.year
+    df["create_quarter"] = df["_model_create_date"].dt.quarter
+    df["is_resolved"] = resolved_stage_mask(df[stage_col])
+    closed = df[df["is_resolved"] & df["_model_create_date"].notna()].sort_values("_model_create_date").copy()
+    active = df[~df["is_resolved"]].copy()
+    print(f"  Resolved deals (train/evaluate): {len(closed):,}  |  Active deals (score): {len(active):,}")
 
-    won_col = _won_col(closed)
-    if not FEATURES or not won_col or closed.empty:
-        print("  Not enough columns/deals to train model — skipping")
-        return pd.DataFrame(), pd.DataFrame(), {"auc": float("nan"), "accuracy": float("nan")}
+    categorical = [c for c in ["channel_category", "segment__c"] if c in closed.columns]
+    numeric = [c for c in ["_amount", "create_year", "create_quarter"] if c in closed.columns]
+    features = categorical + numeric
+    y = closed[won_col].eq(True).astype(int)
+    if not features or y.nunique() != 2 or len(closed) < 200:
+        print("  Insufficient resolved outcomes for a stable time holdout - skipping")
+        return pd.DataFrame(), pd.DataFrame(), {"auc": np.nan, "accuracy": np.nan, "validation": "not run"}
 
-    X_raw = closed[FEATURES].copy()
-    y     = (closed[won_col] == True).astype(int)
-    min_class = y.value_counts().min() if y.nunique() == 2 else 0
-    if min_class < 2:
-        print("  Need at least two won and two lost closed deals for CV — skipping")
-        return pd.DataFrame(), pd.DataFrame(), {"auc": float("nan"), "accuracy": float("nan")}
+    cutoff = int(len(closed) * 0.80)
+    train = closed.iloc[:cutoff].copy()
+    test = closed.iloc[cutoff:].copy()
+    y_train = train[won_col].eq(True).astype(int)
+    y_test = test[won_col].eq(True).astype(int)
+    if y_train.nunique() != 2 or y_test.nunique() != 2:
+        print("  Time holdout does not contain both outcomes - skipping")
+        return pd.DataFrame(), pd.DataFrame(), {"auc": np.nan, "accuracy": np.nan, "validation": "not run"}
 
-    # Encode & impute
-    le_map = {}
-    cat_cols = ["channel_category","segment__c","industry","tier",
-                "accountprofilefit6sense__c"]
-    for c in cat_cols:
-        if c in X_raw.columns:
-            X_raw[c] = X_raw[c].fillna("Unknown").astype(str)
-            le = LabelEncoder()
-            X_raw[c] = le.fit_transform(X_raw[c])
-            le_map[c] = le
+    transformers = []
+    if categorical:
+        transformers.append((
+            "categorical",
+            Pipeline([
+                ("impute", SimpleImputer(strategy="most_frequent")),
+                ("onehot", OneHotEncoder(handle_unknown="ignore")),
+            ]),
+            categorical,
+        ))
+    if numeric:
+        transformers.append((
+            "numeric",
+            Pipeline([("impute", SimpleImputer(strategy="median"))]),
+            numeric,
+        ))
+    preprocess = ColumnTransformer(transformers=transformers)
+    classifier = RandomForestClassifier(
+        n_estimators=400,
+        max_depth=8,
+        min_samples_leaf=10,
+        class_weight="balanced_subsample",
+        random_state=42,
+        n_jobs=-1,
+    )
+    model = Pipeline([("preprocess", preprocess), ("classifier", classifier)])
+    model.fit(train[features], y_train)
+    test_prob = model.predict_proba(test[features])[:, 1]
+    test_pred = test_prob >= 0.50
+    auc = float(roc_auc_score(y_test, test_prob))
+    accuracy = float(accuracy_score(y_test, test_pred))
+    precision = float(precision_score(y_test, test_pred, zero_division=0))
+    recall = float(recall_score(y_test, test_pred, zero_division=0))
+    brier = float(brier_score_loss(y_test, test_prob))
+    tn, fp, fn, tp = confusion_matrix(y_test, test_pred, labels=[0, 1]).ravel()
+    print(f"  Time-based holdout AUC: {auc:.3f} | Brier: {brier:.3f} | precision: {precision:.1%} | recall: {recall:.1%}")
 
-    bool_cols = ["account6qa6sense__c"]
-    for c in bool_cols:
-        if c in X_raw.columns:
-            X_raw[c] = X_raw[c].map({True:1,False:0}).fillna(0)
+    # Fit the deployable scoring model on all resolved outcomes only after the
+    # out-of-time evaluation has been recorded.
+    model.fit(closed[features], y)
+    transformed_names = model.named_steps["preprocess"].get_feature_names_out()
+    raw_importance = model.named_steps["classifier"].feature_importances_
+    importance_rows = []
+    for name, importance in zip(transformed_names, raw_importance):
+        stripped = name.split("__", 1)[-1]
+        original = next((c for c in categorical if stripped.startswith(f"{c}_")), stripped)
+        importance_rows.append({"feature": original, "importance": float(importance)})
+    feat_imp = (
+        pd.DataFrame(importance_rows)
+        .groupby("feature", as_index=False)["importance"].sum()
+        .sort_values("importance", ascending=False)
+    )
 
-    num_cols = [c for c in FEATURES if c not in cat_cols + bool_cols]
-    for c in num_cols:
-        if c in X_raw.columns:
-            X_raw[c] = pd.to_numeric(X_raw[c], errors="coerce").fillna(0)
-
-    X = X_raw.values
-
-    rf = RandomForestClassifier(n_estimators=200, max_depth=8, min_samples_leaf=5,
-                                random_state=42, n_jobs=-1)
-    cv = min(5, int(min_class))
-    auc_scores = cross_val_score(rf, X, y, cv=cv, scoring="roc_auc")
-    validation_label = f"{cv}-fold stratified CV"
-    eval_auc = float(auc_scores.mean())
-    eval_accuracy = float("nan")
-
-    create_col = next((c for c in closed.columns if "createdate" in c.lower()), None)
-    if create_col:
-        dated = closed.copy()
-        dated["_model_create_date"] = pd.to_datetime(dated[create_col], utc=True, errors="coerce")
-        dated = dated.dropna(subset=["_model_create_date"]).sort_values("_model_create_date")
-        if len(dated) >= 200 and dated[won_col].nunique() == 2:
-            cutoff_idx = max(1, int(len(dated) * 0.8))
-            train_idx = dated.index[:cutoff_idx]
-            test_idx = dated.index[cutoff_idx:]
-            if y.loc[train_idx].nunique() == 2 and y.loc[test_idx].nunique() == 2:
-                holdout = RandomForestClassifier(
-                    n_estimators=200, max_depth=8, min_samples_leaf=5,
-                    random_state=42, n_jobs=-1
-                )
-                holdout.fit(X_raw.loc[train_idx].values, y.loc[train_idx])
-                test_probs = holdout.predict_proba(X_raw.loc[test_idx].values)[:, 1]
-                eval_auc = float(roc_auc_score(y.loc[test_idx], test_probs))
-                eval_accuracy = float(accuracy_score(y.loc[test_idx], test_probs >= 0.5))
-                validation_label = "time-based 80/20 holdout"
-
-    print(f"  Model AUC ({validation_label}): {eval_auc:.3f}")
-
-    rf.fit(X, y)
-
-    # Feature importance
-    feat_imp = pd.DataFrame({
-        "feature": FEATURES,
-        "importance": rf.feature_importances_,
-    }).sort_values("importance", ascending=False)
-    print("  Top 10 win predictors:")
-    for _, r in feat_imp.head(10).iterrows():
-        print(f"    {r['feature']:40s}: {r['importance']:.4f}")
-
-    # Score closed deals (show calibration)
-    closed["win_probability"] = rf.predict_proba(X)[:,1]
-    closed["predicted_win"] = (closed["win_probability"] >= 0.5).astype(int)
-    train_acc = (closed["predicted_win"] == y.values).mean()
-    if pd.notna(eval_accuracy):
-        print(f"  Holdout accuracy: {eval_accuracy:.1%}")
-    print(f"  Training accuracy (diagnostic only): {train_acc:.1%}")
-
-    # Score open deals
-    open_scored = pd.DataFrame()
-    if len(open_) > 0:
-        X_open_raw = open_[FEATURES].copy()
-        for c in cat_cols:
-            if c in X_open_raw.columns:
-                X_open_raw[c] = X_open_raw[c].fillna("Unknown").astype(str)
-                le = le_map.get(c)
-                if le:
-                    known = set(le.classes_)
-                    X_open_raw[c] = X_open_raw[c].apply(lambda v: v if v in known else "Unknown")
-                    if "Unknown" not in known:
-                        X_open_raw[c] = X_open_raw[c].apply(lambda v: le.classes_[0] if v not in known else v)
-                    X_open_raw[c] = le.transform(X_open_raw[c])
-        for c in bool_cols:
-            if c in X_open_raw.columns:
-                X_open_raw[c] = X_open_raw[c].map({True:1,False:0}).fillna(0)
-        for c in num_cols:
-            if c in X_open_raw.columns:
-                X_open_raw[c] = pd.to_numeric(X_open_raw[c], errors="coerce").fillna(0)
-        open_["win_probability"] = rf.predict_proba(X_open_raw.values)[:,1]
-        open_scored = open_[["_opportunity_id","_account_name","_amount","channel_category",
-                              "segment__c","win_probability"]].copy()
-        open_scored = open_scored.sort_values("win_probability", ascending=False)
-        print(f"  Top 5 open deals by win probability:")
-        for _, r in open_scored.head(5).iterrows():
-            print(f"    {str(r['_account_name'])[:35]:35s}  prob={r['win_probability']:.0%}  amt=${r['_amount']:,.0f}")
-    else:
-        # All deals closed — show distribution on full dataset
-        closed_show = closed[["_opportunity_id","_account_name","_amount","channel_category",
-                               "segment__c","win_probability",won_col]].copy()
-        if won_col != "iswon":
-            closed_show = closed_show.rename(columns={won_col: "iswon"})
-        open_scored = closed_show
+    active_scored = active[[
+        c for c in ["_opportunity_id", "_account_name", stage_col, "_amount", "channel_category", "segment__c"]
+        if c in active.columns
+    ]].copy()
+    if len(active):
+        active_scored["win_probability"] = model.predict_proba(active[features])[:, 1]
+        active_scored["amount_quality"] = np.where(active["_amount"].fillna(0).gt(0), "positive amount", "zero/missing amount")
+        active_scored = active_scored.sort_values(["win_probability", "_amount"], ascending=[False, False])
 
     feat_imp.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "feature_importance.parquet"), index=False)
-    out = open_scored if len(open_) > 0 else closed[["_opportunity_id","_account_name","_amount",
-          "channel_category","segment__c","win_probability",won_col]].copy()
-    if won_col != "iswon" and not out.empty:
-        out = out.rename(columns={won_col: "iswon"})
-    out.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "win_probability.parquet"), index=False)
-    return feat_imp, out, {
-        "auc": eval_auc,
-        "accuracy": eval_accuracy if pd.notna(eval_accuracy) else float(train_acc),
-        "training_accuracy": float(train_acc),
-        "validation": validation_label,
+    active_scored.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "win_probability.parquet"), index=False)
+    diagnostics = {
+        "auc": auc,
+        "accuracy": accuracy,
+        "precision": precision,
+        "recall": recall,
+        "brier_score": brier,
+        "true_negative": int(tn),
+        "false_positive": int(fp),
+        "false_negative": int(fn),
+        "true_positive": int(tp),
+        "train_rows": len(train),
+        "test_rows": len(test),
+        "train_win_rate": float(y_train.mean()),
+        "test_win_rate": float(y_test.mean()),
+        "active_scored_rows": len(active_scored),
+        "validation": "time-based 80/20 holdout; preprocessing fit on train only",
+        "feature_policy": "opportunity-time fields only; present-day account snapshot fields excluded",
     }
+    return feat_imp, active_scored, diagnostics
 
 
 # ============================================================
@@ -289,12 +253,20 @@ def build_account_coverage():
     ).reset_index()
     summary["pct_of_total"] = summary["accounts"] / total
     summary["opp_rate"] = summary["with_opp"] / summary["accounts"]
+    intervals = summary.apply(
+        lambda row: wilson_interval(int(row["with_opp"]), int(row["accounts"])),
+        axis=1,
+    )
+    summary["opp_rate_ci_low"] = [interval[0] for interval in intervals]
+    summary["opp_rate_ci_high"] = [interval[1] for interval in intervals]
+    summary["interpretation"] = "Observed association; coverage groups were not randomized."
 
     print(f"  Total account domains: {total:,}")
     for _, r in summary.sort_values("accounts", ascending=False).iterrows():
         print(f"    {r['coverage_tier']:20s}: {int(r['accounts']):5,} ({r['pct_of_total']:.1%})  opp_rate={r['opp_rate']:.1%}")
 
     cov.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "account_coverage.parquet"), index=False)
+    summary.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "account_coverage_summary.parquet"), index=False)
     return cov, summary
 
 
@@ -478,9 +450,11 @@ def build_6qa_analysis():
         1: True, 0: False,
     }
     opps_qa[qa_col] = opps_qa[qa_col].map(bool_map)
-    opps_qa["_won_amount"] = np.where(opps_qa[won_col] == True, opps_qa["_amount"], 0)
+    stage_col = next((c for c in opps_qa.columns if "current_stage" in c.lower()), None)
+    resolved_qa = opps_qa[resolved_stage_mask(opps_qa[stage_col])].copy() if stage_col else opps_qa.copy()
+    resolved_qa["_won_amount"] = np.where(resolved_qa[won_col] == True, resolved_qa["_amount"], 0)
 
-    qa_perf = opps_qa.groupby(qa_col).agg(
+    qa_perf = resolved_qa.groupby(qa_col).agg(
         deals=("_opportunity_id","count"),
         won=(won_col, lambda x: (x==True).sum()),
         pipeline=("_amount","sum"),
@@ -496,8 +470,8 @@ def build_6qa_analysis():
         print(f"    {label:15s}: deals={int(r['deals']):4d}  win_rate={r['win_rate']:.1%}  pipeline=${r['pipeline']:>12,.0f}")
 
     # Profile Fit analysis
-    if pf_col in opps_qa.columns:
-        pf_perf = opps_qa.dropna(subset=[pf_col]).groupby(pf_col).agg(
+    if pf_col in resolved_qa.columns:
+        pf_perf = resolved_qa.dropna(subset=[pf_col]).groupby(pf_col).agg(
             deals=("_opportunity_id","count"),
             won=(won_col, lambda x: (x==True).sum()),
             pipeline=("_amount","sum"),
@@ -542,19 +516,41 @@ def build_targeting_matrix():
         return pd.DataFrame()
 
     df = opps_m.dropna(subset=["segment__c", pf_col]).copy()
-    matrix = df.groupby(["segment__c", pf_col]).agg(
-        deals=("_opportunity_id","count"),
+    stage_col = next((c for c in df.columns if "current_stage" in c.lower()), None)
+    df["is_resolved"] = resolved_stage_mask(df[stage_col]) if stage_col else True
+    totals = df.groupby(["segment__c", pf_col]).agg(
+        total_deals=("_opportunity_id", "count"),
+        active_deals=("is_resolved", lambda x: (~x).sum()),
+    ).reset_index()
+    resolved = df[df["is_resolved"]].copy()
+    resolved["positive_amount"] = resolved["_amount"].where(resolved["_amount"] > 0)
+    matrix = resolved.groupby(["segment__c", pf_col]).agg(
+        resolved_deals=("_opportunity_id","count"),
         won=(won_col, lambda x: (x==True).sum()),
         pipeline=("_amount","sum"),
         avg_deal=("_amount","mean"),
-    ).reset_index()
-    matrix["win_rate"] = matrix["won"] / matrix["deals"]
-    matrix["priority_score"] = matrix["win_rate"] * matrix["avg_deal"] / 1000
+        positive_median_deal=("positive_amount", "median"),
+    ).reset_index().merge(totals, on=["segment__c", pf_col], how="left")
+    matrix["deals"] = matrix["resolved_deals"]  # backwards-compatible display field
+    matrix["win_rate"] = matrix["won"] / matrix["resolved_deals"].replace(0, np.nan)
+    global_rate = resolved[won_col].eq(True).mean()
+    prior_strength = 30
+    matrix["adjusted_win_rate"] = (
+        matrix["won"] + global_rate * prior_strength
+    ) / (matrix["resolved_deals"] + prior_strength)
+    intervals = matrix.apply(
+        lambda row: wilson_interval(int(row["won"]), int(row["resolved_deals"])),
+        axis=1,
+    )
+    matrix["win_rate_ci_low"] = [interval[0] for interval in intervals]
+    matrix["win_rate_ci_high"] = [interval[1] for interval in intervals]
+    matrix["evidence_tier"] = np.where(matrix["resolved_deals"] >= 30, "decision-grade", "exploratory")
+    matrix["priority_score"] = matrix["adjusted_win_rate"] * matrix["positive_median_deal"].fillna(0) / 1000
 
     print("  Targeting Priority Matrix (Segment x Profile Fit):")
-    print(f"  {'Segment':15s} {'Profile':10s} {'Deals':6s} {'Win%':6s} {'Avg Deal':10s} {'Priority':8s}")
+    print(f"  {'Segment':15s} {'Profile':10s} {'Resolved':8s} {'Win%':6s} {'Pos Med':10s} {'Priority':8s}")
     for _, r in matrix.sort_values("priority_score", ascending=False).head(12).iterrows():
-        print(f"  {str(r['segment__c']):15s} {str(r[pf_col]):10s} {int(r['deals']):6d} {r['win_rate']:5.0%} ${r['avg_deal']:>9,.0f} {r['priority_score']:8.1f}")
+        print(f"  {str(r['segment__c']):15s} {str(r[pf_col]):10s} {int(r['resolved_deals']):6d} {r['win_rate']:5.0%} ${r['positive_median_deal']:>9,.0f} {r['priority_score']:8.1f}")
 
     matrix.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "targeting_matrix.parquet"), index=False)
     return matrix
@@ -576,22 +572,34 @@ def build_cohort_analysis():
         print("  Missing won flag — skipping")
         return pd.DataFrame()
     df["create_date"] = pd.to_datetime(df[create_col], errors="coerce", utc=True)
-    df["quarter"] = df["create_date"].dt.to_period("Q").astype(str)
+    df["quarter"] = df["create_date"].dt.tz_convert(None).dt.to_period("Q").astype(str)
+    stage_col = next((c for c in df.columns if "current_stage" in c.lower()), None)
+    df["is_resolved"] = resolved_stage_mask(df[stage_col]) if stage_col else True
+    df["is_won"] = df[won_col].eq(True)
+    df["won_amount"] = np.where(df["is_won"], df["_amount"].fillna(0), 0)
 
-    cohort = df.dropna(subset=["quarter","_amount"]).groupby("quarter").agg(
+    cohort = df.dropna(subset=["create_date"]).groupby("quarter").agg(
         deals=("_opportunity_id","count"),
-        won=(won_col, lambda x: (x==True).sum()),
+        resolved=("is_resolved", "sum"),
+        won=("is_won", "sum"),
         pipeline=("_amount","sum"),
-        won_pipeline=("_amount", lambda x: x[(df.loc[x.index,won_col]==True)].sum()),
+        won_pipeline=("won_amount", "sum"),
         avg_deal=("_amount","mean"),
         marketing_sourced=("is_marketing_sourced", "sum"),
     ).reset_index()
-    cohort["win_rate"] = cohort["won"] / cohort["deals"]
+    cohort["naive_win_rate"] = cohort["won"] / cohort["deals"].replace(0, np.nan)
+    cohort["closed_win_rate"] = cohort["won"] / cohort["resolved"].replace(0, np.nan)
+    cohort["win_rate"] = cohort["closed_win_rate"]  # canonical quality metric
+    cohort["resolved_share"] = cohort["resolved"] / cohort["deals"].replace(0, np.nan)
+    cohort["is_mature"] = cohort["resolved_share"] >= 0.80
     cohort["mktg_pct"] = cohort["marketing_sourced"] / cohort["deals"]
+    intervals = cohort.apply(lambda row: wilson_interval(int(row["won"]), int(row["resolved"])), axis=1)
+    cohort["win_rate_ci_low"] = [interval[0] for interval in intervals]
+    cohort["win_rate_ci_high"] = [interval[1] for interval in intervals]
 
     print("  Pipeline created by quarter:")
     for _, r in cohort.tail(12).iterrows():
-        print(f"    {r['quarter']}: deals={int(r['deals']):4d}  pipeline=${r['pipeline']:>10,.0f}  win_rate={r['win_rate']:.0%}  mktg%={r['mktg_pct']:.0%}")
+        print(f"    {r['quarter']}: deals={int(r['deals']):4d}  resolved={r['resolved_share']:.0%}  pipeline=${r['pipeline']:>10,.0f}  closed_win_rate={r['closed_win_rate']:.0%}  mktg%={r['mktg_pct']:.0%}")
 
     cohort.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "cohort_analysis.parquet"), index=False)
     return cohort
@@ -612,6 +620,7 @@ def main():
 
     feat_imp, win_prob, model_stats = build_win_probability()
     pd.DataFrame([model_stats]).to_parquet(os.path.join(INTEGRATED_DATA_DIR, "model_stats.parquet"), index=False)
+    results["model_diagnostics"] = pd.DataFrame([model_stats])
     results["feature_importance"] = feat_imp
     results["win_probability_top"] = win_prob.head(20) if "win_probability" in win_prob.columns else win_prob.head(20)
 

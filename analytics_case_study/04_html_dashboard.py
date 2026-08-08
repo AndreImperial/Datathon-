@@ -14,12 +14,14 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.utils import PlotlyJSONEncoder
 import plotly.io as pio
+from plotly.offline import get_plotlyjs
 from plotly.subplots import make_subplots
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 from analytics_case_study.config import (
     INTEGRATED_DATA_DIR, CLEANED_DATA_DIR, BRAND_COLORS, CHANNEL_COLOR_MAP
 )
+from analytics_case_study.utils.metrics import resolved_stage_mask, wilson_interval
 
 OUTPUT_HTML = os.path.join(
     os.path.dirname(__file__), "..", "outputs", "dashboard", "Marketing_Analytics_Dashboard.html"
@@ -53,6 +55,10 @@ targeting_matrix  = _load_int("targeting_matrix")
 cohort            = _load_int("cohort_analysis")
 feat_imp          = _load_int("feature_importance")
 model_stats       = _load_int("model_stats")
+data_quality      = _load_int("data_quality_summary")
+attribution_scope = _load_int("attribution_coverage")
+coverage_summary  = _load_int("account_coverage_summary")
+budget_scenarios  = _load_int("budget_scenarios")
 opps              = _load_clean("opportunities")
 accounts          = _load_clean("accounts")
 email             = _load_clean("email_engagements")
@@ -68,9 +74,17 @@ mktg_pipeline   = opps.loc[opps["is_marketing_sourced"] == True, "_amount"].sum(
                   if "is_marketing_sourced" in opps.columns else 0
 total_deals     = len(opps)
 won_deals       = (opps[won_col] == True).sum() if won_col else 0
-win_rate        = won_deals / total_deals if total_deals else 0
+stage_col       = next((c for c in opps.columns if "current_stage" in c.lower()), None)
+resolved_deals  = int(resolved_stage_mask(opps[stage_col]).sum()) if stage_col else total_deals
+win_rate        = won_deals / resolved_deals if resolved_deals else 0
 mktg_pct        = mktg_pipeline / total_pipeline if total_pipeline else 0
 open_deals      = len(win_prob)
+create_col      = next((c for c in opps.columns if "createdate" in c.lower()), None)
+create_dates    = pd.to_datetime(opps[create_col], errors="coerce", utc=True) if create_col else pd.Series(dtype="datetime64[ns, UTC]")
+data_year_range = (
+    f"{int(create_dates.dt.year.min())}-{int(create_dates.dt.year.max())}"
+    if len(create_dates) and create_dates.notna().any() else "Date range unavailable"
+)
 
 def fmt(v, m="$"):
     if pd.isna(v) or v == 0: return f"{m}0"
@@ -93,6 +107,37 @@ def sourced_pipeline_val():
         return "$0"
     v = attribution[attribution["attribution_model"] == "Marketing Sourced"]["attributed_pipeline"].sum()
     return fmt(v)
+
+
+def attribution_scope_vals():
+    defaults = {
+        "linked_opportunities": "0",
+        "linked_won_opportunities": "0",
+        "linked_win_share": "0.0%",
+        "attribution_eligible_opportunities": "0",
+    }
+    if attribution_scope.empty:
+        return defaults
+    row = attribution_scope.iloc[0]
+    return {
+        "linked_opportunities": f"{int(row.get('linked_opportunities', 0)):,}",
+        "linked_won_opportunities": f"{int(row.get('linked_won_opportunities', 0)):,}",
+        "linked_win_share": f"{float(row.get('linked_share_of_won_opportunities', 0)):.1%}",
+        "attribution_eligible_opportunities": f"{int(row.get('eligible_domain_date_amount', 0)):,}",
+    }
+
+
+def email_scope_vals():
+    defaults = {"email_events": "0", "email_people": "0", "email_click_share": "0.0%"}
+    if email.empty:
+        return defaults
+    person_col = "_prospectID" if "_prospectID" in email.columns else "_email"
+    clicks = int(email.get("is_click", pd.Series(dtype=int)).sum())
+    return {
+        "email_events": f"{len(email):,}",
+        "email_people": f"{email[person_col].nunique():,}" if person_col in email.columns else "N/A",
+        "email_click_share": f"{clicks / len(email):.1%}" if len(email) else "0.0%",
+    }
 
 def coverage_summary_vals():
     defaults = {
@@ -170,6 +215,9 @@ def opportunity_cohort_view():
     grouped["closed_win_rate"] = grouped["won_closed"] / grouped["closed"].replace(0, np.nan)
     grouped["closed_share"] = grouped["closed"] / grouped["deals"].replace(0, np.nan)
     grouped["mktg_pct"] = grouped["marketing_sourced"] / grouped["deals"].replace(0, np.nan)
+    intervals = grouped.apply(lambda row: wilson_interval(int(row["won_closed"]), int(row["closed"])), axis=1)
+    grouped["win_rate_ci_low"] = [interval[0] for interval in intervals]
+    grouped["win_rate_ci_high"] = [interval[1] for interval in intervals]
     return grouped.sort_values("quarter")
 
 
@@ -236,6 +284,9 @@ def dashboard_quality_vals():
         "unknown_channel_class": "",
         "top3_pipeline_share": "0.0%",
         "attribution_reconciliation": "N/A",
+        "zero_amount_won": "0.0%",
+        "zero_amount_won_class": "",
+        "attribution_linked_win_pct": "N/A",
     }
     if opps.empty:
         return defaults
@@ -252,7 +303,7 @@ def dashboard_quality_vals():
         valid_domains = domain_series.astype(str).str.strip().replace({"": np.nan, "nan": np.nan, "None": np.nan})
         defaults["domain_match_rate"] = f"{valid_domains.notna().mean():.1%}"
 
-    create_col = next((c for c in ["_createddate", "createddate", "created_date"] if c in opps.columns), None)
+    create_col = next((c for c in opps.columns if "createdate" in c.lower()), None)
     if create_col:
         missing_dates = int(pd.to_datetime(opps[create_col], errors="coerce").isna().sum())
         defaults["missing_create_dates"] = f"{missing_dates:,}"
@@ -278,17 +329,27 @@ def dashboard_quality_vals():
         elif influenced > 0:
             defaults["attribution_reconciliation"] = "Influenced only"
 
+    if won_col and "_amount" in opps.columns:
+        won_rows = opps[opps[won_col].eq(True)]
+        zero_won_rate = won_rows["_amount"].fillna(0).eq(0).mean() if len(won_rows) else np.nan
+        defaults["zero_amount_won"] = f"{zero_won_rate:.1%}" if pd.notna(zero_won_rate) else "N/A"
+        defaults["zero_amount_won_class"] = "warn" if pd.notna(zero_won_rate) and zero_won_rate > 0.05 else ""
+
+    if not attribution_scope.empty and "linked_share_of_won_opportunities" in attribution_scope.columns:
+        value = attribution_scope.loc[0, "linked_share_of_won_opportunities"]
+        defaults["attribution_linked_win_pct"] = f"{value:.1%}" if pd.notna(value) else "N/A"
+
     return defaults
 
 LAYOUT = dict(
-    font=dict(family="Barlow, Arial, sans-serif", size=13, color="#F8FAFC"),
+    font=dict(family="Segoe UI, Arial, sans-serif", size=13, color="#152238"),
     plot_bgcolor="rgba(0,0,0,0)", paper_bgcolor="rgba(0,0,0,0)",
     margin=dict(l=46, r=24, t=56, b=44),
-    legend=dict(bgcolor="rgba(0,0,0,0)", font_size=12),
+    legend=dict(bgcolor="rgba(0,0,0,0)", font_size=12, font=dict(color="#46566D")),
     hoverlabel=dict(
-        bgcolor="#1E293B",
-        bordercolor="#334155",
-        font=dict(color="#F8FAFC", family="Barlow, Arial, sans-serif", size=12),
+        bgcolor="#152238",
+        bordercolor="#152238",
+        font=dict(color="#FFFFFF", family="Segoe UI, Arial, sans-serif", size=12),
     ),
 )
 
@@ -524,13 +585,17 @@ def segment_heatmap():
 
 def segment_win_rate():
     if opps.empty or "segment__c" not in opps.columns or not won_col: return go.Figure()
-    df = opps.dropna(subset=["segment__c"]).groupby("segment__c").agg(
+    source = opps[resolved_stage_mask(opps[stage_col])].copy() if stage_col else opps.copy()
+    df = source.dropna(subset=["segment__c"]).groupby("segment__c").agg(
         deals=("_opportunity_id","count"),
         won=(won_col, lambda x: (x==True).sum()),
         pipeline=("_amount","sum"),
         avg_deal=("_amount","mean"),
     ).reset_index()
     df["win_rate"] = df["won"] / df["deals"]
+    intervals = df.apply(lambda row: wilson_interval(int(row["won"]), int(row["deals"])), axis=1)
+    df["ci_low"] = [interval[0] for interval in intervals]
+    df["ci_high"] = [interval[1] for interval in intervals]
     df = df.sort_values("win_rate", ascending=True)
 
     fig = go.Figure(go.Bar(
@@ -540,11 +605,18 @@ def segment_win_rate():
         marker_color="#2563EB",
         text=[f"{wr:.1%} | n={int(n):,} | avg {fmt(avg)}" for wr, n, avg in zip(df["win_rate"], df["deals"], df["avg_deal"])],
         textposition="outside",
+        error_x=dict(
+            type="data",
+            array=(df["ci_high"] - df["win_rate"]).clip(lower=0),
+            arrayminus=(df["win_rate"] - df["ci_low"]).clip(lower=0),
+            color="#64748B",
+            thickness=1.2,
+        ),
         customdata=np.stack([df["deals"], df["avg_deal"], df["pipeline"]], axis=-1),
         hovertemplate="<b>%{y}</b><br>Win Rate: %{x:.1%}<br>Deals: %{customdata[0]:,.0f}<br>Avg Deal: $%{customdata[1]:,.0f}<br>Pipeline: $%{customdata[2]:,.0f}<extra></extra>",
     ))
     fig.update_layout(
-        title="Segment Win Rate with Deal Volume and Average Deal Context",
+        title="Closed-Deal Win Rate by Segment<br><sup>95% Wilson interval; resolved opportunities only</sup>",
         xaxis=dict(title="Win Rate", tickformat=".0%"),
         yaxis=dict(title=""),
         **LAYOUT,
@@ -554,95 +626,124 @@ def segment_win_rate():
 
 def email_seniority():
     if email.empty or "_seniority" not in email.columns: return go.Figure()
-    df = email.groupby("_seniority").agg(
-        total=("_seniority","count"),
-        opens=("is_open","sum") if "is_open" in email.columns else ("_seniority","count"),
-        clicks=("is_click","sum") if "is_click" in email.columns else ("_seniority","count"),
+    person_col = "_prospectID" if "_prospectID" in email.columns else "_email"
+    df = email.fillna({"_seniority": "Unknown"}).groupby("_seniority").agg(
+        engagement_events=("_seniority","count"),
+        engaged_people=(person_col, "nunique"),
+        click_events=("is_click","sum"),
+        registration_events=("is_register","sum"),
     ).reset_index()
-    df["open_rate"]  = df["opens"]  / df["total"]
-    df["click_rate"] = df["clicks"] / df["total"]
-    df = df.sort_values("click_rate", ascending=False)
-    fig = go.Figure()
-    fig.add_trace(go.Bar(name="Open Rate",  x=df["_seniority"], y=df["open_rate"],
-                         marker_color="#2563EB", text=[f"{v:.1%}" for v in df["open_rate"]], textposition="outside"))
-    fig.add_trace(go.Bar(name="Click Rate", x=df["_seniority"], y=df["click_rate"],
-                         marker_color="#D97706", text=[f"{v:.1%}" for v in df["click_rate"]], textposition="outside"))
-    fig.update_layout(title="Email Engagement by Seniority", barmode="group",
-                      yaxis_tickformat=".0%", **LAYOUT)
+    df["click_event_share"] = df["click_events"] / df["engagement_events"].replace(0, np.nan)
+    df = df.sort_values("click_event_share", ascending=True)
+    fig = go.Figure(go.Bar(
+        x=df["click_event_share"], y=df["_seniority"], orientation="h",
+        marker_color="#D97706",
+        text=[f"{share:.1%} | {int(people):,} engaged people" for share, people in zip(df["click_event_share"], df["engaged_people"])],
+        textposition="outside",
+        customdata=np.stack([df["engagement_events"], df["click_events"], df["registration_events"]], axis=-1),
+        hovertemplate="<b>%{y}</b><br>Click-event share: %{x:.1%}<br>Engagement events: %{customdata[0]:,.0f}<br>Click events: %{customdata[1]:,.0f}<br>Registration events: %{customdata[2]:,.0f}<extra></extra>",
+    ))
+    fig.update_layout(
+        title="Click-Event Share Within the Email Engagement Log by Seniority<br><sup>Event composition only; delivered-email counts are unavailable</sup>",
+        xaxis=dict(title="Click events / all recorded engagement events", tickformat=".0%"),
+        yaxis=dict(title=""),
+        **LAYOUT,
+    )
     return fig
 
 
 def creative_ctr_bar():
     if creative_perf.empty or "ctr" not in creative_perf.columns: return go.Figure()
-    if "_adname" not in creative_perf.columns: return go.Figure()
-    top = creative_perf.nlargest(15, "ctr")
-    fig = go.Figure(go.Bar(
-        x=top["ctr"], y=[str(n)[:40] for n in top["_adname"]],
-        orientation="h", marker_color=COLORS[0],
-        text=[f"{v:.2%}" for v in top["ctr"]], textposition="outside",
-        hovertemplate="<b>%{y}</b><br>CTR: %{x:.2%}<extra></extra>",
-    ))
-    fig.update_layout(title="Top 15 Ads by CTR", **LAYOUT)
+    if "_adname" not in creative_perf.columns or "_platform" not in creative_perf.columns: return go.Figure()
+    source = creative_perf[creative_perf["_impressions"] >= 10000].copy()
+    platforms = [p for p in ["LinkedIn", "6sense"] if p in source["_platform"].unique()]
+    if not platforms: return go.Figure()
+    fig = make_subplots(
+        rows=len(platforms), cols=1,
+        vertical_spacing=0.18,
+        subplot_titles=[f"{platform}: top high-volume ads" for platform in platforms],
+    )
+    colors = {"LinkedIn": "#1E40AF", "6sense": "#D97706"}
+    for row_idx, platform in enumerate(platforms, start=1):
+        top = source[source["_platform"] == platform].nlargest(5, "ctr").sort_values("ctr")
+        fig.add_trace(go.Bar(
+            x=top["ctr"], y=[str(n)[:34] for n in top["_adname"]],
+            orientation="h", marker_color=colors.get(platform, COLORS[0]),
+            text=[f"{v:.2%} | {int(n):,} imp." for v, n in zip(top["ctr"], top["_impressions"])],
+            textposition="outside",
+            customdata=top["_impressions"],
+            hovertemplate="<b>%{y}</b><br>CTR: %{x:.2%}<br>Impressions: %{customdata:,.0f}<extra></extra>",
+            showlegend=False,
+        ), row=row_idx, col=1)
+        fig.update_xaxes(tickformat=".1%", rangemode="tozero", row=row_idx, col=1)
+    fig.update_layout(
+        title="Creative CTR Within Platform<br><sup>Top five ads per platform with at least 10,000 impressions; platform benchmarks differ</sup>",
+        **LAYOUT,
+    )
     return fig
 
 
 def creative_attr_chart():
     if creative_perf.empty: return go.Figure()
-    attr_col = next((c for c in ["_copytone","_copyassettype","_ctacopysofthard"] if c in creative_perf.columns), None)
-    if not attr_col: return go.Figure()
-    grp = creative_perf.dropna(subset=[attr_col]).groupby(attr_col).agg(
-        impressions=("_impressions","sum"), clicks=("_clicks","sum"), spend=("_spend","sum")
+    attr_col = "_copytone" if "_copytone" in creative_perf.columns else None
+    if not attr_col or "_platform" not in creative_perf.columns: return go.Figure()
+    source = creative_perf[creative_perf["_platform"] == "6sense"].copy()
+    if source.empty: return go.Figure()
+    grp = source.dropna(subset=[attr_col]).groupby(attr_col).agg(
+        impressions=("_impressions","sum"), clicks=("_clicks","sum"), spend=("_spend","sum"),
+        ads=("_adname", "nunique"),
     ).reset_index()
     grp["ctr"] = grp["clicks"] / grp["impressions"].replace(0, np.nan)
-    grp = grp.sort_values("ctr", ascending=False)
-    fig = px.bar(grp, x=attr_col, y="ctr", color=attr_col,
-                 color_discrete_sequence=COLORS,
-                 text=[f"{v:.2%}" for v in grp["ctr"]],
-                 title=f"CTR by {attr_col.lstrip('_').replace('copy','').title()}")
-    fig.update_traces(textposition="outside")
-    fig.update_layout(yaxis_tickformat=".1%", showlegend=False, **LAYOUT)
+    grp = grp.sort_values("ctr", ascending=True)
+    fig = go.Figure(go.Bar(
+        x=grp["ctr"], y=grp[attr_col], orientation="h",
+        marker_color="#1E40AF",
+        text=[f"{ctr:.3%} | {int(imp):,} imp. | {int(ads)} ads" for ctr, imp, ads in zip(grp["ctr"], grp["impressions"], grp["ads"])],
+        textposition="outside",
+        customdata=np.stack([grp["impressions"], grp["ads"]], axis=-1),
+        hovertemplate="<b>%{y}</b><br>CTR: %{x:.3%}<br>Impressions: %{customdata[0]:,.0f}<br>Ads: %{customdata[1]:,.0f}<extra></extra>",
+    ))
+    fig.update_layout(
+        title="6sense CTR by Recorded Copy Tone<br><sup>Unknown dominates delivery; labeled tone comparisons have limited volume</sup>",
+        xaxis=dict(title="CTR", tickformat=".2%", rangemode="tozero"),
+        yaxis=dict(title=""),
+        **LAYOUT,
+    )
     return fig
 
 
 def budget_scenario_chart():
-    if channel_pipeline.empty: return go.Figure()
-    df = channel_pipeline[channel_pipeline["channel_spend"] > 0].copy()
-    if df.empty: return go.Figure()
-    ppl_per_dollar = (df["total_pipeline"] / df["channel_spend"].replace(0, np.nan)).fillna(0)
-    df["ppd"] = ppl_per_dollar.values
-    ranked = df.sort_values("pipeline_roi", ascending=False)
-    top2 = ranked.head(2)["channel_category"].tolist()
-    bot2 = ranked.tail(2)["channel_category"].tolist()
-
-    scenarios = {"Current": df["channel_spend"].copy()}
-    roi_opt = df["channel_spend"].copy()
-    for ch in top2:
-        mask = df["channel_category"] == ch
-        roi_opt[mask] = roi_opt[mask] * 1.30
-    for ch in bot2:
-        mask = df["channel_category"] == ch
-        roi_opt[mask] = roi_opt[mask] * 0.80
-    scenarios["ROI-Optimized"] = roi_opt
-
-    growth = df["channel_spend"].copy()
-    for ch in top2:
-        mask = df["channel_category"] == ch
-        growth[mask] = growth[mask] * 2.0
-    for ch in bot2:
-        mask = df["channel_category"] == ch
-        growth[mask] = growth[mask] * 0.50
-    scenarios["Growth Mode"] = growth
-
+    if budget_scenarios.empty: return go.Figure()
+    summary = budget_scenarios.groupby("Scenario", as_index=False).agg({
+        "Active Spend ($)": "sum",
+        "Holdout Reserve ($)": "sum",
+        "Experiment Pool ($)": "sum",
+        "Total Budget ($)": "sum",
+    })
+    order = ["Status Quo", "10% Holdout", "Measurement First"]
+    summary["_order"] = summary["Scenario"].map({name: idx for idx, name in enumerate(order)})
+    summary = summary.sort_values("_order")
     fig = go.Figure()
-    colors_s = ["#94A3B8", "#2563EB", "#0F766E"]
-    for (label, spends), color in zip(scenarios.items(), colors_s):
-        proj = spends * df["ppd"]
+    for field, label, color in [
+        ("Active Spend ($)", "Activated media", "#1E40AF"),
+        ("Holdout Reserve ($)", "Holdout reserve", "#D97706"),
+        ("Experiment Pool ($)", "Experiment pool", "#0F766E"),
+    ]:
         fig.add_trace(go.Bar(
-            name=label, x=df["channel_category"].tolist(), y=proj.tolist(),
+            name=label,
+            x=summary["Scenario"],
+            y=summary[field],
             marker_color=color,
-            hovertemplate=f"<b>%{{x}}</b> - {label}<br>Projected Pipeline: $%{{y:,.0f}}<extra></extra>",
+            text=[fmt(v) if v else "" for v in summary[field]],
+            textposition="inside",
+            hovertemplate=f"<b>%{{x}}</b><br>{label}: $%{{y:,.0f}}<extra></extra>",
         ))
-    fig.update_layout(title="Tracked-Spend Scenarios - Projected Pipeline", barmode="group", **LAYOUT)
+    fig.update_layout(
+        title="Budget-Neutral Measurement Plans<br><sup>No pipeline forecast: only two paid channels have spend, and outcome evidence is insufficient for optimization</sup>",
+        barmode="stack",
+        yaxis_title="Tracked budget ($)",
+        **LAYOUT,
+    )
     return fig
 
 
@@ -659,25 +760,26 @@ def feature_importance_chart():
         text=[f"{v:.3f}" for v in df["importance"]], textposition="outside",
         hovertemplate="<b>%{y}</b><br>Importance: %{x:.4f}<extra></extra>",
     ))
-    fig.update_layout(title="Win Probability - Top Predictors (Random Forest Feature Importance)",
+    fig.update_layout(title="Win Model: Opportunity-Time Feature Importance",
                       xaxis_title="Importance Score", **LAYOUT)
     return fig
 
 
 def account_coverage_chart():
     if account_coverage.empty: return go.Figure()
-    # Build from integrated parquet if available, else recompute summary
-    try:
-        cov_full = _load_int("account_coverage")
-        summary = cov_full.groupby("coverage_tier").agg(
+    if not coverage_summary.empty:
+        summary = coverage_summary.copy()
+        summary["pct"] = summary["pct_of_total"]
+    else:
+        summary = account_coverage.groupby("coverage_tier").agg(
             accounts=("domain","count"),
             with_opp=("has_opportunity","sum")
         ).reset_index()
         summary["pct"] = summary["accounts"] / summary["accounts"].sum()
         summary["opp_rate"] = summary["with_opp"] / summary["accounts"]
-    except Exception:
-        summary = account_coverage.copy()
-        summary["pct"] = summary["accounts"] / summary["accounts"].sum() if "accounts" in summary.columns else 0
+        intervals = summary.apply(lambda row: wilson_interval(int(row["with_opp"]), int(row["accounts"])), axis=1)
+        summary["opp_rate_ci_low"] = [interval[0] for interval in intervals]
+        summary["opp_rate_ci_high"] = [interval[1] for interval in intervals]
 
     order = ["Not Reached","6sense Only","Email Only","Both Channels"]
     summary["_order"] = summary["coverage_tier"].map({v:i for i,v in enumerate(order)}).fillna(99)
@@ -704,12 +806,19 @@ def account_coverage_chart():
             mode="markers+text", marker=dict(size=12, color="#0F766E", symbol="diamond"),
             text=[f"{r:.1%} (n={int(n):,})" for r, n in zip(summary["opp_rate"], summary["accounts"])],
             textposition="top center",
+            error_y=dict(
+                type="data",
+                array=(summary["opp_rate_ci_high"] - summary["opp_rate"]).clip(lower=0),
+                arrayminus=(summary["opp_rate"] - summary["opp_rate_ci_low"]).clip(lower=0),
+                color="#64748B",
+                thickness=1.2,
+            ),
             hovertemplate="<b>%{x}</b><br>Observed opportunity rate: %{y:.1%}<extra></extra>",
         ), row=2, col=1)
     fig.update_yaxes(title_text="# Accounts", rangemode="tozero", row=1, col=1)
     fig.update_yaxes(title_text="Opportunity Rate", tickformat=".0%", range=[0, 0.6], row=2, col=1)
     fig.update_layout(
-        title="Account Coverage Volume and Observed Opportunity Rate<br><sup>Association only; coverage groups are not randomized</sup>",
+        title="Account Coverage and Observed Opportunity Rate<br><sup>95% Wilson intervals; association only because coverage groups are not randomized</sup>",
         showlegend=False,
         **LAYOUT,
     )
@@ -778,7 +887,7 @@ def win_prob_chart():
         hovertemplate="Win Prob: %{x:.0%}<br>Count: %{y}<extra></extra>",
     ))
     fig.update_layout(
-        title="Win Probability Distribution - Open Deals Scored by ML Model",
+        title="Active Opportunity Score Distribution",
         xaxis=dict(title="Win Probability", tickformat=".0%"),
         yaxis_title="Number of Deals",
         **LAYOUT,
@@ -844,6 +953,13 @@ def cohort_chart():
         mode="lines+markers",
         marker=dict(size=7, color="#D97706"),
         line=dict(dash="solid"),
+        error_y=dict(
+            type="data",
+            array=(df["win_rate_ci_high"] - df["closed_win_rate"]).clip(lower=0),
+            arrayminus=(df["closed_win_rate"] - df["win_rate_ci_low"]).clip(lower=0),
+            color="#64748B",
+            thickness=1.1,
+        ),
         customdata=df["closed"],
         hovertemplate="<b>%{x}</b><br>Closed-only win rate: %{y:.0%}<br>Resolved deals: %{customdata:,.0f}<extra></extra>",
     ), row=2, col=1)
@@ -865,6 +981,9 @@ def cohort_chart():
 # Serialise figures to JSON (for embedding)
 # -----------------------------------------------------------------------------
 def fig_json(fig: go.Figure) -> str:
+    fig.update_layout(title_font_size=15, title_x=0.01, title_xanchor="left")
+    fig.update_xaxes(automargin=True)
+    fig.update_yaxes(automargin=True)
     return json.dumps(fig.to_dict(), cls=PlotlyJSONEncoder)
 
 
@@ -904,13 +1023,15 @@ def clean_generated_html(html: str) -> str:
     replacements = expanded
     for bad, good in replacements.items():
         html = html.replace(bad, good)
-    return html
+    return "\n".join(line.rstrip() for line in html.splitlines()) + "\n"
 
 
 def build_dashboard_context():
     quality_vals = dashboard_quality_vals()
     coverage_vals = coverage_summary_vals()
     cohort_vals = cohort_summary_vals()
+    attribution_vals = attribution_scope_vals()
+    email_vals = email_scope_vals()
     return {
         "project": "Marketing Analytics Datathon Dashboard",
         "scope": [
@@ -930,7 +1051,9 @@ def build_dashboard_context():
             "total_pipeline": fmt(total_pipeline),
             "won_revenue": fmt(won_pipeline),
             "total_opportunities": f"{total_deals:,}",
-            "win_rate": f"{win_rate:.1%}",
+            "resolved_opportunities": f"{resolved_deals:,}",
+            "closed_deal_win_rate": f"{win_rate:.1%}",
+            "data_year_range": data_year_range,
             "marketing_sourced_pipeline": fmt(mktg_pipeline),
             "marketing_sourced_share": f"{mktg_pct:.1%}",
             "marketing_influenced_pipeline": influenced_pipeline_val(),
@@ -947,12 +1070,16 @@ def build_dashboard_context():
             "cohort_end_quarter": cohort_vals["cohort_end_quarter"],
             "model_auc": model_auc_text(),
             "model_validation": model_validation_text(),
-            "open_scored_deals": f"{open_deals:,}",
+            "active_scored_opportunities": f"{open_deals:,}",
             "domain_match_rate": quality_vals["domain_match_rate"],
             "missing_create_dates": quality_vals["missing_create_dates"],
             "unknown_channel_pct": quality_vals["unknown_channel_pct"],
             "top3_pipeline_share": quality_vals["top3_pipeline_share"],
             "attribution_reconciliation": quality_vals["attribution_reconciliation"],
+            "zero_amount_won_share": quality_vals["zero_amount_won"],
+            "attribution_linked_won_share": quality_vals["attribution_linked_win_pct"],
+            **attribution_vals,
+            **email_vals,
             "tracked_spend_channels": tracked_spend_channels_text(),
         },
         "recommendation": {
@@ -971,11 +1098,13 @@ def build_dashboard_context():
             "Low-volume channels and segments can be unstable.",
             "Web traffic is partially anonymous unless matched to account domains.",
             "Win probability supports prioritization, not guaranteed outcomes.",
+            "The email file is an engagement-event log; send-based open and click rates cannot be calculated.",
+            "A large share of won opportunities has zero amount, so won revenue and revenue ROI are understated.",
         ],
         "marketing_concepts": {
             "abm": "ABM focuses sales and marketing on a defined target account list instead of broad demand generation.",
             "icp": "ICP defines the accounts most worth pursuing using profile fit, segment, industry, win rate, and deal size.",
-            "sourced_vs_influenced": "Sourced is conservative CRM origin credit; influenced is broader account journey impact from marketing touches before opportunity creation.",
+            "sourced_vs_influenced": "Sourced is conservative CRM origin credit; influenced is journey context for the subset of opportunities linked to eligible pre-opportunity touches.",
             "holdout_test": "Use treatment and holdout groups to measure whether coverage expansion creates incremental meetings, opportunities, pipeline, and win-rate quality.",
         },
     }
@@ -987,10 +1116,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Marketing Analytics Dashboard</title>
-<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
-<script src="https://unpkg.com/lucide@latest"></script>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
+<script>{plotly_bundle}</script>
 <style>
   :root{{
     --bg:#0A0F1A; --bg-2:#101827; --panel:rgba(17, 24, 39, .78);
@@ -1496,6 +1622,174 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     .section:first-of-type {{ page-break-before:auto; }}
     .chart-card,.kpi-card,.decision-panel,.quality-card {{ box-shadow:none; background:#fff; border-color:#CBD5E1; }}
   }}
+
+  /* Editorial operator-console refresh: warm canvas, ink typography, restrained accents. */
+  :root {{
+    --bg:#F4F6FA; --bg-2:#EAF0F7; --panel:#FFFFFF; --panel-strong:#FFFFFF; --panel-soft:#F8FAFC;
+    --border:#D6DFEA; --border-strong:#B7C6D8; --text:#152238; --text-soft:#46566D;
+    --muted:#5B6B82; --muted-2:#8B98AA; --primary:#1E40AF; --primary-dark:#17358F;
+    --info:#3B82F6; --accent:#D97706; --accent-strong:#9A5A00; --success:#0F766E; --danger:#B42318; --violet:#6D4AFF;
+    --gradient-hot:linear-gradient(90deg, #1E40AF, #3B82F6); --gradient-warm:#EDF3FF;
+    --shadow-soft:0 8px 24px rgba(21,34,56,.07); --shadow-hover:0 12px 28px rgba(21,34,56,.12);
+    --glass-blur:none; --mono:'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, monospace;
+    --ease:cubic-bezier(.2,.8,.2,1);
+  }}
+  body {{
+    color:var(--text); font-family:'Segoe UI',Arial,sans-serif; background:var(--bg);
+    letter-spacing:-.01em;
+  }}
+  body::before, body::after {{ display:none; }}
+  #sidebar {{
+    width:236px; background:#12233F; border-right:0; box-shadow:8px 0 24px rgba(18,35,63,.08);
+    backdrop-filter:none; -webkit-backdrop-filter:none;
+  }}
+  .sidebar-brand {{
+    padding:24px 22px 20px; color:#FFFFFF; background:#12233F; border-bottom:1px solid rgba(255,255,255,.14);
+    font-family:Georgia,'Times New Roman',serif; font-size:17px; letter-spacing:-.02em;
+  }}
+  .sidebar-brand small {{ color:#B8C6DA; font-family:'Segoe UI',Arial,sans-serif; font-size:10px; letter-spacing:.02em; }}
+  .nav-link {{ margin:5px 14px; padding:11px 12px; color:#B8C6DA; border-radius:7px; font-size:12px; }}
+  .nav-link:hover {{ color:#FFFFFF; background:rgba(255,255,255,.10); transform:none; }}
+  .nav-link.active {{
+    color:#FFFFFF; background:#1E3A63; box-shadow:inset 3px 0 0 #F5B544; transform:none;
+  }}
+  #main {{ margin-left:236px; background:var(--bg); }}
+  .top-bar {{
+    min-height:72px; padding:15px 32px; background:rgba(255,255,255,.96); border-bottom:1px solid var(--border);
+    box-shadow:0 2px 14px rgba(21,34,56,.05); backdrop-filter:none; -webkit-backdrop-filter:none;
+  }}
+  .top-bar::after {{ height:2px; background:#F5B544; animation:none; }}
+  .top-bar h1 {{
+    color:var(--text); background:none; -webkit-background-clip:initial; background-clip:initial;
+    font-family:Georgia,'Times New Roman',serif; font-size:24px; letter-spacing:-.03em;
+  }}
+  .top-meta {{ color:var(--muted); font-family:'JetBrains Mono',monospace; font-size:11px; }}
+  .dashboard-search {{ border-color:var(--border); background:#FFFFFF; color:var(--text); border-radius:7px; }}
+  .dashboard-search:focus {{ border-color:var(--primary); box-shadow:0 0 0 3px rgba(30,64,175,.12); }}
+  .status-strip {{ padding-top:10px; }}
+  .status-chip {{ border-color:var(--border); border-radius:6px; background:#FFFFFF; color:var(--text-soft); }}
+  .status-chip i {{ color:var(--success); }}
+  .data-health summary {{ color:var(--text-soft); }}
+  .data-health summary::before {{ border-color:var(--border-strong); color:var(--primary); border-radius:5px; }}
+  .quality-card {{ border-color:var(--border); border-radius:8px; background:#FFFFFF; color:var(--text-soft); }}
+  .quality-card strong {{ color:var(--text); }}
+  .quality-card.warn {{ border-color:#F1C27D; background:#FFF8EB; }}
+  .badge-pill {{ color:#0F766E; background:#E8F5F2; border-color:#A9D5CC; box-shadow:none; border-radius:6px; }}
+  .mode-toggle {{ color:var(--primary); border-color:#B9C9E4; background:#EDF3FF; border-radius:7px; }}
+  .mode-toggle:hover {{ background:#E1EBFF; border-color:var(--primary); transform:none; box-shadow:none; }}
+  .action-button {{ color:var(--text-soft); border-color:var(--border); background:#FFFFFF; border-radius:7px; }}
+  .action-button:hover {{ transform:none; border-color:#8DA9D2; background:#F5F8FD; }}
+  a:focus-visible, button:focus-visible, input:focus-visible {{ outline-color:var(--primary); }}
+
+  .kpi-card, .story-card, .decision-panel, .chart-card, .conclusion-card, .priority-card, .evidence-card {{
+    background:var(--panel); border-color:var(--border); box-shadow:var(--shadow-soft); backdrop-filter:none; -webkit-backdrop-filter:none;
+  }}
+  .kpi-card::after, .story-card::after, .chart-card::after, .conclusion-card::after, .priority-card::after, .evidence-card::after {{ display:none; }}
+  .kpi-card {{ border-radius:10px; padding:17px 18px 16px; }}
+  .kpi-card::before {{ width:30px; height:4px; border-radius:2px; background:var(--primary); box-shadow:none; }}
+  .kpi-card.green::before {{ background:var(--success); }}
+  .kpi-card.orange::before {{ background:var(--accent); }}
+  .kpi-card.purple::before {{ background:var(--violet); }}
+  .kpi-label {{ color:var(--muted); font-size:10px; letter-spacing:.08em; }}
+  .kpi-value {{ color:var(--text); font-size:27px; }}
+  .kpi-sub {{ color:var(--muted); }}
+  .section-title {{ color:var(--text); font-family:Georgia,'Times New Roman',serif; font-size:21px; letter-spacing:-.02em; }}
+  .section-title::after {{ width:36px; height:3px; margin-top:9px; background:#F5B544; box-shadow:none; }}
+  .section-desc {{ color:var(--muted); }}
+  .story-card {{ border-radius:10px; padding:15px 16px; }}
+  .story-card::before {{ background:var(--primary); }}
+  .story-card.coverage::before {{ background:var(--accent); }}
+  .story-card.quality::before {{ background:var(--danger); }}
+  .story-card h2 {{ color:var(--text); }}
+  .story-card p {{ color:var(--muted); }}
+  .decision-panel {{ border-radius:10px; }}
+  .decision-panel::before {{ background:#F5B544; opacity:1; }}
+  .decision-lead {{ background:#EDF3FF; border-right-color:var(--border); border-left:4px solid var(--primary); }}
+  .decision-label {{ color:var(--primary); }}
+  .decision-lead h2 {{ color:var(--text); font-family:Georgia,'Times New Roman',serif; letter-spacing:-.02em; }}
+  i[data-lucide] {{ display:none; }}
+  .decision-lead p, .decision-item span {{ color:var(--muted); }}
+  .decision-item {{ border-right-color:var(--border); }}
+  .decision-item strong {{ color:var(--text); }}
+  .scope-chip {{ border-color:var(--border); border-radius:6px; background:#FFFFFF; color:var(--text-soft); }}
+  .scope-chip i {{ color:var(--primary); }}
+  .command-tile {{ border-color:var(--border); border-radius:8px; background:#FFFFFF; }}
+  .command-tile span {{ color:var(--muted); }}
+  .command-tile strong {{ color:var(--text); }}
+  .command-tile::before {{ background:var(--primary); }}
+  .command-tile.warn::before {{ background:var(--accent); }}
+  .command-tile.risk::before {{ background:var(--danger); }}
+  .section-takeaway {{ color:var(--text-soft); background:#FFF8EB; border-color:#F1D5A5; border-left-color:var(--accent); }}
+  .section-takeaway strong {{ color:var(--text); }}
+  .evidence-badge {{ background:#EDF3FF; color:var(--primary); border-color:#B9C9E4; border-radius:6px; }}
+  .evidence-badge.orange {{ background:#FFF3DF; color:#9A5A00; border-color:#F1C27D; }}
+  .evidence-badge.green {{ background:#E8F5F2; color:#0F766E; border-color:#A9D5CC; }}
+  .evidence-badge.red {{ background:#FDEDEC; color:#B42318; border-color:#F0B7B0; }}
+  .chart-card {{ border-radius:10px; padding:17px; }}
+  .chart-card:hover {{ transform:none; box-shadow:var(--shadow-hover); border-color:#8DA9D2; }}
+  .chart-card::before {{ background:#DCE5F1; opacity:1; }}
+  .chart-caption {{ border-color:var(--border); border-radius:7px; background:#F8FAFC; color:var(--muted); }}
+  .chart-caption strong {{ color:var(--text); }}
+  .caption-pill {{ border-color:var(--border-strong); color:var(--primary); border-radius:5px; }}
+  .story-step {{ border-color:var(--border); border-radius:7px; background:#F8FAFC; color:var(--text-soft); }}
+  .story-step strong {{ color:var(--text); }}
+  .story-step.action {{ border-color:#A9D5CC; background:#EDF8F5; }}
+  .context-box, .chart-explain {{ border-color:var(--border); border-radius:8px; background:#F8FAFC; color:var(--text-soft); }}
+  .context-box {{ border-left-color:var(--primary); }}
+  .chart-explain .ex-title {{ color:var(--text); }}
+  .chart-explain .ex-title::before {{ background:var(--accent); }}
+  .chart-explain .ex-insight {{ border-left-color:var(--primary); background:#EDF3FF; color:#23427A; }}
+  .ex-body {{ color:var(--muted); }}
+  .learn-toggle {{ border-color:var(--border-strong); background:#FFFFFF; color:var(--primary); border-radius:6px; }}
+  .learn-toggle:hover {{ background:#EDF3FF; border-color:#8DA9D2; transform:none; }}
+  .dash-table {{ color:var(--text-soft); }}
+  .dash-table caption {{ color:var(--muted); background:#F8FAFC; border-bottom-color:var(--border); }}
+  .dash-table th {{ color:var(--text); background:#EEF3F9; border-bottom-color:var(--border); }}
+  .dash-table td {{ border-bottom-color:#E6EBF2; }}
+  .dash-table tr:nth-child(even) {{ background:#FAFBFD; }}
+  .dash-table tr:hover {{ background:#EDF3FF; }}
+  .green-text {{ color:var(--success); }}
+  .red-text {{ color:var(--danger); }}
+  .badge-ch {{ background:#F1F4F8; color:var(--text-soft); }}
+  .table-wrap {{ border-color:var(--border); border-radius:8px; }}
+  .metric-lens {{ color:var(--muted); }}
+  .lens-button {{ border-color:var(--border); color:var(--text-soft); background:#FFFFFF; border-radius:6px; }}
+  .lens-button.active {{ background:#EDF3FF; border-color:#8DA9D2; color:var(--primary); }}
+  .chart-empty {{ border-color:var(--border-strong); background:#F8FAFC; color:var(--muted); }}
+  .chart-empty strong {{ color:var(--text); }}
+  .conclusion-card, .priority-card, .evidence-card {{ border-radius:10px; }}
+  .conclusion-card h3, .priority-card h3, .evidence-card h3 {{ color:var(--text); }}
+  .priority-card p, .evidence-card p {{ color:var(--muted); }}
+  .finding-list, .diagnosis-list {{ color:var(--text-soft); }}
+  .priority-tag {{ background:#EDF3FF; color:var(--primary); border-color:#B9C9E4; border-radius:5px; }}
+  .priority-tag.p1 {{ background:#FDEDEC; color:var(--danger); border-color:#F0B7B0; }}
+  .priority-tag.p2 {{ background:#FFF3DF; color:#9A5A00; border-color:#F1C27D; }}
+  .priority-tag.p3 {{ background:#E8F5F2; color:var(--success); border-color:#A9D5CC; }}
+  .conclusion-hero {{ color:#FFFFFF; background:#17335C; border-color:#17335C; box-shadow:var(--shadow-soft); border-radius:10px; }}
+  .conclusion-hero .eyebrow {{ color:#F5C76B; }}
+  .conclusion-hero p {{ color:#DDE7F4; }}
+  .confidence-pill.high {{ background:#E8F5F2; color:var(--success); border-color:#A9D5CC; }}
+  .confidence-pill.medium {{ background:#FFF3DF; color:#9A5A00; border-color:#F1C27D; }}
+  .confidence-pill.directional {{ background:#EDF3FF; color:var(--primary); border-color:#B9C9E4; }}
+  .model-pill.lt {{ background:var(--accent-strong); }}
+  .low-sample {{ color:var(--accent-strong); }}
+  .next-step-row {{ border-bottom-color:var(--border); }}
+  .next-step-row strong {{ color:var(--text); }}
+  .drawer-backdrop {{ background:rgba(21,34,56,.42); }}
+  .caveats-drawer {{ background:#FFFFFF; border-left-color:var(--border); color:var(--text-soft); backdrop-filter:none; -webkit-backdrop-filter:none; box-shadow:-18px 0 42px rgba(21,34,56,.16); }}
+  .drawer-head h2, .caveats-drawer strong {{ color:var(--text); }}
+  #nav-progress {{ left:236px; background:#E6ECF5; }}
+  #nav-progress span {{ background:#1E40AF; box-shadow:none; }}
+
+  @media(max-width:900px){{
+    #main {{ margin-left:0; }}
+    #nav-progress {{ left:0; }}
+    .top-bar {{ background:#FFFFFF; }}
+  }}
+  @media(max-width:520px){{
+    .top-bar h1 {{ font-size:21px; }}
+    .section {{ padding-left:18px; padding-right:18px; }}
+  }}
 </style>
 </head>
 <body>
@@ -1506,7 +1800,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <nav id="sidebar" aria-label="Dashboard sections">
   <div class="sidebar-brand">
     Marketing Analytics
-    <small>B2B SaaS &nbsp;|&nbsp; 2023-2024</small>
+    <small>B2B SaaS &nbsp;|&nbsp; {data_year_range}</small>
   </div>
   <ul class="nav flex-column mt-2" id="navMenu">
     <li class="nav-item"><a href="#s-essential" class="nav-link active" aria-current="page" aria-label="Essential View" data-section="s-essential" onclick="showSection(this,'s-essential'); return false;"><i class="nav-icon" data-lucide="sparkles" aria-hidden="true"></i><span>Essential View</span></a></li>
@@ -1523,7 +1817,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <h1>Marketing Analytics Dashboard</h1>
     <div class="top-actions">
       <div class="top-meta">
-      <span>Data: 2021-2024 &nbsp;|&nbsp; {total_deals} Opportunities &nbsp;|&nbsp; 8 Datasets</span>
+      <span>Data: {data_year_range} &nbsp;|&nbsp; {total_deals} Opportunities &nbsp;|&nbsp; 8 Datasets</span>
       </div>
       <span class="badge-pill">Validated</span>
       <label class="sr-only" for="dashboard-search">Filter dashboard sections</label>
@@ -1547,8 +1841,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="quality-card"><strong>{domain_match_rate}</strong> Opportunity domain coverage</div>
       <div class="quality-card {missing_date_class}"><strong>{missing_create_dates}</strong> opportunities missing create date</div>
       <div class="quality-card {unknown_channel_class}"><strong>{unknown_channel_pct}</strong> unknown/other channel share</div>
-      <div class="quality-card"><strong>{top3_pipeline_share}</strong> top-3 channel concentration</div>
-      <div class="quality-card"><strong>{attribution_reconciliation}</strong> influenced vs sourced lens</div>
+      <div class="quality-card {zero_amount_won_class}"><strong>{zero_amount_won}</strong> won deals with zero amount</div>
+      <div class="quality-card warn"><strong>{attribution_linked_win_pct}</strong> won deals linked to marketing touches</div>
     </div>
   </details>
   <div class="metric-lens" aria-label="Metric lens controls">
@@ -1562,9 +1856,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- KPI Row (always visible) -->
   <div class="kpi-row">
     <div class="kpi-card"><div class="kpi-label">Total Pipeline</div><div class="kpi-value">{total_pipeline}</div><div class="kpi-sub">{total_deals} opportunities</div></div>
-    <div class="kpi-card green"><div class="kpi-label">Won Revenue</div><div class="kpi-value">{won_pipeline}</div><div class="kpi-sub">Win rate: {win_rate}</div></div>
+    <div class="kpi-card green"><div class="kpi-label">Recorded Won Revenue</div><div class="kpi-value">{won_pipeline}</div><div class="kpi-sub">Closed-deal win rate: {win_rate} (n={resolved_deals})</div></div>
     <div class="kpi-card orange"><div class="kpi-label">Mktg-Sourced Pipeline</div><div class="kpi-value">{mktg_pipeline}</div><div class="kpi-sub">{mktg_pct} of total pipeline</div></div>
-    <div class="kpi-card purple"><div class="kpi-label">Influenced Pipeline</div><div class="kpi-value">{influenced_pipeline}</div><div class="kpi-sub">Accounts with any mktg touch</div></div>
+    <div class="kpi-card purple"><div class="kpi-label">Observed Influenced Pipeline</div><div class="kpi-value">{influenced_pipeline}</div><div class="kpi-sub">{linked_opportunities} linked opportunities; association only</div></div>
   </div>
 
   <div class="decision-panel" aria-label="Primary dashboard decision path">
@@ -1582,8 +1876,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <span>{unreached_pct} of target accounts have no tracked email or 6sense touch; test expansion with a holdout.</span>
     </div>
     <div class="decision-item">
-      <strong>3. Scale carefully</strong>
-      <span>Use attribution and tracked-spend scenarios as planning signals, then validate incremental lift before large reallocations.</span>
+      <strong>3. Measure before scaling</strong>
+      <span>Only two paid channels have spend data; reserve holdouts and an experiment pool instead of extrapolating unstable ROI.</span>
     </div>
   </div>
 
@@ -1601,8 +1895,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <div class="story-strip">
     <div class="story-card">
-      <h2>Marketing influence is bigger than source credit</h2>
-      <p><span class="evidence-badge">{influenced_pipeline} influenced</span> vs. <span class="evidence-badge orange">{sourced_pipeline} sourced</span> shows why the dashboard reports both views.</p>
+      <h2>Influence is visible, but coverage is limited</h2>
+      <p><span class="evidence-badge">{influenced_pipeline} influenced</span> is based on {linked_opportunities} linked opportunities and only {linked_win_share} of won deals.</p>
     </div>
     <div class="story-card coverage">
       <h2>Coverage is the clearest test opportunity</h2>
@@ -1632,8 +1926,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="priority-card">
         <div class="priority-tag">Budget lens</div>
-        <h3>Scale with proof</h3>
-        <p>Use sourced, influenced, and tracked-spend scenarios to choose tests, then validate incremental lift before committing large reallocations.</p>
+        <h3>Fund measurement first</h3>
+        <p>Use a budget-neutral holdout and experiment reserve. Do not optimize from two paid channels with insufficient won outcomes.</p>
       </div>
     </div>
     <div class="chart-grid cols-2" style="margin-top:16px">
@@ -1649,7 +1943,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <tbody>
             <tr><td><span class="priority-tag">1</span></td><td>Protect quality</td><td>Closed-deal win rate moved from {cohort_start_rate} to {cohort_end_rate} across cohorts at least 80% resolved.</td><td>Run a quarterly ICP and qualification review before scaling volume.</td></tr>
             <tr><td><span class="priority-tag">2</span></td><td>Expand coverage</td><td>{unreached_pct} of target accounts are unreached by tracked email or 6sense.</td><td>Launch email-first coverage test with a holdout group.</td></tr>
-            <tr><td><span class="priority-tag">3</span></td><td>Use attribution carefully</td><td>{influenced_pipeline} influenced vs. {sourced_pipeline} sourced shows marketing has broader journey impact.</td><td>Use time-decay/linear models for planning, not as causality proof.</td></tr>
+            <tr><td><span class="priority-tag">3</span></td><td>Use attribution carefully</td><td>{linked_opportunities} opportunities link to classified marketing touches; {linked_win_share} of won deals are covered.</td><td>Use journey models for hypothesis generation, then validate lift with holdouts.</td></tr>
           </tbody>
         </table>
       </div>
@@ -1673,7 +1967,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div id="c-bar-channel"></div>
         <div class="chart-explain">
           <div class="ex-title">What this shows - Pipeline by Channel</div>
-          Each bar is the total dollar value of all deals (won + open) where the CRM lead source was tagged as that marketing channel. This is <strong>Marketing Sourced</strong> pipeline - only deals where marketing is listed as the origin.
+          Each bar is the total recorded amount of opportunities (won, lost, discontinued, and active) grouped by CRM lead-source category. Marketing categories are sourced credit; sales, referral, and existing-client categories provide context.
           <br><br><strong>Why "Other" and "Existing Client" are biggest:</strong> Most B2B deals come from existing customer expansions or sales-led outreach - that's normal. Marketing's role is to generate the <em>net-new</em> pipeline (6sense, email, web inbound, events).
           <div class="ex-insight">Key takeaway: {top_sourced_channels} are the top net-new marketing channels by sourced pipeline.</div>
         </div>
@@ -1702,10 +1996,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- Attribution Models -->
   <div id="s-attrib" class="section">
     <h2 class="section-title">Attribution Analysis</h2>
-    <div class="section-desc">How different models split deal credit across marketing touchpoints - the core of understanding marketing ROI.</div>
-    <div class="section-takeaway"><strong>Attribution takeaway:</strong> Sourced pipeline is the conservative number; influenced pipeline is the fuller account-journey story. <span class="evidence-badge orange">{sourced_pipeline} sourced</span><span class="evidence-badge">{influenced_pipeline} influenced</span></div>
+    <div class="section-desc">How descriptive models allocate credit across classified, pre-opportunity marketing touchpoints.</div>
+    <div class="section-takeaway"><strong>Attribution takeaway:</strong> Report source credit and linked-journey credit separately. Only {linked_opportunities} opportunities and {linked_win_share} of won deals have classified marketing-touch coverage. <span class="evidence-badge orange">{sourced_pipeline} sourced</span><span class="evidence-badge">{influenced_pipeline} linked influence</span></div>
     <div class="context-box">
-      <strong>The core concept:</strong> Every won deal has a trail of marketing touchpoints - ads seen, emails opened, website visits - that happened before the deal was created. Attribution models answer the question: <em>how much of this deal's dollar value should each marketing channel get credit for?</em>
+      <strong>The core concept:</strong> For the subset of opportunities with classified marketing touches, attribution models answer: <em>how would observed pipeline credit move under different allocation rules?</em> They do not estimate incremental lift.
       <br><br>
       We link marketing touchpoints to opportunities within a 365-day lookback window before deal creation. Here are the 6 models:
       <br><br>
@@ -1714,12 +2008,12 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       &nbsp;<span class="model-pill">First-Touch</span>&nbsp; 100% credit to the <em>first</em> marketing touch - finds who starts conversations.
       &nbsp;<span class="model-pill lt">Last-Touch</span>&nbsp; 100% credit to the <em>last</em> touch before the deal - finds who closes conversations.
       &nbsp;<span class="model-pill lin">Linear</span>&nbsp; Equal split across ALL channels that touched the account - fairest view.
-      &nbsp;<span class="model-pill td">Time-Decay</span>&nbsp; More credit to <em>recent</em> touches, less to old ones (half-life = 30 days). Best for budget decisions.
+      &nbsp;<span class="model-pill td">Time-Decay</span>&nbsp; More credit to <em>recent weekly channel presence</em>, less to old presence (half-life = 30 days). Use for journey hypotheses, not direct budget mandates.
     </div>
     <div class="evidence-grid">
       <div class="evidence-card">
         <h3><span class="confidence-pill high">Proves</span> Marketing has measurable pipeline presence</h3>
-        <p>The sourced and influenced models are directly reconciled to the opportunity data, so the dollar totals are safe to report.</p>
+        <p>Sourced credit reconciles to the full CRM source view; influenced credit reconciles within the 695 linked opportunities. Report both only with their populations.</p>
       </div>
       <div class="evidence-card">
         <h3><span class="confidence-pill medium">Suggests</span> Channels play different journey roles</h3>
@@ -1739,7 +2033,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <br><br>
           <strong>How to read it:</strong> Compare the same channel across different models. If Email's bar is tall in First-Touch but shorter in Last-Touch, Email is good at starting conversations but someone else closes them.
           <br><br>
-          <strong>Example walkthrough:</strong> Company "Acme Corp" receives an email, sees 6sense ads, then visits the website before a $50K deal is created. Under <em>First-Touch</em>, Email gets $50K. Under <em>Last-Touch</em>, Web gets $50K. Under <em>Linear</em>, each channel gets $16.7K. Under <em>Time-Decay</em>, Web gets the most because it happened closest to the deal.
+          <strong>Method note:</strong> Source logs are normalized to one account-channel presence per ISO week before crediting. Blank-UTM web sessions are excluded rather than assumed to be marketing traffic.
           <div class="ex-insight">Key takeaway: Compare first-touch, last-touch, linear, and time-decay side by side. Differences show observed journey roles, not single-channel causality.</div>
         </div>
       </div>
@@ -1753,17 +2047,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <br><br>
           <strong>Sourced:</strong> The CRM field "Lead Source" explicitly says this deal came from marketing. Hard attribution. Conservative.
           <br><br>
-          <strong>Influenced:</strong> Marketing touched this account (any ad, email, or web visit) within 365 days before the deal was created - even if sales "sourced" the deal officially.
+          <strong>Influenced:</strong> A classified email or 6sense touch occurred within 365 days before opportunity creation, even if CRM source credit belongs elsewhere.
           <br><br>
-          The gap between Sourced and Influenced is the "shadow credit" - marketing's work that doesn't show up in traditional CRM reporting.
-          <div class="ex-insight">Key takeaway: If you only report on Sourced, you're attributing {sourced_pipeline} to marketing. If you use Influenced, it's {influenced_pipeline}. Both are true - they just answer different questions.</div>
+          The gap is a definition difference, not proof of hidden causal value. Sourced covers CRM origin; influenced covers the linked subset of classified journeys.
+          <div class="ex-insight">Key takeaway: Report both definitions with their populations. Sourced is {sourced_pipeline}; linked influenced pipeline is {influenced_pipeline} across {linked_opportunities} opportunities.</div>
         </div>
       </div>
       <div class="chart-card">
         <div id="c-attrib-waterfall"></div>
         <div class="chart-explain">
           <div class="ex-title">What this shows - First-Touch vs. Last-Touch Credit Shift</div>
-          This shows how much each channel's credit <em>changes</em> when you switch from First-Touch to Last-Touch. Green bars = the channel gets MORE credit in Last-Touch. Red bars = the channel gets LESS credit.
+          This shows how much each channel's credit <em>changes</em> when you switch from First-Touch to Last-Touch. Teal bars gain later-stage credit; amber bars lose it.
           <br><br>
           <strong>Why it matters:</strong> A channel that loses credit (red) is an <em>awareness channel</em> - it gets the conversation started but isn't involved at the decision point. A channel that gains credit (green) is a <em>conversion channel</em> - it's there when deals close.
           <div class="ex-insight">Key takeaway: Channels that gain last-touch credit appear later in tracked journeys; channels that lose it appear earlier. Treat the pattern as a planning signal to test.</div>
@@ -1774,10 +2068,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <!-- Attribution Table -->
     <div class="chart-card" style="margin-top:16px">
       <h3 class="section-title" style="font-size:13px;margin-bottom:6px">Full Attribution Table - All Models Side by Side</h3>
-      <div style="font-size:11px;color:#64748B;margin-bottom:10px">Every channel across every model in one place. The "Recommended Model" column shows which model gives that channel the most credit - use as a sanity check before budget decisions.</div>
+      <div style="font-size:11px;color:#64748B;margin-bottom:10px">Every channel across every model in one place. The last column identifies the largest-credit model descriptively; it is not a model recommendation.</div>
       <div style="overflow-x:auto">
         <table class="dash-table" id="attrib-table">
-          <thead><tr><th>Channel</th><th>First-Touch ($)</th><th>Last-Touch ($)</th><th>Linear ($)</th><th>Time-Decay ($)</th><th>Sourced ($)</th><th>Influenced ($)</th><th>Best Model for Channel</th></tr></thead>
+          <thead><tr><th>Channel</th><th>First-Touch ($)</th><th>Last-Touch ($)</th><th>Linear ($)</th><th>Time-Decay ($)</th><th>Sourced ($)</th><th>Influenced ($)</th><th>Largest-Credit Model</th></tr></thead>
           <tbody id="attrib-tbody"></tbody>
         </table>
       </div>
@@ -1790,7 +2084,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="section-desc">ROI, win rate, and funnel conversion by marketing channel - the efficiency scorecard.</div>
     <div class="section-takeaway"><strong>Channel takeaway:</strong> Relationship channels close best, while marketing channels build the net-new funnel that needs time to mature. <span class="evidence-badge green">relationship channels</span><span class="evidence-badge">net-new pipeline</span></div>
     <div class="context-box">
-      <strong>What "ROI" means here:</strong> Pipeline ROI = pipeline generated / dollars spent. A Pipeline ROI of 5x means every $1 in ad spend generated $5 in deal pipeline. This is different from Revenue ROI (only counting won deals) - both matter. Pipeline ROI tells you if you're building a healthy funnel. Revenue ROI tells you if it's converting.
+      <strong>What "ROI" means here:</strong> Pipeline ROI = CRM-sourced pipeline associated with a channel / tracked ad spend. Revenue ROI uses recorded won amount. These are observational efficiency ratios, not incrementality estimates, and recorded revenue is understated because many won deals have zero amount.
     </div>
     <div class="evidence-grid">
       <div class="evidence-card">
@@ -1826,7 +2120,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           This separates ad, email, web, and opportunity outcome populations so unrelated events are not presented as one linear conversion path.
           <br><br>
           <strong>How to read it:</strong><br>
-          Each group has its own denominator. Ad impressions convert to ad clicks, email events convert to email clicks or registrations, and opportunity outcomes summarize CRM results. A log scale keeps very large and small counts readable together.
+          Each group has its own denominator. Ad rows show impression/click progression; email rows show the composition of the supplied engagement-event log; opportunity rows summarize CRM outcomes. A log scale keeps very large and small counts readable together.
           <div class="ex-insight">Key takeaway: This view is safer for analysis because it avoids implying that email events, website sessions, and CRM opportunities are one sequential funnel.</div>
         </div>
       </div>
@@ -1835,7 +2129,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div style="font-size:11px;color:#64748B;margin-bottom:10px">Pipeline ROI = total pipeline / spend. Revenue ROI = won revenue / spend. Channels with no spend tracked show - (they rely on sales effort, not ad budget).</div>
         <div style="overflow-x:auto">
           <table class="dash-table" id="channel-table">
-            <thead><tr><th>Channel</th><th>Deals</th><th>Pipeline ($)</th><th>Won ($)</th><th>Win Rate</th><th>Avg Deal</th><th>Spend ($)</th><th>Pipeline ROI</th><th>Revenue ROI</th></tr></thead>
+            <thead><tr><th>Channel</th><th>Deals</th><th>Resolved</th><th>Pipeline ($)</th><th>Won ($)</th><th>Closed Win Rate</th><th>Avg Deal</th><th>Spend ($)</th><th>Pipeline ROI</th><th>Revenue ROI</th></tr></thead>
             <tbody id="channel-tbody"></tbody>
           </table>
         </div>
@@ -1849,33 +2143,33 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="section-desc">Which account segments and industries have the most pipeline and highest win rates - your best ABM targeting zones.</div>
     <div class="section-takeaway"><strong>Segment takeaway:</strong> The best targeting decision balances revenue potential with win probability, not just the largest deal size. <span class="evidence-badge green">Commercial + Strong Fit wins most often</span></div>
     <div class="context-box">
-      <strong>What is a "Segment" in ABM?</strong> In 6sense, accounts are grouped into buying stage segments based on their digital behavior: how much content they're consuming, what keywords they're searching, how often they visit competitor websites. Common stages: <em>Awareness</em> (just starting to research), <em>Consideration</em> (evaluating options), <em>Decision</em> (ready to buy). Targeting companies in the Decision stage with the right industry profile is how ABM maximizes efficiency.
+      <strong>What is a "Segment" here?</strong> The CRM segment field groups opportunities into Commercial, Mid, and Enterprise markets. It is not a 6sense buying-stage label. The profile-fit field is analyzed separately, and win rates use resolved opportunities only.
     </div>
     <div class="chart-grid cols-2">
       <div class="chart-card">
         <div id="c-seg-heatmap"></div>
         <div class="chart-explain">
           <div class="ex-title">What this shows - Pipeline Heatmap: Industry x Segment</div>
-          Each cell = total pipeline from companies in that industry AND that 6sense segment. Darker blue = more pipeline concentrated there.
+          Each cell = total recorded pipeline from accounts in that industry and CRM market segment. Darker blue = more pipeline concentrated there.
           <br><br>
-          <strong>How to use it:</strong> The darkest cells are your highest-value targeting combinations. If Software + Decision is the darkest cell, you should prioritize software companies that 6sense flags as in the decision stage.
+          <strong>How to use it:</strong> The darkest cells identify concentration worth investigating. Confirm positive-amount coverage and conversion quality before turning concentration into a targeting rule.
           <br><br>
           <strong>The dollar amounts</strong> in each cell show absolute pipeline value - useful for prioritizing where to spend ABM budget and sales time.
-          <div class="ex-insight">Key takeaway: Focus outbound, personalized ads, and sales outreach on the 2-3 darkest cells. Everything else is secondary targeting.</div>
+          <div class="ex-insight">Key takeaway: Use the highest-concentration cells to frame tests, then qualify them with resolved-deal win rate and sample size.</div>
         </div>
       </div>
       <div class="chart-card">
         <div id="c-seg-winrate"></div>
         <div class="chart-explain">
           <div class="ex-title">What this shows - Segment Tradeoff</div>
-          Each point is a segment positioned by win rate and average deal size:
+          Each bar is the closed-deal win rate for a CRM market segment, with a 95% Wilson interval:
           <br><br>
-          <strong>X-axis:</strong> Win rate - what percentage of deals in this segment actually closed.
+          <strong>X-axis:</strong> Won opportunities divided by resolved opportunities in the segment.
           <br><br>
-          <strong>Y-axis:</strong> Average deal size - how large the contracts are in this segment. Larger bubbles represent more deals.
+          <strong>Labels:</strong> Resolved-deal count and average recorded deal amount provide scale context.
           <br><br>
-          <strong>The ideal segment</strong> has BOTH a high win rate AND a high average deal size. Those are your ICP (Ideal Customer Profile) sweet spots - where you should concentrate ABM investment.
-          <div class="ex-insight">Key takeaway: A segment with a high win rate but small deals might not be worth prioritizing. A segment with large deals but low win rate might need different sales approach or longer nurture. Look for the combination.</div>
+          <strong>Decision rule:</strong> Prefer segments with a stable interval, adequate resolved volume, and meaningful positive deal amounts.
+          <div class="ex-insight">Key takeaway: Use this as a market-segment baseline; the targeting matrix adds profile fit and explicit low-N flags.</div>
         </div>
       </div>
     </div>
@@ -1893,10 +2187,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card">
         <div id="c-creative-ctr"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows - Top 15 Ads by CTR</div>
+          <div class="ex-title">What this shows - High-Volume Creative CTR Within Platform</div>
           CTR = Click-Through Rate = clicks / impressions. If 1,000 people saw an ad and 5 clicked it, CTR = 0.5%.
           <br><br>
-          <strong>Industry benchmarks:</strong> Display ads average 0.05-0.1% CTR. LinkedIn ads average 0.3-0.5%. Anything above 0.5% is very good for display. These are the top-performing creatives from your $1.22M ad spend.
+          <strong>Comparison rule:</strong> LinkedIn and 6sense are ranked separately because their delivery mechanics and baseline CTR differ. Only ads with at least 10,000 impressions are shown.
           <br><br>
           <strong>What to do with this:</strong> The top ads tell your creative team what visual style, message, and CTA is working. Brief new creative based on these patterns - don't start from scratch.
           <div class="ex-insight">Key takeaway: Use the highest-CTR ads as the next creative brief, then test budget shifts before making them always-on.</div>
@@ -1905,25 +2199,23 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card">
         <div id="c-creative-attr"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows - CTR by Creative Attribute (Tone/Type/CTA)</div>
-          Instead of looking at individual ads, this groups all ads by a shared creative characteristic (e.g., messaging tone: "direct" vs "inspirational" vs "educational") and compares their average CTR.
+          <div class="ex-title">What this shows - 6sense CTR by Recorded Copy Tone</div>
+          This aggregates 6sense creative by copy-tone label and shows weighted CTR, impression volume, and distinct ad count.
           <br><br>
-          <strong>How to use it:</strong> If "Direct" tone has a higher CTR than "Inspirational," brief your creative team to write more direct copy. This is strategic creative direction backed by data.
-          <div class="ex-insight">Key takeaway: Use this to set creative briefs. Tell your agency: "Based on our data, X attribute outperforms Y - please prioritize X in the next batch."</div>
+          <strong>How to use it:</strong> Most 6sense impressions have Unknown tone, while labeled tones have much smaller samples. Improve creative metadata before making a portfolio-wide tone recommendation.
+          <div class="ex-insight">Key takeaway: Treat labeled tone differences as test hypotheses; fixing metadata coverage is the first action.</div>
         </div>
       </div>
       <div class="chart-card full">
         <div id="c-email-seniority"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows - Email Engagement by Job Seniority</div>
-          How different levels of seniority (C-Level, VP, Director, Manager) respond to email campaigns. Two metrics:
+          <div class="ex-title">What this shows - Email Engagement-Event Mix by Job Seniority</div>
+          The supplied email file contains {email_events} engagement events across {email_people} people. It does not contain sent or delivered counts.
           <br><br>
-          <strong>Open Rate (blue):</strong> What % of emails to that seniority level were opened. This measures subject line effectiveness and whether they recognize your brand enough to open.
+          <strong>Click-event share:</strong> Click rows divided by all recorded engagement rows for the seniority group. This is event composition, not a send-based click rate.
           <br><br>
-          <strong>Click Rate (orange):</strong> What % clicked a link inside the email. This measures content relevance - did the email body give them a reason to take action?
-          <br><br>
-          <strong>Why seniority matters in ABM:</strong> C-Level executives make budget decisions but have no time - they need very short, high-value emails. Managers/Directors are often the evaluators - they need detailed content. Personalizing by seniority can dramatically improve click rates.
-          <div class="ex-insight">Key takeaway: The seniority level with the highest click rate is your most engaged audience - prioritize them for follow-up sequences. The seniority with high opens but low clicks needs better email body content.</div>
+          <strong>How to use it:</strong> Treat higher click-event share as a hypothesis for message relevance. Acquire delivery denominators before judging subject lines, true open rates, or true click-through rates.
+          <div class="ex-insight">Key takeaway: The current log can rank engagement composition, but it cannot measure campaign reach or send-based effectiveness.</div>
         </div>
       </div>
     </div>
@@ -1931,27 +2223,27 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 
   <!-- Budget Scenarios -->
   <div id="s-budget" class="section">
-    <h2 class="section-title">Budget Recommendation & Scenarios</h2>
-    <div class="section-desc">Three scenarios showing what happens to projected pipeline if you reallocate the marketing budget based on ROI data.</div>
-    <div class="section-takeaway"><strong>Budget takeaway:</strong> Use scenarios as directional planning, not exact forecasting; the chart only models channels with tracked spend. <span class="evidence-badge">{tracked_spend_channels}</span><span class="evidence-badge orange">diminishing returns risk</span></div>
+    <h2 class="section-title">Budget Measurement Plan</h2>
+    <div class="section-desc">Three budget-neutral operating plans that reserve spend for causal measurement instead of extrapolating unstable historical ROI.</div>
+    <div class="section-takeaway"><strong>Budget takeaway:</strong> Do not claim an optimal mix from two tracked-spend channels—one has a single opportunity and neither has recorded won revenue. <span class="evidence-badge">{tracked_spend_channels}</span><span class="evidence-badge orange">measurement first</span></div>
     <div class="context-box">
-      <strong>How scenario modelling works:</strong> We take each tracked channel's current pipeline-per-dollar efficiency rate and apply it to different spending levels. Only two channels have reliable spend in this dataset, so this is a narrow sensitivity test rather than a complete marketing budget model.
+      <strong>How the plan works:</strong> Every scenario preserves the current tracked budget. The alternatives reserve part of that budget for a randomized or phased holdout and a pre-registered experiment pool.
       <br><br>
-      <strong>Three scenarios:</strong> (1) <em>Status Quo</em> - keep tracked spend exactly as-is. (2) <em>ROI-Optimized</em> - shift 30% more to the top tracked-ROI channels, cut the bottom tracked channels by 20%. (3) <em>Growth Mode</em> - double the top tracked-spend channels and reduce lower tracked-ROI channels. This excludes channels without spend data.
+      <strong>Three plans:</strong> (1) <em>Status Quo</em> activates all tracked spend. (2) <em>10% Holdout</em> reserves 10% for causal comparison. (3) <em>Measurement First</em> activates 80%, reserves 10% as holdout, and creates a 10% experiment pool.
     </div>
     <div class="chart-grid">
       <div class="chart-card full">
         <div id="c-budget-scenario"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows - Budget Scenarios: Projected Pipeline by Channel</div>
-          Each group of bars is one marketing channel. Within the group, the three bars are the three budget scenarios. The bar height = how much pipeline that channel would be expected to generate under that scenario.
+          <div class="ex-title">What this shows - Budget-Neutral Measurement Allocation</div>
+          Each stacked bar is one operating plan. The segments show activated media, holdout reserve, and experiment pool; totals remain equal.
           <br><br>
-          <strong>How to use it:</strong> Compare the total height across all channels for each scenario color. The scenario where the total (sum of all bars in that color) is tallest = the most pipeline-efficient allocation.
+          <strong>How to use it:</strong> Choose the measurement intensity the team can execute cleanly. Pre-register the target population, outcome window, and primary metric before launch.
           <br><br>
-          <strong>Important caveat:</strong> These projections assume the same efficiency ratio holds at higher spend levels. In reality, there's often diminishing returns at high spend (you run out of target accounts to reach). Treat as directional, not precise.
+          <strong>Important caveat:</strong> No pipeline forecast is shown because the available paid-channel outcomes are too sparse for defensible extrapolation.
           <br><br>
-          <strong>Underlying logic:</strong> The projection applies each tracked channel's historical pipeline per spend dollar to the scenario spend. It does not estimate email, event, referral, or sales effort costs unless those costs are present in the source data.
-          <div class="ex-insight">Key takeaway: Treat this as a sensitivity model for tracked paid spend, not a complete budget optimizer.</div>
+          <strong>Decision gate:</strong> Scale only if the treatment creates incremental qualified opportunities or pipeline while maintaining closed-deal win-rate quality.
+          <div class="ex-insight">Key takeaway: The data supports a measurement plan, not an optimization claim.</div>
         </div>
       </div>
     </div>
@@ -1963,7 +2255,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="section-desc">ML win probability model, account coverage gap, deal velocity, journey sequences, and targeting matrix - datathon-level depth.</div>
     <div class="section-takeaway"><strong>Advanced takeaway:</strong> The predictive model and coverage analysis point to the same action: focus sales and marketing on high-fit accounts that are not yet fully activated. <span class="evidence-badge">AUC {model_auc}</span><span class="evidence-badge orange">{unreached_pct} unreached</span></div>
     <div class="context-box">
-      <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section adds prioritization signals for where to focus. The win probability model (Random Forest, AUC = {model_auc}, {model_validation}) scores {open_deals} open deals. The coverage analysis reveals that {unreached_pct} of target accounts have no tracked email or 6sense touchpoint.
+      <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section adds prioritization signals for where to focus. The leakage-controlled baseline (Random Forest, AUC = {model_auc}, {model_validation}) scores {open_deals} active opportunities. The coverage analysis reveals that {unreached_pct} of target accounts have no tracked email or 6sense touchpoint.
     </div>
     <div class="evidence-grid">
       <div class="evidence-card">
@@ -1985,17 +2277,17 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div id="c-feat-imp"></div>
         <div class="chart-explain">
           <div class="ex-title">What this shows - Win Probability: Top Predictors</div>
-          A Random Forest model was trained on closed deals to prioritize open opportunities. Feature importance shows which data points the model relied on most to predict whether a deal closes. <strong>AUC = {model_auc}</strong> using {model_validation} (1.0 = perfect, 0.5 = random).
+          A Random Forest model was trained on resolved deals to prioritize active opportunities. Feature importance shows which opportunity-time fields the model relied on. <strong>AUC = {model_auc}</strong> using {model_validation} (1.0 = perfect, 0.5 = random).
           <br><br>
-          <strong>How to read:</strong> Longer bar = stronger predictor. <strong>Tier</strong> reflects account qualification, <strong>channel</strong> reflects the original lead source, and account firmographics help separate higher- and lower-probability deals.
+          <strong>Leakage policy:</strong> The model uses channel, CRM market segment, amount, and create-date features. Present-day account intent, contact counts, and current stage are excluded because they may post-date historical outcomes.
           <div class="ex-insight">Key insight: Use win probability for sales prioritization. Treat channel and account signals as predictive patterns, not proof that any single marketing touch caused a win.</div>
         </div>
       </div>
       <div class="chart-card">
         <div id="c-win-prob"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows - Win Probability Distribution (Open Deals)</div>
-          This histogram shows {open_deals} currently open deals scored by the ML model. Each bar = number of open deals with that win probability range. Deals on the right side are higher-priority follow-up candidates.
+          <div class="ex-title">What this shows - Active Opportunity Score Distribution</div>
+          This histogram shows {open_deals} active opportunities scored by the baseline model. Each bar is the number of active opportunities in that probability range. Deals on the right side are higher-priority follow-up candidates.
           <br><br>
           <strong>How to use it:</strong> Use the score as one prioritization input alongside deal stage, account context, and seller judgment. Do not set an operating cutoff until calibration and precision/recall are validated at the proposed threshold.
           <div class="ex-insight">Key insight: Pilot the ranking with sales, measure conversion by score band, and choose a threshold only after observed performance supports it.</div>
@@ -2025,8 +2317,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <div class="ex-title">What this shows - Deal Velocity: How Fast Do Different Channels Close?</div>
           Median days from deal creation to close win, by channel. Error bars show the middle 50% range, so the chart shows both typical speed and variability.
           <br><br>
-          <strong>Why it matters:</strong> A channel might generate large pipeline but take 9 months to close. That affects cash flow forecasting. Existing clients close in 34 days (median) because the trust is already there. 6sense channel deals take 98 days - there's more evaluation needed from net-new accounts.
-          <div class="ex-insight">Key insight: If you need revenue fast, focus sales effort on existing client expansion and referrals (fastest close). If you're investing for Q3-Q4 revenue, start 6sense and event campaigns now - they need a 90-day runway.</div>
+          <strong>Why it matters:</strong> Sales-cycle medians help planning only when the underlying channel has enough wins. This view suppresses channels with fewer than five won deals and shows the interquartile range to make variability visible.
+          <div class="ex-insight">Key insight: Use the chart as a historical benchmark for established channels. Paid-channel samples are too small to support a speed or runway recommendation.</div>
         </div>
       </div>
       <div class="chart-card">
@@ -2048,8 +2340,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <div class="ex-title">What this shows - ABM Targeting Priority Matrix</div>
           Win rate heatmap crossing Segment (Enterprise/Commercial/Mid) vs. 6sense Profile Fit (Strong/Moderate/Weak). Every cell includes its deal count; cells below 30 deals are explicitly exploratory.
           <br><br>
-          <strong>How to use it:</strong> The darkest cells define your Tier 1 ABM targets - where you invest your most personalized, expensive outreach. Commercial + Strong Fit (47% win rate) and Mid + Moderate (43%) are the sweet spots.
-          <div class="ex-insight">Key insight: Commercial + Strong Fit combines a 47% win rate with n=388 and is the stronger planning signal. Enterprise + Strong Fit has a larger average deal but only n=26, so treat it as a hypothesis to validate.</div>
+          <strong>How to use it:</strong> Prioritize cells with both a strong adjusted win rate and decision-grade evidence. Cells with fewer than 30 resolved deals remain exploratory regardless of color.
+          <div class="ex-insight">Key insight: Commercial + Strong Fit combines strong conversion with a large resolved sample. Enterprise + Strong Fit has greater deal potential but too little evidence for an allocation decision.</div>
         </div>
       </div>
       <div class="chart-card">
@@ -2198,10 +2490,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               <td>Track win rate, stage conversion, and disqualification reasons by source and profile fit.</td>
             </tr>
             <tr>
-              <td><strong>Reallocate budget toward higher-attribution channels.</strong></td>
-              <td><span class="confidence-pill directional">Directional</span></td>
-              <td>Scenario modeling is useful for planning, but it assumes historical efficiency holds at higher spend.</td>
-              <td>Run budget changes in phases and monitor marginal pipeline per dollar before scaling.</td>
+              <td><strong>Reserve budget for a causal measurement plan.</strong></td>
+              <td><span class="confidence-pill high">High</span></td>
+              <td>Only two paid channels have tracked spend, one has a single opportunity, and neither has recorded won revenue.</td>
+              <td>Use a budget-neutral holdout and pre-register incremental qualified pipeline as the decision metric.</td>
             </tr>
           </tbody>
         </table>
@@ -2251,7 +2543,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <tr>
               <td><span class="priority-tag p2">P2</span></td>
               <td><strong>Sales prioritization:</strong> use win probability bands in weekly pipeline review.</td>
-              <td>The model scored {open_deals} open deals and uses ABM signals that sellers may not see in CRM.</td>
+              <td>The leakage-controlled baseline scored {open_deals} active deals using opportunity-time channel, segment, amount, and create-date fields.</td>
               <td>Close rate by probability band, sales follow-up SLA.</td>
             </tr>
             <tr>
@@ -2319,12 +2611,18 @@ function showSection(link, sectionId) {{
   link.classList.add('active');
   link.setAttribute('aria-current', 'page');
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
-  document.getElementById(sectionId).classList.add('active');
+  const activeSection = document.getElementById(sectionId);
+  activeSection.classList.add('active');
   document.body.classList.remove('sidebar-open');
   const menuButton = document.getElementById('menu-button');
   if (menuButton) menuButton.setAttribute('aria-expanded', 'false');
   history.replaceState(null, '', `#${{sectionId}}`);
   updateProgress(link);
+  if (window.innerWidth <= 900) {{
+    setTimeout(() => activeSection.scrollIntoView({{ behavior: 'smooth', block: 'start' }}), 20);
+  }} else {{
+    window.scrollTo({{ top: 0, behavior: 'auto' }});
+  }}
   // Trigger resize so Plotly charts re-fit
   setTimeout(() => window.dispatchEvent(new Event('resize')), 50);
 }}
@@ -2551,7 +2849,7 @@ const CHARTS = {{
 }};
 
 const CHART_META = {{
-  "c-essential-contribution": ["Question: is marketing impact larger than CRM source credit?", "Population: sourced and influenced attribution views.", "Decision use: report both numbers, with sourced as conservative and influenced as journey context."],
+  "c-essential-contribution": ["Question: how do CRM source credit and linked-journey credit differ?", "Population: sourced uses the CRM source population; influenced uses 695 touch-linked opportunities.", "Decision use: report both numbers with coverage, using sourced as conservative credit and influenced as linked-journey context."],
   "c-essential-coverage": ["Question: where is the largest measurable coverage test?", "Population: target account domains; groups are observational, not randomized.", "Decision use: test coverage with a holdout before claiming incremental lift."],
   "c-essential-cohort": ["Question: is growth protecting conversion quality?", "Population: opportunities by create quarter; win rate uses resolved deals only.", "Decision use: compare mature cohorts and keep low-resolution recent cohorts provisional."],
   "c-essential-targeting": ["Question: which account cells deserve ABM focus?", "Population: opportunities with segment and profile fit.", "Decision use: prioritize high-fit cells before expanding reach."],
@@ -2560,7 +2858,7 @@ const CHART_META = {{
   "c-donut-won": ["Question: which channels actually closed revenue?", "Population: closed-won opportunities only.", "Caution: low-volume channels can swing sharply."],
   "c-monthly-trend": ["Question: is pipeline creation changing over time?", "Population: opportunities with a create date; top five channels plus Other.", "Benchmark: look for sustained movement, not one-month spikes."],
   "c-attrib-comparison": ["Question: how does multi-touch credit change by model?", "Population: common touchpoint-linked channels across first-touch, last-touch, linear, and time-decay.", "Caution: sourced and influenced use different definitions and are shown separately."],
-  "c-sourced-influenced": ["Question: how much contribution is visible in CRM vs broader account influence?", "Population: sourced and influenced attribution views.", "Benchmark: influenced should be reported beside sourced."],
+  "c-sourced-influenced": ["Question: how do CRM source credit and linked-journey credit compare?", "Population: sourced uses CRM source mapping; influenced covers 695 opportunities linked to eligible touches.", "Caution: influenced must be reported with its 21.1% opportunity and 11.7% won-opportunity coverage."],
   "c-attrib-waterfall": ["Question: which channels gain or lose credit near conversion?", "Population: first-touch vs last-touch attribution.", "Caution: this describes journey role, not causality."],
   "c-spend-pipeline": ["Question: where does tracked spend appear efficient?", "Population: channels with reliable spend.", "Caution: ROI excludes untracked channels."],
   "c-funnel": ["Question: what is the volume by channel activity and opportunity outcome?", "Population: separate activity populations, not one sequential funnel.", "Caution: do not read cross-channel bars as conversion steps."],
@@ -2568,10 +2866,10 @@ const CHART_META = {{
   "c-seg-winrate": ["Question: which segments convert most reliably?", "Population: deduplicated opportunities by segment; labels include deal count and average deal.", "Caution: this is a three-segment comparison, not a relationship analysis."],
   "c-creative-ctr": ["Question: which ad creatives earn attention?", "Population: creative rows with impressions and clicks.", "Benchmark: compare CTR before scaling spend."],
   "c-creative-attr": ["Question: which creative attributes correlate with engagement?", "Population: grouped creative metadata.", "Caution: this is correlation, not message causality."],
-  "c-email-seniority": ["Question: which seniority engages with email?", "Population: email engagement records.", "Benchmark: opens and clicks answer different questions."],
-  "c-budget-scenario": ["Question: what could happen under budget shifts?", "Population: tracked-spend channels only.", "Caution: scenario assumes historical efficiency."],
+  "c-email-seniority": ["Question: which seniority contributes click events?", "Population: recorded email engagement events; no delivered-message denominator is available.", "Caution: this is event composition, not a send-based click rate."],
+  "c-budget-scenario": ["Question: how much tracked budget should be reserved for measurement?", "Population: two tracked-spend channels; one has a single opportunity and neither has recorded won revenue.", "Decision use: choose a budget-neutral holdout plan, not a revenue forecast."],
   "c-feat-imp": ["Question: what signals drive the win model?", "Population: closed opportunities used for training.", "Caution: importance is predictive, not causal."],
-  "c-win-prob": ["Question: how are open deals distributed by win probability?", "Population: currently open scored deals.", "Benchmark: use bands for prioritization."],
+  "c-win-prob": ["Question: how are active opportunities distributed by predicted probability?", "Population: active scored opportunities only; evaluation used a time-based holdout of resolved deals.", "Decision use: pilot bands for prioritization before setting an operating cutoff."],
   "c-account-coverage": ["Question: where is the account coverage gap?", "Population: target account domains; volume and opportunity rate use separate panels.", "Caution: reached-account rates are observational and may reflect selection or sales activity."],
   "c-deal-velocity": ["Question: how long do won deals take by channel?", "Population: closed-won opportunities with valid close dates and at least five wins per channel.", "Caution: medians describe historical cases, not guaranteed sales-cycle timing."],
   "c-journey": ["Question: what touchpoint sequences appear before wins?", "Population: won deals with linked pre-opportunity touchpoints.", "Caution: sequences are descriptive."],
@@ -2581,9 +2879,9 @@ const CHART_META = {{
 
 const CHART_STORY = {{
   "c-essential-contribution": {{
-    finding: "Influenced pipeline is materially larger than CRM-sourced pipeline.",
-    meaning: "Marketing is showing up in the buyer journey even when it is not the official source.",
-    action: "Report sourced as conservative credit and influenced as journey impact."
+    finding: "Linked influenced pipeline is larger than CRM-sourced pipeline within its defined population.",
+    meaning: "Touch linkage adds journey context for 695 opportunities; it does not cover the full opportunity population.",
+    action: "Report sourced as conservative credit and place linkage coverage beside influenced credit."
   }},
   "c-essential-coverage": {{
     finding: "A large share of target accounts still has no tracked email or 6sense touch.",
@@ -2596,29 +2894,29 @@ const CHART_STORY = {{
     action: "Audit ICP and qualification before scaling broad top-of-funnel spend."
   }},
   "c-essential-targeting": {{
-    finding: "Win rate varies sharply by segment and 6sense profile fit.",
-    meaning: "ABM budget should be concentrated where fit and conversion probability are strongest.",
-    action: "Prioritize high-fit cells for personalized outreach and paid coverage."
+    finding: "Adjusted win rate varies by segment and 6sense profile fit.",
+    meaning: "Decision-grade cells can narrow the population for an ABM coverage test; low-sample cells remain exploratory.",
+    action: "Prioritize decision-grade high-fit cells within a controlled coverage experiment."
   }},
   "c-essential-budget": {{
-    finding: "Tracked-spend scenarios show where budget tests may be efficient.",
-    meaning: "The scenario is a planning model, not a forecast guarantee.",
-    action: "Use it to size controlled experiments, then measure incremental lift."
+    finding: "Tracked-spend evidence is too sparse to identify an optimal mix.",
+    meaning: "The responsible budget decision is to create causal evidence before scaling.",
+    action: "Reserve a holdout and experiment pool, then measure incremental qualified pipeline."
   }},
   "c-bar-channel": {{
     finding: "Pipeline is concentrated in a small set of source channels.",
     meaning: "Channel scale and channel quality need to be evaluated separately.",
-    action: "Pair pipeline ranking with win rate and deal velocity before reallocating spend."
+    action: "Pair pipeline ranking with closed win rate, sample size, and deal velocity before forming a channel hypothesis."
   }},
   "c-sourced-influenced": {{
-    finding: "Influenced credit tells a broader story than CRM source credit.",
-    meaning: "Single-source reporting understates marketing's account-journey role.",
-    action: "Use both views in CMO reporting and label them clearly."
+    finding: "Linked-journey credit is larger than CRM source credit within its defined population.",
+    meaning: "The difference reflects allocation scope and touch linkage, not incremental lift.",
+    action: "Use both views in CMO reporting and place linked-opportunity coverage beside influenced credit."
   }},
   "c-account-coverage": {{
     finding: "Many target accounts are not yet covered by tracked marketing touches.",
-    meaning: "Coverage expansion can increase learning and opportunity creation without changing the ICP.",
-    action: "Build a coverage plan for unreached strong-fit accounts."
+    meaning: "Unreached strong-fit accounts create a clean audience for learning without changing the ICP universe.",
+    action: "Build a randomized or phased coverage test for unreached strong-fit accounts."
   }},
   "c-cohort": {{
     finding: "Pipeline and conversion quality are moving in different directions.",
@@ -2631,9 +2929,9 @@ const CHART_STORY = {{
     action: "Shift premium ABM effort to cells with stronger fit and win rate."
   }},
   "c-budget-scenario": {{
-    finding: "Spend scenarios point to plausible budget tests.",
-    meaning: "Historical ROI can guide experiments but should not be treated as causal proof.",
-    action: "Approve phased tests with measurement guardrails."
+    finding: "The spend data supports measurement design, not optimization.",
+    meaning: "Two tracked paid channels with sparse won outcomes cannot identify an optimal mix.",
+    action: "Reserve a holdout and experiment pool before any scale decision."
   }}
 }};
 
@@ -2664,7 +2962,7 @@ Object.entries(CHARTS).forEach(([id, spec]) => {{
   const el = document.getElementById(id);
   if (!el) return;
   if (!window.Plotly) {{
-    showChartState(el, 'Chart library unavailable', 'Plotly could not be loaded. Check the network connection and refresh.');
+    showChartState(el, 'Chart library unavailable', 'The embedded Plotly bundle could not be initialized. Refresh the file and retry.');
     return;
   }}
   if (!spec || !Array.isArray(spec.data) || spec.data.length === 0) {{
@@ -2672,7 +2970,23 @@ Object.entries(CHARTS).forEach(([id, spec]) => {{
     return;
   }}
   try {{
-    Plotly.newPlot(el, spec.data, spec.layout || {{}}, PLOTLY_CONFIG);
+    const mobile = window.innerWidth <= 520;
+    const chartData = mobile ? spec.data.map(trace => {{
+      if (trace.type === 'bar' && trace.orientation === 'h') return {{...trace, textposition: 'outside', cliponaxis: false}};
+      if (trace.type === 'bar') return {{...trace, textposition: trace.textposition === 'outside' ? 'auto' : trace.textposition}};
+      return trace;
+    }}) : spec.data;
+    const chartLayout = JSON.parse(JSON.stringify(spec.layout || {{}}));
+    if (mobile) {{
+      const hasHorizontalBar = chartData.some(trace => trace.type === 'bar' && trace.orientation === 'h');
+      chartLayout.height = Math.max(Number(chartLayout.height || 0), 430);
+      chartLayout.margin = {{...(chartLayout.margin || {{}}), l: hasHorizontalBar ? 145 : 72, r: hasHorizontalBar ? 40 : 22, t: 92, b: 100}};
+      chartLayout.legend = {{...(chartLayout.legend || {{}}), orientation: 'h', x: 0, xanchor: 'left', y: -0.22, yanchor: 'top'}};
+      chartLayout.title = typeof chartLayout.title === 'string'
+        ? {{text: chartLayout.title, font: {{size: 13}}, x: 0, xanchor: 'left'}}
+        : {{...(chartLayout.title || {{}}), font: {{...((chartLayout.title || {{}}).font || {{}}), size: 13}}, x: 0, xanchor: 'left'}};
+    }}
+    Plotly.newPlot(el, chartData, chartLayout, PLOTLY_CONFIG);
     addChartCaption(el, id);
   }} catch (err) {{
     showChartState(el, 'Chart could not render', err && err.message ? err.message : 'Unexpected chart rendering error.');
@@ -2818,6 +3132,7 @@ if(ctbody && channelRows) {{
     ctbody.innerHTML += `<tr>
       <td><span class="badge-ch">${{r.channel_category}}</span></td>
       <td>${{r.deal_count}}</td>
+      <td>${{r.resolved_count}}</td>
       <td>${{(r.total_pipeline/1e6).toFixed(1)}}M</td>
       <td>${{(r.won_pipeline/1e6).toFixed(1)}}M</td>
       <td>${{wr}}</td>
@@ -2874,6 +3189,7 @@ def build_channel_rows():
         rows.append({
             "channel_category": str(r.get("channel_category", "")),
             "deal_count": int(r.get("deal_count", 0)),
+            "resolved_count": int(r.get("resolved_count", 0) or 0),
             "won_count": int(r.get("won_count", 0) or 0),
             "total_pipeline": float(r.get("total_pipeline", 0) or 0),
             "won_pipeline": float(r.get("won_pipeline", 0) or 0),
@@ -2919,6 +3235,8 @@ def main():
     coverage_vals = coverage_summary_vals()
     cohort_vals = cohort_summary_vals()
     quality_vals = dashboard_quality_vals()
+    attribution_vals = attribution_scope_vals()
+    email_vals = email_scope_vals()
 
     print("  Rendering charts ...")
     charts = {
@@ -2947,7 +3265,9 @@ def main():
     }
 
     html = HTML_TEMPLATE.format(
+        plotly_bundle=get_plotlyjs(),
         total_deals=f"{total_deals:,}",
+        resolved_deals=f"{resolved_deals:,}",
         total_pipeline=fmt(total_pipeline),
         won_pipeline=fmt(won_pipeline),
         mktg_pipeline=fmt(mktg_pipeline),
@@ -2958,6 +3278,7 @@ def main():
         model_auc=model_auc_text(),
         model_validation=model_validation_text(),
         open_deals=f"{open_deals:,}",
+        data_year_range=data_year_range,
         sourced_pipeline=sourced_pipeline_val(),
         top_sourced_channels=top_sourced_channels_text(),
         top_won_channels=top_won_channels_text(),
@@ -2965,6 +3286,8 @@ def main():
         **quality_vals,
         **coverage_vals,
         **cohort_vals,
+        **attribution_vals,
+        **email_vals,
         channel_rows=build_channel_rows(),
         attrib_rows=build_attrib_rows(),
         **charts,

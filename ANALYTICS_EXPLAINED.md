@@ -1,112 +1,68 @@
-# Marketing Analytics Plain-English Guide
+# Analytics Explained
 
-## What This Project Is About
+## The story in one minute
 
-This is a B2B account-based marketing (ABM) analytics project. Instead of judging marketing by one last-click or lead-source field, the analysis combines CRM opportunities, account coverage, 6sense activity, email engagement, web activity, creative performance, and attribution models.
+The company has $25.0M of recorded pipeline and $5.4M of recorded won revenue across 3,288 deduplicated opportunities. The responsible growth recommendation is targeted and experimental:
 
-The main decision is: which target accounts should marketing and sales activate next, and how should the team prove that the activation creates better pipeline?
+- Quality weakened across mature cohorts: closed-deal win rate moved from 38% in 2022 Q1 to 22% in 2024 Q2.
+- Coverage is incomplete: 3,256 of 4,797 target account domains are unreached by tracked email or 6sense activity.
+- Marketing source credit is conservative, while influence attribution covers only a linked subset.
+- Paid-outcome evidence is too sparse for a credible budget optimizer.
 
-## Data Sources
+## What each analysis answers
 
-| Dataset | What it contains | Size |
-|---|---:|---:|
-| Opportunities | Sales deals, amount, stage, win/loss, lead source, dates | 3,288 deals |
-| Accounts | Company attributes, industry, segment, profile fit | 5,264 companies |
-| 6sense Campaign Accounts | Account-level display reach and engagement | 63,096 rows |
-| Ad Metrics | Creative-level impressions, clicks, CTR, spend | 4,626 rows |
-| Email Engagements | Opens, clicks, registrations, campaign details | 17,130 rows |
-| Web Engagements | Website sessions, sources, pages, goal completions | 36,931 rows |
-| ICP Database | Contacts, job titles, seniority, account domains | 36,860 contacts |
-| 6sense Segments | Account buying-stage and intent segmentation | 7,934 rows |
-
-Most datasets are connected through company domain. Opportunity and account data also connect through Salesforce account IDs.
-
-## Key Numbers
-
-| Metric | Value | Meaning |
-|---|---:|---|
-| Total pipeline | $25.0M | Total opportunity value in the dataset |
-| Won revenue | $5.4M | Opportunity value from closed-won deals |
-| Total opportunities | 3,288 | Deduplicated CRM opportunities |
-| Overall win rate | 32.6% | Share of opportunities that closed won |
-| Marketing-sourced pipeline | $4.2M | Pipeline where CRM lead source is a marketing channel |
-| Marketing-influenced pipeline | $6.5M | Pipeline where a tracked marketing touch appeared before opportunity creation |
-| Target accounts | 4,797 | Account domains used in the coverage analysis |
-| Unreached target accounts | 3,256, or 67.9% | Target accounts with no tracked email or 6sense touch |
-| Email-only opportunity rate | 45.9% | Share of email-reached accounts with at least one opportunity |
-| Both-channel opportunity rate | 42.6% | Share of accounts reached by both email and 6sense with at least one opportunity |
-| Not-reached opportunity rate | 17.5% | Share of unreached accounts with at least one opportunity |
-| Cohort win-rate movement | 37% in 2022Q1 to 15% in 2024Q4 | Pipeline volume is rising while recent win rate is lower |
-| Win model AUC | 0.796 | Time-based holdout model for prioritizing open deals |
-
-## Ultimate Marketing Conclusion
-
-The strongest conclusion is not "spend more everywhere." The best conclusion is targeted ABM growth with quality control:
-
-1. Expand coverage to unreached strong-fit target accounts.
-2. Start with email because it has the strongest observed reach signal in this dataset.
-3. Test 6sense display as an overlay after email engagement, using a holdout group before scaling.
-4. Report marketing-sourced and marketing-influenced pipeline side by side.
-5. Protect pipeline quality because pipeline is growing while recent cohort win rate is weaker.
-
-## Why ABM Is The Right Frame
-
-ABM focuses marketing and sales effort on a defined list of target accounts. In this dashboard, ABM shows up through:
-
-- target account coverage,
-- email engagement,
-- 6sense display reach,
-- account profile fit,
-- opportunity creation,
-- win probability scoring,
-- and pipeline quality over time.
-
-The ABM question is not just "which channel got credit?" It is "which accounts should we activate next, and can we prove incremental lift?"
-
-## Attribution Interpretation
-
-Attribution should be treated as a planning signal, not proof of causality.
-
-| Model | What it answers | How to use it |
+| Analysis | Question | Safe interpretation |
 |---|---|---|
-| Marketing sourced | What did CRM explicitly label as marketing-originated? | Conservative executive reporting |
-| Marketing influenced | Where did marketing touch accounts before opportunity creation? | Broader journey contribution |
-| First-touch | Which channel appeared first in the tracked journey? | Awareness and account-opening signal |
-| Last-touch | Which channel appeared closest to opportunity creation? | Late-stage engagement signal |
-| Linear | How would credit look if touchpoints shared credit equally? | Balanced contribution view |
-| Time-decay | Which recent touchpoints get more weight? | Late-journey planning signal |
+| Channel pipeline | Where is recorded pipeline and won revenue concentrated? | Descriptive CRM contribution; amount completeness affects dollar metrics. |
+| Closed-deal win rate | Which channels or segments convert resolved outcomes? | Use the resolved sample and interval, not the raw deal count alone. |
+| Sourced attribution | Where did CRM assign origin credit? | Conservative contribution view. |
+| Influenced attribution | Which linked opportunities had eligible prior touches? | Journey context for 695 linked opportunities, not every opportunity. |
+| Cohort analysis | Is pipeline growth protecting outcome quality? | Compare mature cohorts only; recent cohorts remain provisional. |
+| Account coverage | Where is the largest testable target audience? | 67.9% unreached is an experiment opportunity, not proof of lift. |
+| Email event mix | What engagement events were recorded? | Event composition only; delivered-message counts are absent. |
+| Creative analysis | Which ads earn attention within a platform? | CTR is comparable within platform and volume threshold, not automatically across platforms. |
+| Win model | Which active opportunities rank higher using opportunity-time features? | A 0.712-AUC baseline for prioritization, not an automated decision. |
+| Budget plans | How much spend could be reserved for causal learning? | Budget-neutral test design; no projected pipeline. |
 
-Marketing-sourced pipeline is $4.2M. Marketing-influenced pipeline is $6.5M. Both are valid, but they answer different questions.
+## Findings that can be defended
 
-## What To Do Next
+### 1. Pipeline quantity and quality are diverging
 
-| Priority | Action | Why | Measurement |
-|---|---|---|---|
-| P1 | Build a coverage plan for unreached strong-fit accounts | 67.9% of target accounts are unreached | Coverage rate, opportunity rate, pipeline created |
-| P1 | Tighten ICP and qualification review | Recent win rate is weaker while pipeline grows | Win rate, stage conversion, disqualification reasons |
-| P2 | Test 6sense overlay after email engagement | Email often opens the journey and 6sense appears later | Holdout lift in meetings, opportunities, pipeline, win rate |
-| P2 | Report sourced and influenced pipeline together | Source credit understates broader journey contribution | Sourced pipeline, influenced pipeline, influenced won revenue |
-| P3 | Use top creative patterns as test briefs | CTR indicates message engagement, not guaranteed revenue | CTR, CPC, form fills, account engagement, downstream lift |
+The 2024 Q2 cohort recorded $3.5M of pipeline, but its closed-deal win rate was 22% once 88% of the cohort had resolved. In 2022 Q1 the comparable closed-deal rate was 38%. The right response is not to stop growth; it is to audit ICP fit, qualification, and source mix before expanding broad acquisition.
 
-## Important Caveats
+### 2. Coverage is the clearest test opportunity
 
-- Attribution does not prove a channel caused a deal.
-- Spend ROI only covers channels with reliable tracked spend.
-- Email-only opportunity rate is slightly higher than both-channel opportunity rate, so 6sense overlay should be tested rather than assumed.
-- Relationship-led channels and existing-client motion are major contributors, so paid media should not be judged as the whole growth engine.
-- Web sessions are only useful for account-level journey analysis when a company domain can be matched.
-- Low-volume segments and channels should be treated as investigation signals, not final budget mandates.
+Target account coverage is uneven:
 
-## How To Present This In A Datathon
+| Tier | Accounts | Observed opportunity rate |
+|---|---:|---:|
+| Not Reached | 3,256 | 17.5% |
+| Email Only | 732 | 45.9% |
+| Both Channels | 526 | 42.6% |
+| 6sense Only | 283 | 28.6% |
 
-Start with the business tension:
+The higher reached-account rates are associations. Stronger accounts may have been selected for marketing, or sales may already have been active. Randomize strong-fit unreached accounts to estimate incremental lift.
 
-"Marketing directly sourced $4.2M of pipeline and influenced $6.5M, but 67.9% of target accounts are still unreached. The best move is not blanket budget expansion. It is to activate strong-fit unreached accounts, lead with email, test 6sense overlay with a holdout, and protect win rate as pipeline grows."
+### 3. Attribution must be reported with coverage
 
-Then explain why the recommendation is credible:
+Marketing sourced pipeline is $4.2M. Touch-linked influenced pipeline is $6.3M, but only 21.1% of all opportunities and 11.7% of won opportunities link to eligible pre-opportunity touches. The influenced number is useful for understanding linked journeys, while sourced credit is the more conservative executive contribution measure.
 
-- Coverage analysis sizes the growth opportunity.
-- Attribution shows marketing contribution is broader than CRM source credit.
-- Cohort analysis warns that more pipeline is not automatically better pipeline.
-- The win model adds a prioritization layer for sales follow-up.
-- Caveats are explicit, especially around causality and tracked-spend ROI.
+### 4. Email cannot be judged with standard campaign rates
+
+The file contains 17,130 engagement-event rows for 5,557 unique engaged email addresses. Opens, clicks, and registrations describe the mix of those rows. Without sent and delivered denominators, campaign reach and standard rate claims are not available.
+
+### 5. The predictive model is now honest enough to pilot
+
+The model excludes present-day stage, intent, account snapshots, and contact counts. A time-based holdout produces ROC AUC 0.712, precision 61.0%, recall 44.4%, and Brier score 0.182. It scores all 447 active opportunities. Use score bands in a sales pilot and measure actual conversion before setting a threshold.
+
+### 6. Spend should buy evidence
+
+The current data cannot identify an optimal channel mix. A measurement-first plan preserves the same tracked budget while activating 80%, reserving 10% as a holdout, and assigning 10% to a pre-registered experiment pool. Scale only after incremental qualified pipeline is demonstrated and closed-deal quality holds.
+
+## Recommended operating sequence
+
+1. Repair CRM amount completeness, spend reconciliation, email denominators, and attribution ownership.
+2. Randomize strong-fit unreached accounts into treatment and holdout groups.
+3. Test email-first outreach and a 6sense overlay with pre-registered outcomes.
+4. Report sourced credit, linked influence, and attribution coverage together.
+5. Scale only when incremental pipeline and closed-deal quality meet the decision gate.
