@@ -43,6 +43,11 @@ a { color: inherit; }
 .section-nav a.is-active { color: white; }
 .section-nav a > span:last-child { position: relative; z-index: 1; }
 .section-nav__active { position: absolute; inset: 0; border: 1px solid rgba(255,255,255,.14); border-radius: 7px; background: #243a5c; }
+.legacy-link { display: flex; align-items: center; gap: 9px; margin: 24px 8px 0; padding: 14px 10px; border: 1px solid rgba(255,255,255,.18); border-radius: 7px; color: #dbeafe; text-decoration: none; font-size: 10px; }
+.legacy-link:hover { border-color: rgba(255,255,255,.35); background: rgba(255,255,255,.06); }
+.legacy-link > svg { flex: none; color: #93c5fd; }
+.legacy-link strong, .legacy-link small { display: block; }
+.legacy-link small { margin-top: 3px; color: #9facc0; font-size: 9px; }
 .sidebar-note { margin-top: auto; display: flex; align-items: flex-start; gap: 8px; padding: 13px 12px; border-top: 1px solid rgba(255,255,255,.12); color: #aeb9ca; font-size: 10px; line-height: 1.5; }
 .sidebar-note svg { flex: none; color: #5eead4; margin-top: 1px; }
 .sidebar-close, .mobile-bar { display: none; }

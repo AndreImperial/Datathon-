@@ -8,6 +8,7 @@ ROOT = Path(__file__).resolve().parent
 PUBLIC_DIR = ROOT / "public"
 CONTEXT_PATH = PUBLIC_DIR / "dashboard_context.json"
 DASHBOARD_DATA_PATH = PUBLIC_DIR / "dashboard-data.json"
+LEGACY_DASHBOARD_PATH = ROOT / "outputs" / "dashboard" / "Marketing_Analytics_Dashboard.html"
 CLEANED_DATA_DIR = ROOT / "data" / "cleaned"
 INTEGRATED_DATA_DIR = ROOT / "data" / "integrated"
 
@@ -27,6 +28,12 @@ def health():
         "dashboard_data": DASHBOARD_DATA_PATH.exists(),
         "backend_data": CLEANED_DATA_DIR.exists() and INTEGRATED_DATA_DIR.exists(),
     })
+
+
+@app.get("/full-analysis")
+def full_analysis():
+    """Serve the original complete Plotly dashboard without changing its content."""
+    return send_from_directory(LEGACY_DASHBOARD_PATH.parent, LEGACY_DASHBOARD_PATH.name)
 
 
 @app.route("/<path:path>")

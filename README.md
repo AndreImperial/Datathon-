@@ -88,6 +88,8 @@ python app.py
 
 Then visit `http://localhost:8050`. For live frontend development, use `npm run dev`.
 
+The new dashboard is the default route. The complete original Plotly dashboard remains available at `/full-analysis` so no original chart, table, or caveat is lost.
+
 Deployment options:
 
 - Render: use `render.yaml` with `gunicorn app:app`.

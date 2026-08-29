@@ -158,6 +158,7 @@ function App() {
         <div className="brand"><span>MA</span><div><strong>Marketing Analytics</strong><small>Decision system · {data.meta.period}</small></div></div>
         <button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button>
         <AnimatedSectionNav items={sections} active={active} />
+        <a className="legacy-link" href="/full-analysis"><ArrowUpRight size={15} /><span><strong>Full analysis</strong><small>Original charts & detail</small></span></a>
         <div className="sidebar-note"><Check size={16} /><span>Evidence refreshed from validated Parquet outputs</span></div>
       </aside>
 
@@ -173,6 +174,7 @@ function App() {
               <a className="button button--primary" href="#recommendation">See the action plan <ArrowDown size={17} /></a>
               <button className="button" onClick={() => setPresenting((value) => !value)} aria-pressed={presenting}><Presentation size={17} /> {presenting ? "Exit presentation" : "Presentation view"}</button>
               <button className="button button--quiet" onClick={() => downloadCsv(data)}><Download size={17} /> Export evidence</button>
+              <a className="button button--quiet" href="/full-analysis"><ArrowUpRight size={17} /> Full analysis view</a>
             </div>
           </div>
           <div className="evidence-ledger" data-reveal>
