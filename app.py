@@ -7,6 +7,7 @@ from flask import Flask, jsonify, send_from_directory
 ROOT = Path(__file__).resolve().parent
 PUBLIC_DIR = ROOT / "public"
 CONTEXT_PATH = PUBLIC_DIR / "dashboard_context.json"
+DASHBOARD_DATA_PATH = PUBLIC_DIR / "dashboard-data.json"
 CLEANED_DATA_DIR = ROOT / "data" / "cleaned"
 INTEGRATED_DATA_DIR = ROOT / "data" / "integrated"
 
@@ -23,6 +24,7 @@ def health():
     return jsonify({
         "ok": True,
         "context": CONTEXT_PATH.exists(),
+        "dashboard_data": DASHBOARD_DATA_PATH.exists(),
         "backend_data": CLEANED_DATA_DIR.exists() and INTEGRATED_DATA_DIR.exists(),
     })
 

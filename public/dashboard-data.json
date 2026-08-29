@@ -1,0 +1,1009 @@
+{
+  "meta": {
+    "title": "Marketing Analytics Decision Brief",
+    "period": "2018–2024",
+    "generated_from": "validated Parquet outputs",
+    "methodology": "365-day first-touch attribution; resolved-outcome win rates; cohort maturity controls"
+  },
+  "context": {
+    "project": "Marketing Analytics Datathon Dashboard",
+    "scope": [
+      "B2B marketing analytics",
+      "Account-Based Marketing (ABM)",
+      "Marketing attribution",
+      "Pipeline and revenue analysis",
+      "ICP, account coverage, 6sense, email, creative, and budget strategy"
+    ],
+    "guardrails": [
+      "Answer only questions related to this dashboard, marketing analytics, ABM strategy, attribution, ROI, pipeline quality, ICP, 6sense, email, creative, budget testing, data quality, or presenting the findings.",
+      "If a user asks about unrelated topics, politely redirect to dashboard and marketing questions.",
+      "Do not invent new numbers. Use the facts below and clearly label directional assumptions.",
+      "Attribution and ROI are planning signals, not proof of causality."
+    ],
+    "metrics": {
+      "total_pipeline": "$25.0M",
+      "won_revenue": "$5.4M",
+      "total_opportunities": "3,288",
+      "resolved_opportunities": "2,841",
+      "closed_deal_win_rate": "37.8%",
+      "data_year_range": "2018-2024",
+      "marketing_sourced_pipeline": "$4.2M",
+      "marketing_sourced_share": "16.8%",
+      "marketing_influenced_pipeline": "$6.3M",
+      "sourced_pipeline": "$4.2M",
+      "unreached_accounts": "3,256",
+      "unreached_pct": "67.9%",
+      "target_accounts": "4,797",
+      "email_only_opportunity_rate": "45.9%",
+      "both_channels_opportunity_rate": "42.6%",
+      "not_reached_opportunity_rate": "17.5%",
+      "cohort_start_win_rate": "38%",
+      "cohort_end_win_rate": "22%",
+      "cohort_start_quarter": "2022Q1",
+      "cohort_end_quarter": "2024Q2",
+      "model_auc": "0.712",
+      "model_validation": "time-based 80/20 holdout; preprocessing fit on train only",
+      "active_scored_opportunities": "447",
+      "domain_match_rate": "96.4%",
+      "missing_create_dates": "0",
+      "unknown_channel_pct": "34.1%",
+      "top3_pipeline_share": "83.2%",
+      "attribution_reconciliation": "1.5x",
+      "zero_amount_won_share": "65.3%",
+      "attribution_linked_won_share": "11.7%",
+      "linked_opportunities": "695",
+      "linked_won_opportunities": "126",
+      "linked_win_share": "11.7%",
+      "attribution_eligible_opportunities": "3,166",
+      "email_events": "17,130",
+      "email_people": "5,557",
+      "email_click_share": "4.5%",
+      "tracked_spend_channels": "6sense_display, linkedin"
+    },
+    "recommendation": {
+      "headline": "Targeted growth, not blanket budget expansion.",
+      "actions": [
+        "Protect pipeline quality by reviewing ICP and qualification before scaling broad top-of-funnel volume.",
+        "Expand coverage to unreached strong-fit target accounts.",
+        "Start with email coverage, then test a 6sense overlay with a holdout before scaling.",
+        "Use sourced and influenced attribution together, with sourced as conservative credit and influenced as journey context.",
+        "Run holdout or phased tests to measure incremental lift before large budget changes."
+      ]
+    },
+    "caveats": [
+      "Attribution is directional and does not prove causality.",
+      "Spend ROI only covers channels with reliable tracked spend.",
+      "Low-volume channels and segments can be unstable.",
+      "Web traffic is partially anonymous unless matched to account domains.",
+      "Win probability supports prioritization, not guaranteed outcomes.",
+      "The email file is an engagement-event log; send-based open and click rates cannot be calculated.",
+      "A large share of won opportunities has zero amount, so won revenue and revenue ROI are understated."
+    ],
+    "marketing_concepts": {
+      "abm": "ABM focuses sales and marketing on a defined target account list instead of broad demand generation.",
+      "icp": "ICP defines the accounts most worth pursuing using profile fit, segment, industry, win rate, and deal size.",
+      "sourced_vs_influenced": "Sourced is conservative CRM origin credit; influenced is journey context for the subset of opportunities linked to eligible pre-opportunity touches.",
+      "holdout_test": "Use treatment and holdout groups to measure whether coverage expansion creates incremental meetings, opportunities, pipeline, and win-rate quality."
+    }
+  },
+  "channel_pipeline": [
+    {
+      "channel_category": "6sense_channel",
+      "deal_count": 116,
+      "total_pipeline": 1535086.0,
+      "won_pipeline": 171745.0,
+      "win_rate": 0.1359,
+      "resolved_share": 0.8879,
+      "pipeline_pct": 0.0614,
+      "channel_spend": 0.0,
+      "pipeline_roi": null,
+      "revenue_roi": null
+    },
+    {
+      "channel_category": "6sense_display",
+      "deal_count": 90,
+      "total_pipeline": 89016.0,
+      "won_pipeline": 0.0,
+      "win_rate": 0.0116,
+      "resolved_share": 0.9556,
+      "pipeline_pct": 0.0036,
+      "channel_spend": 1186809.5,
+      "pipeline_roi": 0.08,
+      "revenue_roi": 0.0
+    },
+    {
+      "channel_category": "6sense_event",
+      "deal_count": 41,
+      "total_pipeline": 624991.0,
+      "won_pipeline": 83721.0,
+      "win_rate": 0.1667,
+      "resolved_share": 0.7317,
+      "pipeline_pct": 0.025,
+      "channel_spend": 0.0,
+      "pipeline_roi": null,
+      "revenue_roi": null
+    },
+    {
+      "channel_category": "email_mqa",
+      "deal_count": 92,
+      "total_pipeline": 91226.5,
+      "won_pipeline": 0.0,
+      "win_rate": 0.0,
+      "resolved_share": 0.5109,
+      "pipeline_pct": 0.0036,
+      "channel_spend": 0.0,
+      "pipeline_roi": null,
+      "revenue_roi": null
+    },
+    {
+      "channel_category": "event",
+      "deal_count": 44,
+      "total_pipeline": 677725.0,
+      "won_pipeline": 51505.0,
+      "win_rate": 0.1471,
+      "resolved_share": 0.7727,
+      "pipeline_pct": 0.0271,
+      "channel_spend": 0.0,
+      "pipeline_roi": null,
+      "revenue_roi": null
+    },
+    {
+      "channel_category": "existing_client",
+      "deal_count": 1366,
+      "total_pipeline": 3188158.65,
+      "won_pipeline": 1172387.77,
+      "win_rate": 0.5712,
+      "resolved_share": 0.951,
+      "pipeline_pct": 0.1275,
+      "channel_spend": 0.0,
+      "pipeline_roi": null,
+      "revenue_roi": null
+    },
+    {
+      "channel_category": "linkedin",
+      "deal_count": 1,
+      "total_pipeline": 30000.0,
+      "won_pipeline": 0.0,
+      "win_rate": 0.0,
+      "resolved_share": 1.0,
+      "pipeline_pct": 0.0012,
+      "channel_spend": 34546.99,
+      "pipeline_roi": 0.87,
+      "revenue_roi": 0.0
+    },
+    {
+      "channel_category": "other",
+      "deal_count": 1120,
+      "total_pipeline": 14813748.66,
+      "won_pipeline": 2456816.16,
+      "win_rate": 0.2236,
+      "resolved_share": 0.7786,
+      "pipeline_pct": 0.5923,
+      "channel_spend": 0.0,
+      "pipeline_roi": null,
+      "revenue_roi": null
+    },
+    {
+      "channel_category": "other_marketing",
+      "deal_count": 1,
+      "total_pipeline": 15409.0,
+      "won_pipeline": 15409.0,
+      "win_rate": 1.0,
+      "resolved_share": 1.0,
+      "pipeline_pct": 0.0006,
+      "channel_spend": 0.0,
+      "pipeline_roi": null,
+      "revenue_roi": null
+    },
+    {
+      "channel_category": "referral",
+      "deal_count": 291,
+      "total_pipeline": 2806070.0,
+      "won_pipeline": 1164232.0,
+      "win_rate": 0.3256,
+      "resolved_share": 0.8866,
+      "pipeline_pct": 0.1122,
+      "channel_spend": 0.0,
+      "pipeline_roi": null,
+      "revenue_roi": null
+    },
+    {
+      "channel_category": "web_inbound",
+      "deal_count": 119,
+      "total_pipeline": 1100230.0,
+      "won_pipeline": 294824.0,
+      "win_rate": 0.2308,
+      "resolved_share": 0.8739,
+      "pipeline_pct": 0.044,
+      "channel_spend": 0.0,
+      "pipeline_roi": null,
+      "revenue_roi": null
+    },
+    {
+      "channel_category": "webinar",
+      "deal_count": 7,
+      "total_pipeline": 39232.0,
+      "won_pipeline": 19232.0,
+      "win_rate": 0.3333,
+      "resolved_share": 0.8571,
+      "pipeline_pct": 0.0016,
+      "channel_spend": 0.0,
+      "pipeline_roi": null,
+      "revenue_roi": null
+    }
+  ],
+  "cohorts": [
+    {
+      "quarter": "2018Q3",
+      "deals": 75,
+      "resolved": 75,
+      "won": 52,
+      "pipeline": 162953.0,
+      "won_pipeline": 116453.0,
+      "closed_win_rate": 0.6933333333333334,
+      "win_rate": 0.6933333333333334,
+      "resolved_share": 1.0,
+      "is_mature": true,
+      "win_rate_ci_low": 0.5816933204791398,
+      "win_rate_ci_high": 0.7861328017710428
+    },
+    {
+      "quarter": "2018Q4",
+      "deals": 27,
+      "resolved": 27,
+      "won": 15,
+      "pipeline": 5000.0,
+      "won_pipeline": 5000.0,
+      "closed_win_rate": 0.5555555555555556,
+      "win_rate": 0.5555555555555556,
+      "resolved_share": 1.0,
+      "is_mature": true,
+      "win_rate_ci_low": 0.37312719479576884,
+      "win_rate_ci_high": 0.7241440232992717
+    },
+    {
+      "quarter": "2019Q1",
+      "deals": 38,
+      "resolved": 38,
+      "won": 20,
+      "pipeline": 46833.0,
+      "won_pipeline": 46833.0,
+      "closed_win_rate": 0.5263157894736842,
+      "win_rate": 0.5263157894736842,
+      "resolved_share": 1.0,
+      "is_mature": true,
+      "win_rate_ci_low": 0.37258710742710854,
+      "win_rate_ci_high": 0.6752122119105841
+    },
+    {
+      "quarter": "2019Q2",
+      "deals": 62,
+      "resolved": 62,
+      "won": 18,
+      "pipeline": 58037.0,
+      "won_pipeline": 43037.0,
+      "closed_win_rate": 0.2903225806451613,
+      "win_rate": 0.2903225806451613,
+      "resolved_share": 1.0,
+      "is_mature": true,
+      "win_rate_ci_low": 0.19223406385395198,
+      "win_rate_ci_high": 0.4128788131113709
+    },
+    {
+      "quarter": "2019Q3",
+      "deals": 56,
+      "resolved": 56,
+      "won": 23,
+      "pipeline": 33900.0,
+      "won_pipeline": 33900.0,
+      "closed_win_rate": 0.4107142857142857,
+      "win_rate": 0.4107142857142857,
+      "resolved_share": 1.0,
+      "is_mature": true,
+      "win_rate_ci_low": 0.2916657897956285,
+      "win_rate_ci_high": 0.5412263788629634
+    },
+    {
+      "quarter": "2019Q4",
+      "deals": 56,
+      "resolved": 56,
+      "won": 30,
+      "pipeline": 229236.0,
+      "won_pipeline": 114060.0,
+      "closed_win_rate": 0.5357142857142857,
+      "win_rate": 0.5357142857142857,
+      "resolved_share": 1.0,
+      "is_mature": true,
+      "win_rate_ci_low": 0.4070395665724008,
+      "win_rate_ci_high": 0.6598035659641625
+    },
+    {
+      "quarter": "2020Q1",
+      "deals": 55,
+      "resolved": 55,
+      "won": 34,
+      "pipeline": 126860.0,
+      "won_pipeline": 106860.0,
+      "closed_win_rate": 0.6181818181818182,
+      "win_rate": 0.6181818181818182,
+      "resolved_share": 1.0,
+      "is_mature": true,
+      "win_rate_ci_low": 0.4860897928239239,
+      "win_rate_ci_high": 0.7348423368258477
+    },
+    {
+      "quarter": "2020Q2",
+      "deals": 57,
+      "resolved": 57,
+      "won": 35,
+      "pipeline": 44990.0,
+      "won_pipeline": 44990.0,
+      "closed_win_rate": 0.6140350877192983,
+      "win_rate": 0.6140350877192983,
+      "resolved_share": 1.0,
+      "is_mature": true,
+      "win_rate_ci_low": 0.484294964443229,
+      "win_rate_ci_high": 0.7293746300447529
+    },
+    {
+      "quarter": "2020Q3",
+      "deals": 84,
+      "resolved": 83,
+      "won": 41,
+      "pipeline": 103015.0,
+      "won_pipeline": 83015.0,
+      "closed_win_rate": 0.4939759036144578,
+      "win_rate": 0.4939759036144578,
+      "resolved_share": 0.9880952380952381,
+      "is_mature": true,
+      "win_rate_ci_low": 0.38908687956649984,
+      "win_rate_ci_high": 0.5993979019207136
+    },
+    {
+      "quarter": "2020Q4",
+      "deals": 86,
+      "resolved": 84,
+      "won": 43,
+      "pipeline": 262787.0,
+      "won_pipeline": 192787.0,
+      "closed_win_rate": 0.5119047619047619,
+      "win_rate": 0.5119047619047619,
+      "resolved_share": 0.9767441860465116,
+      "is_mature": true,
+      "win_rate_ci_low": 0.40684997372055176,
+      "win_rate_ci_high": 0.6159182818667781
+    },
+    {
+      "quarter": "2021Q1",
+      "deals": 108,
+      "resolved": 104,
+      "won": 60,
+      "pipeline": 197924.0,
+      "won_pipeline": 97924.0,
+      "closed_win_rate": 0.5769230769230769,
+      "win_rate": 0.5769230769230769,
+      "resolved_share": 0.9629629629629629,
+      "is_mature": true,
+      "win_rate_ci_low": 0.4808963374391583,
+      "win_rate_ci_high": 0.6674694138108231
+    },
+    {
+      "quarter": "2021Q2",
+      "deals": 92,
+      "resolved": 87,
+      "won": 40,
+      "pipeline": 347357.0,
+      "won_pipeline": 209927.0,
+      "closed_win_rate": 0.45977011494252873,
+      "win_rate": 0.45977011494252873,
+      "resolved_share": 0.9456521739130435,
+      "is_mature": true,
+      "win_rate_ci_low": 0.3589691971689781,
+      "win_rate_ci_high": 0.5639735955603442
+    },
+    {
+      "quarter": "2021Q3",
+      "deals": 68,
+      "resolved": 65,
+      "won": 33,
+      "pipeline": 212504.0,
+      "won_pipeline": 66410.0,
+      "closed_win_rate": 0.5076923076923077,
+      "win_rate": 0.5076923076923077,
+      "resolved_share": 0.9558823529411765,
+      "is_mature": true,
+      "win_rate_ci_low": 0.3891624609220664,
+      "win_rate_ci_high": 0.6253636395753072
+    },
+    {
+      "quarter": "2021Q4",
+      "deals": 90,
+      "resolved": 85,
+      "won": 42,
+      "pipeline": 514850.0,
+      "won_pipeline": 265348.0,
+      "closed_win_rate": 0.49411764705882355,
+      "win_rate": 0.49411764705882355,
+      "resolved_share": 0.9444444444444444,
+      "is_mature": true,
+      "win_rate_ci_low": 0.39040653316034707,
+      "win_rate_ci_high": 0.5983374786539382
+    },
+    {
+      "quarter": "2022Q1",
+      "deals": 86,
+      "resolved": 85,
+      "won": 32,
+      "pipeline": 398549.0,
+      "won_pipeline": 143602.0,
+      "closed_win_rate": 0.3764705882352941,
+      "win_rate": 0.3764705882352941,
+      "resolved_share": 0.9883720930232558,
+      "is_mature": true,
+      "win_rate_ci_low": 0.2809213599468807,
+      "win_rate_ci_high": 0.48270288815310847
+    },
+    {
+      "quarter": "2022Q2",
+      "deals": 102,
+      "resolved": 97,
+      "won": 37,
+      "pipeline": 777906.0,
+      "won_pipeline": 161827.0,
+      "closed_win_rate": 0.38144329896907214,
+      "win_rate": 0.38144329896907214,
+      "resolved_share": 0.9509803921568627,
+      "is_mature": true,
+      "win_rate_ci_low": 0.291045123554349,
+      "win_rate_ci_high": 0.4808744017209342
+    },
+    {
+      "quarter": "2022Q3",
+      "deals": 134,
+      "resolved": 131,
+      "won": 48,
+      "pipeline": 487862.5,
+      "won_pipeline": 166063.5,
+      "closed_win_rate": 0.366412213740458,
+      "win_rate": 0.366412213740458,
+      "resolved_share": 0.9776119402985075,
+      "is_mature": true,
+      "win_rate_ci_low": 0.2888025121130491,
+      "win_rate_ci_high": 0.45163367375244046
+    },
+    {
+      "quarter": "2022Q4",
+      "deals": 124,
+      "resolved": 117,
+      "won": 52,
+      "pipeline": 1107924.0,
+      "won_pipeline": 314274.0,
+      "closed_win_rate": 0.4444444444444444,
+      "win_rate": 0.4444444444444444,
+      "resolved_share": 0.9435483870967742,
+      "is_mature": true,
+      "win_rate_ci_low": 0.35759570763975296,
+      "win_rate_ci_high": 0.5348254453406776
+    },
+    {
+      "quarter": "2023Q1",
+      "deals": 162,
+      "resolved": 155,
+      "won": 47,
+      "pipeline": 1250346.0,
+      "won_pipeline": 484440.0,
+      "closed_win_rate": 0.3032258064516129,
+      "win_rate": 0.3032258064516129,
+      "resolved_share": 0.9567901234567902,
+      "is_mature": true,
+      "win_rate_ci_low": 0.23634352265430877,
+      "win_rate_ci_high": 0.379626097394847
+    },
+    {
+      "quarter": "2023Q2",
+      "deals": 156,
+      "resolved": 144,
+      "won": 46,
+      "pipeline": 1313200.0,
+      "won_pipeline": 457066.0,
+      "closed_win_rate": 0.3194444444444444,
+      "win_rate": 0.3194444444444444,
+      "resolved_share": 0.9230769230769231,
+      "is_mature": true,
+      "win_rate_ci_low": 0.2488297377623892,
+      "win_rate_ci_high": 0.3994424670838787
+    },
+    {
+      "quarter": "2023Q3",
+      "deals": 167,
+      "resolved": 160,
+      "won": 53,
+      "pipeline": 1423473.79,
+      "won_pipeline": 431339.79,
+      "closed_win_rate": 0.33125,
+      "win_rate": 0.33125,
+      "resolved_share": 0.9580838323353293,
+      "is_mature": true,
+      "win_rate_ci_low": 0.2630282728403034,
+      "win_rate_ci_high": 0.4073851020290825
+    },
+    {
+      "quarter": "2023Q4",
+      "deals": 179,
+      "resolved": 171,
+      "won": 48,
+      "pipeline": 1584444.0,
+      "won_pipeline": 205297.0,
+      "closed_win_rate": 0.2807017543859649,
+      "win_rate": 0.2807017543859649,
+      "resolved_share": 0.9553072625698324,
+      "is_mature": true,
+      "win_rate_ci_low": 0.21874049084032365,
+      "win_rate_ci_high": 0.3522998107812584
+    },
+    {
+      "quarter": "2024Q1",
+      "deals": 312,
+      "resolved": 252,
+      "won": 58,
+      "pipeline": 2115668.45,
+      "won_pipeline": 523625.0,
+      "closed_win_rate": 0.23015873015873015,
+      "win_rate": 0.23015873015873015,
+      "resolved_share": 0.8076923076923077,
+      "is_mature": true,
+      "win_rate_ci_low": 0.1824712333379016,
+      "win_rate_ci_high": 0.2859498522087804
+    },
+    {
+      "quarter": "2024Q2",
+      "deals": 291,
+      "resolved": 256,
+      "won": 56,
+      "pipeline": 3506242.05,
+      "won_pipeline": 381088.44,
+      "closed_win_rate": 0.21875,
+      "win_rate": 0.21875,
+      "resolved_share": 0.8797250859106529,
+      "is_mature": true,
+      "win_rate_ci_low": 0.172470829071034,
+      "win_rate_ci_high": 0.27334539127243684
+    },
+    {
+      "quarter": "2024Q3",
+      "deals": 308,
+      "resolved": 223,
+      "won": 63,
+      "pipeline": 3909935.66,
+      "won_pipeline": 484712.91000000003,
+      "closed_win_rate": 0.2825112107623318,
+      "win_rate": 0.2825112107623318,
+      "resolved_share": 0.724025974025974,
+      "is_mature": false,
+      "win_rate_ci_low": 0.22748921705153854,
+      "win_rate_ci_high": 0.34489962167998156
+    },
+    {
+      "quarter": "2024Q4",
+      "deals": 313,
+      "resolved": 116,
+      "won": 47,
+      "pipeline": 4789095.36,
+      "won_pipeline": 249992.29,
+      "closed_win_rate": 0.4051724137931034,
+      "win_rate": 0.4051724137931034,
+      "resolved_share": 0.3706070287539936,
+      "is_mature": false,
+      "win_rate_ci_low": 0.3202639001453139,
+      "win_rate_ci_high": 0.4961604466591346
+    }
+  ],
+  "coverage": [
+    {
+      "coverage_tier": "6sense Only",
+      "accounts": 283,
+      "with_opp": 81,
+      "pct_of_total": 0.05899520533666875,
+      "opp_rate": 0.2862190812720848,
+      "interpretation": "Observed association; coverage groups were not randomized."
+    },
+    {
+      "coverage_tier": "Both Channels",
+      "accounts": 526,
+      "with_opp": 224,
+      "pct_of_total": 0.10965186574942673,
+      "opp_rate": 0.42585551330798477,
+      "interpretation": "Observed association; coverage groups were not randomized."
+    },
+    {
+      "coverage_tier": "Email Only",
+      "accounts": 732,
+      "with_opp": 336,
+      "pct_of_total": 0.15259537210756724,
+      "opp_rate": 0.45901639344262296,
+      "interpretation": "Observed association; coverage groups were not randomized."
+    },
+    {
+      "coverage_tier": "Not Reached",
+      "accounts": 3256,
+      "with_opp": 570,
+      "pct_of_total": 0.6787575568063373,
+      "opp_rate": 0.17506142506142505,
+      "interpretation": "Observed association; coverage groups were not randomized."
+    }
+  ],
+  "attribution": [
+    {
+      "channel": "6sense_channel",
+      "attributed_pipeline": 1535086.0,
+      "deal_count": 116,
+      "attributed_won": 171745.0,
+      "attribution_model": "Marketing Sourced"
+    },
+    {
+      "channel": "6sense_display",
+      "attributed_pipeline": 89016.0,
+      "deal_count": 90,
+      "attributed_won": 0.0,
+      "attribution_model": "Marketing Sourced"
+    },
+    {
+      "channel": "6sense_event",
+      "attributed_pipeline": 624991.0,
+      "deal_count": 41,
+      "attributed_won": 83721.0,
+      "attribution_model": "Marketing Sourced"
+    },
+    {
+      "channel": "email_mqa",
+      "attributed_pipeline": 91226.5,
+      "deal_count": 92,
+      "attributed_won": 0.0,
+      "attribution_model": "Marketing Sourced"
+    },
+    {
+      "channel": "event",
+      "attributed_pipeline": 677725.0,
+      "deal_count": 44,
+      "attributed_won": 51505.0,
+      "attribution_model": "Marketing Sourced"
+    },
+    {
+      "channel": "linkedin",
+      "attributed_pipeline": 30000.0,
+      "deal_count": 1,
+      "attributed_won": 0.0,
+      "attribution_model": "Marketing Sourced"
+    },
+    {
+      "channel": "other_marketing",
+      "attributed_pipeline": 15409.0,
+      "deal_count": 1,
+      "attributed_won": 15409.0,
+      "attribution_model": "Marketing Sourced"
+    },
+    {
+      "channel": "web_inbound",
+      "attributed_pipeline": 1100230.0,
+      "deal_count": 119,
+      "attributed_won": 294824.0,
+      "attribution_model": "Marketing Sourced"
+    },
+    {
+      "channel": "webinar",
+      "attributed_pipeline": 39232.0,
+      "deal_count": 7,
+      "attributed_won": 19232.0,
+      "attribution_model": "Marketing Sourced"
+    },
+    {
+      "channel": "6sense_display",
+      "attributed_pipeline": 2716112.2,
+      "deal_count": 360,
+      "attributed_won": 224742.95,
+      "attribution_model": "Marketing Influenced"
+    },
+    {
+      "channel": "email_mqa",
+      "attributed_pipeline": 3625867.16,
+      "deal_count": 594,
+      "attributed_won": 562645.62,
+      "attribution_model": "Marketing Influenced"
+    },
+    {
+      "channel": "6sense_display",
+      "attributed_pipeline": 2286859.82,
+      "deal_count": 186,
+      "attributed_won": 203401.32,
+      "attribution_model": "First-Touch"
+    },
+    {
+      "channel": "email_mqa",
+      "attributed_pipeline": 4055119.54,
+      "deal_count": 509,
+      "attributed_won": 583987.25,
+      "attribution_model": "First-Touch"
+    },
+    {
+      "channel": "6sense_display",
+      "attributed_pipeline": 3231875.4,
+      "deal_count": 268,
+      "attributed_won": 303754.89999999997,
+      "attribution_model": "Last-Touch"
+    },
+    {
+      "channel": "email_mqa",
+      "attributed_pipeline": 3110103.96,
+      "deal_count": 427,
+      "attributed_won": 483633.67000000004,
+      "attribution_model": "Last-Touch"
+    },
+    {
+      "channel": "6sense_display",
+      "attributed_pipeline": 2716112.2,
+      "deal_count": 360,
+      "attributed_won": 224742.95,
+      "attribution_model": "Linear"
+    },
+    {
+      "channel": "email_mqa",
+      "attributed_pipeline": 3625867.16,
+      "deal_count": 594,
+      "attributed_won": 562645.62,
+      "attribution_model": "Linear"
+    },
+    {
+      "channel": "6sense_display",
+      "attributed_pipeline": 3312178.694695475,
+      "deal_count": 360,
+      "attributed_won": 285821.8346181298,
+      "attribution_model": "Time-Decay"
+    },
+    {
+      "channel": "email_mqa",
+      "attributed_pipeline": 3029800.665304525,
+      "deal_count": 594,
+      "attributed_won": 501566.7353818702,
+      "attribution_model": "Time-Decay"
+    }
+  ],
+  "attribution_coverage": [
+    {
+      "lookback_days": 365,
+      "all_opportunities": 3288,
+      "eligible_domain_date_amount": 3166,
+      "linked_opportunities": 695,
+      "linked_share_of_all_opportunities": 0.21137469586374696,
+      "all_won_opportunities": 1073,
+      "eligible_won_opportunities": 1056,
+      "linked_won_opportunities": 126,
+      "linked_share_of_won_opportunities": 0.11742777260018639,
+      "linked_pipeline": 6341979.359999999,
+      "linked_won_revenue": 787388.5700000001,
+      "touchpoint_grain": "one account-channel presence per ISO week",
+      "web_rule": "blank-UTM web sessions excluded from marketing attribution"
+    }
+  ],
+  "quality": [
+    {
+      "metric": "deduplicated_opportunities",
+      "value": 3288,
+      "denominator": 3288,
+      "rate": 1.0,
+      "severity": "info",
+      "interpretation": "One latest-state row per opportunity."
+    },
+    {
+      "metric": "resolved_opportunities",
+      "value": 2841,
+      "denominator": 3288,
+      "rate": 0.8640510948905109,
+      "severity": "info",
+      "interpretation": "Closed won, closed lost, and discontinued outcomes."
+    },
+    {
+      "metric": "active_opportunities",
+      "value": 447,
+      "denominator": 3288,
+      "rate": 0.13594890510948904,
+      "severity": "info",
+      "interpretation": "Eligible population for win-probability scoring."
+    },
+    {
+      "metric": "zero_amount_opportunities",
+      "value": 1773,
+      "denominator": 3288,
+      "rate": 0.5392335766423357,
+      "severity": "high",
+      "interpretation": "Pipeline and average-deal metrics are incomplete for these records."
+    },
+    {
+      "metric": "zero_amount_won_opportunities",
+      "value": 701,
+      "denominator": 1073,
+      "rate": 0.6533084808946877,
+      "severity": "critical",
+      "interpretation": "Won revenue and revenue ROI are understated until CRM amounts are backfilled."
+    },
+    {
+      "metric": "opportunity_domain_coverage",
+      "value": 3169,
+      "denominator": 3288,
+      "rate": 0.9638077858880778,
+      "severity": "medium",
+      "interpretation": "Domain coverage limits account-level attribution matching."
+    }
+  ],
+  "feature_importance": [
+    {
+      "feature": "channel_category",
+      "importance": 0.5096243532884293
+    },
+    {
+      "feature": "_amount",
+      "importance": 0.20477270067224387
+    },
+    {
+      "feature": "create_year",
+      "importance": 0.14190265544184905
+    },
+    {
+      "feature": "segment__c",
+      "importance": 0.1054955021512117
+    },
+    {
+      "feature": "create_quarter",
+      "importance": 0.03820478844626608
+    }
+  ],
+  "model_stats": [
+    {
+      "auc": 0.7116434616434616,
+      "accuracy": 0.7609841827768014,
+      "precision": 0.6101694915254238,
+      "recall": 0.4444444444444444,
+      "brier_score": 0.18150095128021368,
+      "true_negative": 361,
+      "false_positive": 46,
+      "false_negative": 90,
+      "true_positive": 72,
+      "train_rows": 2272,
+      "test_rows": 569,
+      "train_win_rate": 0.40096830985915494,
+      "test_win_rate": 0.28471001757469244,
+      "active_scored_rows": 447,
+      "validation": "time-based 80/20 holdout; preprocessing fit on train only",
+      "feature_policy": "opportunity-time fields only; present-day account snapshot fields excluded"
+    }
+  ],
+  "budget_scenarios": [
+    {
+      "Scenario": "Status Quo",
+      "Channel": "6sense_display",
+      "Active Spend ($)": 1186809.5,
+      "Holdout Reserve ($)": 0.0,
+      "Experiment Pool ($)": 0.0,
+      "Total Budget ($)": 1186809.5,
+      "Evidence Status": "Insufficient outcome evidence"
+    },
+    {
+      "Scenario": "Status Quo",
+      "Channel": "linkedin",
+      "Active Spend ($)": 34546.99,
+      "Holdout Reserve ($)": 0.0,
+      "Experiment Pool ($)": 0.0,
+      "Total Budget ($)": 34546.99,
+      "Evidence Status": "Insufficient outcome evidence"
+    },
+    {
+      "Scenario": "10% Holdout",
+      "Channel": "6sense_display",
+      "Active Spend ($)": 1068128.55,
+      "Holdout Reserve ($)": 118680.95000000001,
+      "Experiment Pool ($)": 0.0,
+      "Total Budget ($)": 1186809.5,
+      "Evidence Status": "Insufficient outcome evidence"
+    },
+    {
+      "Scenario": "10% Holdout",
+      "Channel": "linkedin",
+      "Active Spend ($)": 31092.290999999997,
+      "Holdout Reserve ($)": 3454.699,
+      "Experiment Pool ($)": 0.0,
+      "Total Budget ($)": 34546.99,
+      "Evidence Status": "Insufficient outcome evidence"
+    },
+    {
+      "Scenario": "Measurement First",
+      "Channel": "6sense_display",
+      "Active Spend ($)": 949447.6000000001,
+      "Holdout Reserve ($)": 118680.95000000001,
+      "Experiment Pool ($)": 118680.95000000001,
+      "Total Budget ($)": 1186809.5,
+      "Evidence Status": "Insufficient outcome evidence"
+    },
+    {
+      "Scenario": "Measurement First",
+      "Channel": "linkedin",
+      "Active Spend ($)": 27637.592,
+      "Holdout Reserve ($)": 3454.699,
+      "Experiment Pool ($)": 3454.699,
+      "Total Budget ($)": 34546.99,
+      "Evidence Status": "Insufficient outcome evidence"
+    }
+  ],
+  "targeting": [
+    {
+      "resolved_deals": 331,
+      "won": 153,
+      "pipeline": 2007005.5,
+      "avg_deal": 6063.460725075529,
+      "adjusted_win_rate": 0.4585259452688039,
+      "evidence_tier": "decision-grade"
+    },
+    {
+      "resolved_deals": 361,
+      "won": 181,
+      "pipeline": 1723193.0,
+      "avg_deal": 4773.387811634349,
+      "adjusted_win_rate": 0.49495617964715655,
+      "evidence_tier": "decision-grade"
+    },
+    {
+      "resolved_deals": 153,
+      "won": 64,
+      "pipeline": 1130483.0,
+      "avg_deal": 7388.777777777777,
+      "adjusted_win_rate": 0.4181850614319028,
+      "evidence_tier": "decision-grade"
+    },
+    {
+      "resolved_deals": 283,
+      "won": 96,
+      "pipeline": 2408667.81,
+      "avg_deal": 8511.193674911661,
+      "adjusted_win_rate": 0.3467343969394192,
+      "evidence_tier": "decision-grade"
+    },
+    {
+      "resolved_deals": 23,
+      "won": 9,
+      "pipeline": 387203.25,
+      "avg_deal": 16834.92391304348,
+      "adjusted_win_rate": 0.406186155510155,
+      "evidence_tier": "exploratory"
+    },
+    {
+      "resolved_deals": 992,
+      "won": 382,
+      "pipeline": 6567606.03,
+      "avg_deal": 6620.5705947580645,
+      "adjusted_win_rate": 0.3860350941702918,
+      "evidence_tier": "decision-grade"
+    },
+    {
+      "resolved_deals": 215,
+      "won": 104,
+      "pipeline": 1326240.79,
+      "avg_deal": 6168.561813953488,
+      "adjusted_win_rate": 0.47562394384505396,
+      "evidence_tier": "decision-grade"
+    },
+    {
+      "resolved_deals": 6,
+      "won": 0,
+      "pipeline": 37500.0,
+      "avg_deal": 6250.0,
+      "adjusted_win_rate": 0.34799628450106157,
+      "evidence_tier": "exploratory"
+    },
+    {
+      "resolved_deals": 148,
+      "won": 60,
+      "pipeline": 1169936.0,
+      "avg_deal": 7904.972972972973,
+      "adjusted_win_rate": 0.40745992270807985,
+      "evidence_tier": "decision-grade"
+    }
+  ]
+}

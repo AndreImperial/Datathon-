@@ -8,6 +8,11 @@ venv/
 .DS_Store
 .vscode/
 .idea/
+node_modules/
+.impeccable/review/
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
 
 # Temp Office lock files
 ~$*

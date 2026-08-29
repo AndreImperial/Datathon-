@@ -21,7 +21,7 @@ STEPS = [
     ("Export core analysis", "analytics_case_study/03_analysis.py"),
     ("Run attribution models", "analytics_case_study/03b_attribution.py"),
     ("Run advanced analytics", "analytics_case_study/03c_advanced_analytics.py"),
-    ("Generate interactive HTML dashboard", "analytics_case_study/04_html_dashboard.py"),
+    ("Export data and build React dashboard", "analytics_case_study/04_react_dashboard.py"),
     ("Generate presentation", "analytics_case_study/05_presentation.py"),
     ("Validate outputs", "analytics_case_study/06_validate_metrics.py"),
 ]

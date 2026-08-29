@@ -1,6 +1,6 @@
 # Marketing Analytics Datathon
 
-An end-to-end B2B marketing analytics case study that turns eight CRM and marketing exports into validated analysis marts, executive workbooks, a self-contained interactive dashboard, and a 12-slide decision deck.
+An end-to-end B2B marketing analytics case study that turns eight CRM and marketing exports into validated analysis marts, executive workbooks, a production React decision dashboard, and a 12-slide decision deck.
 
 ## Executive answer
 
@@ -15,7 +15,7 @@ These limitations are surfaced in the dashboard, deck, workbooks, and automated 
 
 ## Deliverables
 
-- Dashboard: [`public/index.html`](public/index.html), a self-contained Plotly artifact with no CDN runtime dependency.
+- Dashboard: [`public/index.html`](public/index.html), a compiled React/Tremor interface with GSAP motion, local fonts, and no CDN runtime dependency.
 - Executive deck: [`outputs/presentation/Marketing_Analytics_Executive_Deck.pptx`](outputs/presentation/Marketing_Analytics_Executive_Deck.pptx), 12 slides with source and methodology notes on every slide.
 - Analysis workbooks: `outputs/analysis/`, including attribution coverage, data quality, email event semantics, and budget-neutral measurement plans.
 - Reproducible marts: `data/cleaned/` and `data/integrated/`.
@@ -31,7 +31,8 @@ data/integrated/               Analysis-ready marts and diagnostics
 outputs/analysis/              Generated Excel workbooks
 outputs/dashboard/             Canonical generated dashboard
 outputs/presentation/          Canonical executive deck
-public/                        Deployment-ready dashboard copy and context
+frontend/                      React/TypeScript source and browser data contract
+public/                        Compiled deployment artifact for Flask, Render, and Pages
 run_pipeline.py                One-command orchestration
 ```
 
@@ -46,6 +47,7 @@ Windows:
 ```powershell
 .venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+npm install
 python run_pipeline.py
 ```
 
@@ -54,10 +56,11 @@ macOS or Linux:
 ```bash
 source .venv/bin/activate
 pip install -r requirements.txt
+npm install
 python run_pipeline.py
 ```
 
-The runner executes cleaning, integration, core analysis, attribution, advanced analytics, dashboard generation, presentation generation, and validation in order. `python run_pipeline.py --dry-run` prints the plan without changing artifacts.
+The runner executes cleaning, integration, core analysis, attribution, advanced analytics, dashboard data export and build, presentation generation, and validation in order. `python run_pipeline.py --dry-run` prints the plan without changing artifacts.
 
 The presentation generator uses Node.js and `@oai/artifact-tool`. In the Codex desktop workspace the bundled runtime is discovered automatically; `NODE_EXE` and `CODEX_PRESENTATIONS_SKILL_DIR` can be set for another compatible runtime.
 
@@ -76,13 +79,14 @@ Full definitions and limitations are in [`ANALYSIS_METHODOLOGY.md`](ANALYSIS_MET
 
 ## View and deploy
 
-Open `public/index.html` directly, or run:
+Build and serve the application locally:
 
 ```bash
+npm run build
 python app.py
 ```
 
-Then visit `http://localhost:8050`. `analytics_case_study/04_dashboard.py` is a compatibility launcher for the same canonical artifact; the repository does not maintain a second dashboard implementation.
+Then visit `http://localhost:8050`. For live frontend development, use `npm run dev`.
 
 Deployment options:
 
@@ -95,4 +99,4 @@ Deployment options:
 python analytics_case_study/06_validate_metrics.py
 ```
 
-Validation checks resolved-denominator semantics, active-only model scoring, attribution scope, email event semantics, budget neutrality, self-contained dashboard delivery, dashboard/public synchronization, workbook presence, deck slide count, and slide source notes. CI runs the same audit on push and pull request.
+Validation checks resolved-denominator semantics, active-only model scoring, attribution scope, email event semantics, budget neutrality, dashboard data synchronization, compiled asset delivery, workbook presence, deck slide count, and slide source notes. CI runs the same audit on push and pull request.

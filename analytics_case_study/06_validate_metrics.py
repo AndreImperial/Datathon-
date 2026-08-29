@@ -22,6 +22,7 @@ from analytics_case_study.utils.metrics import resolved_stage_mask
 ROOT = Path(__file__).resolve().parents[1]
 PUBLIC_HTML = ROOT / "public/index.html"
 PUBLIC_CONTEXT = ROOT / "public/dashboard_context.json"
+PUBLIC_DASHBOARD_DATA = ROOT / "public/dashboard-data.json"
 DASHBOARD_HTML = Path(OUTPUTS_DIR) / "dashboard/Marketing_Analytics_Dashboard.html"
 DASHBOARD_CONTEXT = Path(OUTPUTS_DIR) / "dashboard/dashboard_context.json"
 PRESENTATION_DECK = Path(OUTPUTS_DIR) / "presentation/Marketing_Analytics_Executive_Deck.pptx"
@@ -169,23 +170,18 @@ def _validate_data(errors: list[str], warnings: list[str]) -> None:
 
 
 def _validate_dashboard(errors: list[str]) -> None:
-    dashboard_paths = [DASHBOARD_HTML, DASHBOARD_CONTEXT, PUBLIC_HTML, PUBLIC_CONTEXT]
+    dashboard_paths = [DASHBOARD_CONTEXT, PUBLIC_HTML, PUBLIC_CONTEXT, PUBLIC_DASHBOARD_DATA]
     missing_paths = [path for path in dashboard_paths if not path.exists()]
     for path in dashboard_paths:
         if not path.exists():
             errors.append(f"Missing {path}")
     if missing_paths:
         return
-    if _hash(DASHBOARD_HTML) != _hash(PUBLIC_HTML):
-        errors.append("public/index.html is not synchronized with the generated dashboard")
     if _hash(DASHBOARD_CONTEXT) != _hash(PUBLIC_CONTEXT):
         errors.append("public/dashboard_context.json is not synchronized with the generated context")
-    html = DASHBOARD_HTML.read_text(encoding="utf-8")
+    html = PUBLIC_HTML.read_text(encoding="utf-8")
     required = [
-        "Closed-deal win rate", "resolved opportunities only", "95% Wilson interval",
-        "linked subset", "Email Event Mix", "event composition", "Budget-Neutral Measurement Plans",
-        "No pipeline forecast", "time-based 80/20 holdout", "cells below n=30 are exploratory",
-        "association only because coverage groups are not randomized", "plotly.js v",
+        'id="root"', 'type="module"', "./assets/",
     ]
     missing = [fragment for fragment in required if fragment not in html]
     if missing:
@@ -199,6 +195,11 @@ def _validate_dashboard(errors: list[str]) -> None:
         errors.append("dashboard is not self-contained; external script or stylesheet tags were found")
 
     context = json.loads(PUBLIC_CONTEXT.read_text(encoding="utf-8"))
+    dashboard_data = json.loads(PUBLIC_DASHBOARD_DATA.read_text(encoding="utf-8"))
+    if dashboard_data.get("context") != context:
+        errors.append("dashboard-data.json context is not synchronized with dashboard_context.json")
+    if not dashboard_data.get("channel_pipeline") or not dashboard_data.get("coverage"):
+        errors.append("dashboard-data.json is missing chart evidence")
     metrics = context.get("metrics", {})
     quality = pd.read_parquet(Path(INTEGRATED_DATA_DIR) / "data_quality_summary.parquet")
     attr = pd.read_parquet(Path(INTEGRATED_DATA_DIR) / "attribution_coverage.parquet").iloc[0]
@@ -245,7 +246,7 @@ def _validate_outputs_and_source(errors: list[str], warnings: list[str]) -> None
         if not (analysis_dir / filename).exists():
             errors.append(f"Missing analysis workbook: {filename}")
 
-    dashboard_source = ROOT / "analytics_case_study/04_html_dashboard.py"
+    dashboard_source = ROOT / "analytics_case_study/04_react_dashboard.py"
     runner = ROOT / "run_pipeline.py"
     for path in [dashboard_source, runner, ROOT / "ANALYSIS_METHODOLOGY.md", ROOT / "RUBRIC_ALIGNMENT.md"]:
         if not path.exists():
@@ -262,7 +263,7 @@ def _validate_outputs_and_source(errors: list[str], warnings: list[str]) -> None
 
     if runner.exists():
         source = runner.read_text(encoding="utf-8")
-        steps = ["01_data_cleaning.py", "02_data_integration.py", "03_analysis.py", "03b_attribution.py", "03c_advanced_analytics.py", "04_html_dashboard.py", "05_presentation.py", "06_validate_metrics.py"]
+        steps = ["01_data_cleaning.py", "02_data_integration.py", "03_analysis.py", "03b_attribution.py", "03c_advanced_analytics.py", "04_react_dashboard.py", "05_presentation.py", "06_validate_metrics.py"]
         missing = [step for step in steps if step not in source]
         if missing:
             errors.append("pipeline runner missing steps: " + ", ".join(missing))
