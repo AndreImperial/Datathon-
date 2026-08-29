@@ -170,18 +170,22 @@ def _validate_data(errors: list[str], warnings: list[str]) -> None:
 
 
 def _validate_dashboard(errors: list[str]) -> None:
-    dashboard_paths = [DASHBOARD_CONTEXT, PUBLIC_HTML, PUBLIC_CONTEXT, PUBLIC_DASHBOARD_DATA]
+    dashboard_paths = [DASHBOARD_HTML, DASHBOARD_CONTEXT, PUBLIC_HTML, PUBLIC_CONTEXT, PUBLIC_DASHBOARD_DATA]
     missing_paths = [path for path in dashboard_paths if not path.exists()]
     for path in dashboard_paths:
         if not path.exists():
             errors.append(f"Missing {path}")
     if missing_paths:
         return
+    if _hash(DASHBOARD_HTML) != _hash(PUBLIC_HTML):
+        errors.append("public/index.html is not synchronized with the generated dashboard")
     if _hash(DASHBOARD_CONTEXT) != _hash(PUBLIC_CONTEXT):
         errors.append("public/dashboard_context.json is not synchronized with the generated context")
     html = PUBLIC_HTML.read_text(encoding="utf-8")
     required = [
-        'id="root"', 'type="module"', "./assets/",
+        "Marketing Analytics Dashboard", "Essential View", "Attribution Models",
+        "Channel ROI", "Recommendation", "Analyst Appendix", "plotly.js v",
+        "Email Event Mix", "Budget-Neutral Measurement Plans", "time-based 80/20 holdout",
     ]
     missing = [fragment for fragment in required if fragment not in html]
     if missing:
@@ -246,7 +250,7 @@ def _validate_outputs_and_source(errors: list[str], warnings: list[str]) -> None
         if not (analysis_dir / filename).exists():
             errors.append(f"Missing analysis workbook: {filename}")
 
-    dashboard_source = ROOT / "analytics_case_study/04_react_dashboard.py"
+    dashboard_source = ROOT / "analytics_case_study/04_html_dashboard.py"
     runner = ROOT / "run_pipeline.py"
     for path in [dashboard_source, runner, ROOT / "ANALYSIS_METHODOLOGY.md", ROOT / "RUBRIC_ALIGNMENT.md"]:
         if not path.exists():
@@ -263,7 +267,7 @@ def _validate_outputs_and_source(errors: list[str], warnings: list[str]) -> None
 
     if runner.exists():
         source = runner.read_text(encoding="utf-8")
-        steps = ["01_data_cleaning.py", "02_data_integration.py", "03_analysis.py", "03b_attribution.py", "03c_advanced_analytics.py", "04_react_dashboard.py", "05_presentation.py", "06_validate_metrics.py"]
+        steps = ["01_data_cleaning.py", "02_data_integration.py", "03_analysis.py", "03b_attribution.py", "03c_advanced_analytics.py", "04_html_dashboard.py", "05_presentation.py", "06_validate_metrics.py"]
         missing = [step for step in steps if step not in source]
         if missing:
             errors.append("pipeline runner missing steps: " + ", ".join(missing))

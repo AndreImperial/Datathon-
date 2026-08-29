@@ -15,7 +15,7 @@ These limitations are surfaced in the dashboard, deck, workbooks, and automated 
 
 ## Deliverables
 
-- Dashboard: [`public/index.html`](public/index.html), a compiled React/Tremor interface with GSAP motion, local fonts, and no CDN runtime dependency.
+- Dashboard: [`public/index.html`](public/index.html), the complete content-preserving interactive dashboard with improved navigation, responsive behavior, typography, hierarchy, and accessibility.
 - Executive deck: [`outputs/presentation/Marketing_Analytics_Executive_Deck.pptx`](outputs/presentation/Marketing_Analytics_Executive_Deck.pptx), 12 slides with source and methodology notes on every slide.
 - Analysis workbooks: `outputs/analysis/`, including attribution coverage, data quality, email event semantics, and budget-neutral measurement plans.
 - Reproducible marts: `data/cleaned/` and `data/integrated/`.
@@ -31,8 +31,8 @@ data/integrated/               Analysis-ready marts and diagnostics
 outputs/analysis/              Generated Excel workbooks
 outputs/dashboard/             Canonical generated dashboard
 outputs/presentation/          Canonical executive deck
-frontend/                      React/TypeScript source and browser data contract
-public/                        Compiled deployment artifact for Flask, Render, and Pages
+frontend/                      Optional React/Tremor exploration surface and browser data contract
+public/                        Deployment-ready content-preserving dashboard for Flask, Render, and Pages
 run_pipeline.py                One-command orchestration
 ```
 
@@ -88,7 +88,7 @@ python app.py
 
 Then visit `http://localhost:8050`. For live frontend development, use `npm run dev`.
 
-The new dashboard is the default route. The complete original Plotly dashboard remains available at `/full-analysis` so no original chart, table, or caveat is lost.
+The content-preserving dashboard is the default route. The complete dashboard is also available at `/full-analysis`; no original chart, table, or caveat is lost.
 
 Deployment options:
 
