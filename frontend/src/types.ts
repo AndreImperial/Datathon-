@@ -38,9 +38,11 @@ export interface DashboardDatasets {
   coverage: DataRow[];
   attribution: DataRow[];
   attribution_coverage: DataRow[];
+  attribution_sensitivity: DataRow[];
   quality: DataRow[];
   feature_importance: DataRow[];
   model_stats: DataRow[];
+  model_calibration: DataRow[];
   budget_scenarios: DataRow[];
   targeting: DataRow[];
   monthly_pipeline: DataRow[];
@@ -93,6 +95,7 @@ export interface DashboardData {
   meta: DashboardMeta;
   context: DashboardContext;
   datasets: DashboardDatasets;
+  chart_data: Record<string, DataRow[]>;
   chart_metadata: ChartMetadata[];
   tables: DashboardTables;
   manifest: DashboardManifest;

@@ -5,7 +5,7 @@
 The company has $25.0M of recorded pipeline and $5.4M of recorded won revenue across 3,288 deduplicated opportunities. The responsible growth recommendation is targeted and experimental:
 
 - Quality weakened across mature cohorts: closed-deal win rate moved from 38% in 2022 Q1 to 22% in 2024 Q2.
-- Coverage is incomplete: 3,256 of 4,797 target account domains are unreached by tracked email or 6sense activity.
+- Coverage is incomplete: 3,256 of 4,797 CRM account domains are unreached by tracked email or 6sense activity.
 - Marketing source credit is conservative, while influence attribution covers only a linked subset.
 - Paid-outcome evidence is too sparse for a credible budget optimizer.
 
@@ -32,7 +32,7 @@ The 2024 Q2 cohort recorded $3.5M of pipeline, but its closed-deal win rate was 
 
 ### 2. Coverage is the clearest test opportunity
 
-Target account coverage is uneven:
+CRM account coverage is uneven:
 
 | Tier | Accounts | Observed opportunity rate |
 |---|---:|---:|

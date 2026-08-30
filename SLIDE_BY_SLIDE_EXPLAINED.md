@@ -6,7 +6,7 @@ The canonical deck is `outputs/presentation/Marketing_Analytics_Executive_Deck.p
 
 Lead with the answer. The business has meaningful recorded pipeline and a large unreached audience, but CRM completeness and measurement coverage are not strong enough for blanket budget claims.
 
-Key numbers: $25.0M recorded pipeline, $5.4M recorded won revenue, 447 active opportunities, and 67.9% of target accounts unreached.
+Key numbers: $25.0M recorded pipeline, $5.4M recorded won revenue, 447 active opportunities, and 67.9% of CRM account domains unreached.
 
 ## Slide 2 — Scale learning before spend
 
@@ -49,7 +49,7 @@ Test a 6sense overlay after email engagement against a holdout.
 
 ## Slide 7 — Account coverage is the largest test opportunity
 
-There are 3,256 unreached target accounts. Reached tiers show higher observed opportunity rates, but those groups were not randomized. Use the Wilson intervals to show uncertainty and acknowledge selection effects.
+There are 3,256 unreached CRM account domains. Reached tiers show higher observed opportunity rates, but those groups were not randomized. Use the Wilson intervals to show uncertainty and acknowledge selection effects.
 
 Decision: randomize strong-fit unreached accounts and measure opportunity creation.
 
@@ -67,7 +67,7 @@ Do not make copy-tone claims until unknown metadata is backfilled.
 
 ## Slide 10 — A useful model baseline
 
-The leakage-controlled model records ROC AUC 0.712, precision 61.0%, recall 44.4%, and Brier score 0.182 on a time-based holdout. It then scores all 447 active opportunities.
+The leakage-reduced model records ROC AUC 0.712, precision 61.0%, recall 44.4%, and Brier score 0.182 on a time-based holdout. It then scores all 447 active opportunities.
 
 Decision: pilot score bands with sales and measure conversion by band before choosing a cutoff.
 

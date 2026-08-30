@@ -1,7 +1,7 @@
 """
 Phase 3c: Advanced Analytics — decision-grade extensions
-  1. Leakage-controlled win model — evaluate resolved outcomes, score active deals
-  2. Account Coverage Analysis — which target accounts has marketing reached?
+  1. Leakage-reduced win model — evaluate resolved outcomes, score active deals
+  2. Account Coverage Analysis — which CRM account domains has marketing reached?
   3. Deal Velocity by Channel — which channels close fastest?
   4. Journey Sequence Analysis — what touchpoint order leads to wins?
   5. 6QA Account Performance — do 6sense-qualified accounts convert better?
@@ -10,6 +10,7 @@ Phase 3c: Advanced Analytics — decision-grade extensions
 
 Outputs:
   data/integrated/win_probability.parquet
+  data/integrated/model_calibration.parquet
   data/integrated/account_coverage.parquet
   data/integrated/journey_sequences.parquet
   data/integrated/deal_velocity.parquet
@@ -104,7 +105,7 @@ def build_win_probability():
     won_col = _won_col(df)
     if not stage_col or not create_col or not won_col:
         print("  Required stage, create-date, or won fields are unavailable - skipping")
-        return pd.DataFrame(), pd.DataFrame(), {"auc": np.nan, "accuracy": np.nan, "validation": "not run"}
+        return pd.DataFrame(), pd.DataFrame(), {"auc": np.nan, "accuracy": np.nan, "validation": "not run"}, pd.DataFrame()
 
     df["_model_create_date"] = pd.to_datetime(df[create_col], utc=True, errors="coerce")
     df["create_year"] = df["_model_create_date"].dt.year
@@ -120,7 +121,7 @@ def build_win_probability():
     y = closed[won_col].eq(True).astype(int)
     if not features or y.nunique() != 2 or len(closed) < 200:
         print("  Insufficient resolved outcomes for a stable time holdout - skipping")
-        return pd.DataFrame(), pd.DataFrame(), {"auc": np.nan, "accuracy": np.nan, "validation": "not run"}
+        return pd.DataFrame(), pd.DataFrame(), {"auc": np.nan, "accuracy": np.nan, "validation": "not run"}, pd.DataFrame()
 
     cutoff = int(len(closed) * 0.80)
     train = closed.iloc[:cutoff].copy()
@@ -129,7 +130,7 @@ def build_win_probability():
     y_test = test[won_col].eq(True).astype(int)
     if y_train.nunique() != 2 or y_test.nunique() != 2:
         print("  Time holdout does not contain both outcomes - skipping")
-        return pd.DataFrame(), pd.DataFrame(), {"auc": np.nan, "accuracy": np.nan, "validation": "not run"}
+        return pd.DataFrame(), pd.DataFrame(), {"auc": np.nan, "accuracy": np.nan, "validation": "not run"}, pd.DataFrame()
 
     transformers = []
     if categorical:
@@ -167,6 +168,22 @@ def build_win_probability():
     brier = float(brier_score_loss(y_test, test_prob))
     tn, fp, fn, tp = confusion_matrix(y_test, test_pred, labels=[0, 1]).ravel()
     print(f"  Time-based holdout AUC: {auc:.3f} | Brier: {brier:.3f} | precision: {precision:.1%} | recall: {recall:.1%}")
+
+    # Calibration is a descriptive diagnostic, separate from ranking metrics.
+    # Quantile bands keep the readout balanced even when score values cluster.
+    calibration = pd.DataFrame({"predicted": test_prob, "observed": y_test.to_numpy()})
+    calibration["band"] = pd.qcut(
+        calibration["predicted"].rank(method="first"), q=min(5, len(calibration)), labels=False, duplicates="drop"
+    ) + 1
+    calibration = calibration.groupby("band", as_index=False).agg(
+        n=("observed", "size"),
+        predicted_win_rate=("predicted", "mean"),
+        observed_win_rate=("observed", "mean"),
+    )
+    calibration["score_band"] = calibration["band"].map(lambda value: f"Test quintile {int(value)}")
+    calibration["abs_gap"] = (calibration["predicted_win_rate"] - calibration["observed_win_rate"]).abs()
+    calibration = calibration[["score_band", "n", "predicted_win_rate", "observed_win_rate", "abs_gap"]]
+    print(f"  Calibration: mean absolute gap {calibration['abs_gap'].mean():.1%} across {len(calibration)} score bands")
 
     # Fit the deployable scoring model on all resolved outcomes only after the
     # out-of-time evaluation has been recorded.
@@ -212,8 +229,10 @@ def build_win_probability():
         "active_scored_rows": len(active_scored),
         "validation": "time-based 80/20 holdout; preprocessing fit on train only",
         "feature_policy": "opportunity-time fields only; present-day account snapshot fields excluded",
+        "calibration_mean_abs_gap": float(calibration["abs_gap"].mean()),
+        "calibration_max_abs_gap": float(calibration["abs_gap"].max()),
     }
-    return feat_imp, active_scored, diagnostics
+    return feat_imp, active_scored, diagnostics, calibration
 
 
 # ============================================================
@@ -231,6 +250,7 @@ def build_account_coverage():
     for domain in acct_domains:
         row = {
             "domain": domain,
+            "population_label": "CRM account domains",
             "in_email": domain in email_domains,
             "in_6sense": domain in c6_domains,
             "has_opportunity": domain in opp_domains,
@@ -260,6 +280,7 @@ def build_account_coverage():
     summary["opp_rate_ci_low"] = [interval[0] for interval in intervals]
     summary["opp_rate_ci_high"] = [interval[1] for interval in intervals]
     summary["interpretation"] = "Observed association; coverage groups were not randomized."
+    summary["population_label"] = "CRM account domains"
 
     print(f"  Total account domains: {total:,}")
     for _, r in summary.sort_values("accounts", ascending=False).iterrows():
@@ -618,9 +639,11 @@ def main():
 
     results = {}
 
-    feat_imp, win_prob, model_stats = build_win_probability()
+    feat_imp, win_prob, model_stats, calibration = build_win_probability()
     pd.DataFrame([model_stats]).to_parquet(os.path.join(INTEGRATED_DATA_DIR, "model_stats.parquet"), index=False)
+    calibration.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "model_calibration.parquet"), index=False)
     results["model_diagnostics"] = pd.DataFrame([model_stats])
+    results["model_calibration"] = calibration
     results["feature_importance"] = feat_imp
     results["win_probability_top"] = win_prob.head(20) if "win_probability" in win_prob.columns else win_prob.head(20)
 

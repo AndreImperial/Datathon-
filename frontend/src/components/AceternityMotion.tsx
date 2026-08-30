@@ -7,13 +7,14 @@ export function PointerSpotlight({ children, className = "" }: { children: React
   const y = useSpring(useMotionValue(-300), { stiffness: 160, damping: 30 });
 
   const move = (event: MouseEvent<HTMLElement>) => {
+    if (reduceMotion) return;
     const rect = event.currentTarget.getBoundingClientRect();
     x.set(event.clientX - rect.left);
     y.set(event.clientY - rect.top);
   };
 
   return (
-    <section className={`pointer-spotlight ${className}`} onMouseMove={move} onMouseLeave={() => { x.set(-300); y.set(-300); }}>
+    <section className={`pointer-spotlight ${className}`} onMouseMove={move} onMouseLeave={() => { if (!reduceMotion) { x.set(-300); y.set(-300); } }}>
       {!reduceMotion && <motion.span className="pointer-spotlight__light" style={{ x, y }} aria-hidden="true" />}
       {children}
     </section>

@@ -18,7 +18,7 @@ The answer separates three evidence levels:
 2. `02_data_integration.py` — build account, channel, funnel, creative, and campaign marts.
 3. `03_analysis.py` — produce channel, segment, creative, email, budget, and data-quality workbooks.
 4. `03b_attribution.py` — build sourced, influenced, first-touch, last-touch, linear, and time-decay views with explicit coverage.
-5. `03c_advanced_analytics.py` — build the leakage-controlled model, coverage summary, velocity, journey, targeting, and cohort analyses.
+5. `03c_advanced_analytics.py` — build the leakage-reduced model, coverage summary, velocity, journey, targeting, and cohort analyses.
 6. `04_html_dashboard.py` — generate and synchronize the self-contained dashboard.
 7. `05_presentation.py` — prepare validated data and author the 12-slide editable executive deck.
 8. `06_validate_metrics.py` — reconcile semantics and artifacts before sharing.

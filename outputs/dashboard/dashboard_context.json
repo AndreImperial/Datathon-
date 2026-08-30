@@ -58,7 +58,7 @@
     "headline": "Targeted growth, not blanket budget expansion.",
     "actions": [
       "Protect pipeline quality by reviewing ICP and qualification before scaling broad top-of-funnel volume.",
-      "Expand coverage to unreached strong-fit target accounts.",
+      "Expand coverage to unreached strong-fit CRM account domains.",
       "Start with email coverage, then test a 6sense overlay with a holdout before scaling.",
       "Use sourced and influenced attribution together, with sourced as conservative credit and influenced as journey context.",
       "Run holdout or phased tests to measure incremental lift before large budget changes."
@@ -66,15 +66,17 @@
   },
   "caveats": [
     "Attribution is directional and does not prove causality.",
+    "Attribution coverage changes with lookback; the primary view uses 365 days and sensitivity checks use 30, 90, 180, and 365 days.",
     "Spend ROI only covers channels with reliable tracked spend.",
     "Low-volume channels and segments can be unstable.",
     "Web traffic is partially anonymous unless matched to account domains.",
     "Win probability supports prioritization, not guaranteed outcomes.",
+    "The win model is directionally calibrated at the top score band but overpredicts middle test bands; use it for ranking, not probability promises.",
     "The email file is an engagement-event log; send-based open and click rates cannot be calculated.",
     "A large share of won opportunities has zero amount, so won revenue and revenue ROI are understated."
   ],
   "marketing_concepts": {
-    "abm": "ABM focuses sales and marketing on a defined target account list instead of broad demand generation.",
+    "abm": "ABM focuses sales and marketing on a defined CRM account universe instead of broad demand generation.",
     "icp": "ICP defines the accounts most worth pursuing using profile fit, segment, industry, win rate, and deal size.",
     "sourced_vs_influenced": "Sourced is conservative CRM origin credit; influenced is journey context for the subset of opportunities linked to eligible pre-opportunity touches.",
     "holdout_test": "Use treatment and holdout groups to measure whether coverage expansion creates incremental meetings, opportunities, pipeline, and win-rate quality."

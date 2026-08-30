@@ -161,10 +161,10 @@ def build_touchpoints() -> pd.DataFrame:
 # ---------------------------------------------------------------------------
 # 2. Link touchpoints to opportunities
 # ---------------------------------------------------------------------------
-def link_touchpoints_to_opps(tp_df: pd.DataFrame) -> pd.DataFrame:
+def link_touchpoints_to_opps(tp_df: pd.DataFrame, window_days: int = ATTRIBUTION_WINDOW_DAYS) -> pd.DataFrame:
     """
     For each opportunity, find all touchpoints from the same account domain
-    within the ATTRIBUTION_WINDOW_DAYS before the opportunity create date.
+    within the requested lookback window before the opportunity create date.
     Returns: one row per (opportunity_id, touchpoint), with opportunity_amount.
     """
     opps = pd.read_parquet(os.path.join(CLEANED_DATA_DIR, "opportunities.parquet"))
@@ -219,10 +219,10 @@ def link_touchpoints_to_opps(tp_df: pd.DataFrame) -> pd.DataFrame:
     ).dt.total_seconds() / 86400
 
     in_window = merged[
-        merged["days_before_opp"].between(0, ATTRIBUTION_WINDOW_DAYS)
+        merged["days_before_opp"].between(0, window_days)
     ].copy()
 
-    print(f"  Touchpoints linked within {ATTRIBUTION_WINDOW_DAYS}-day window: {len(in_window):,}")
+    print(f"  Touchpoints linked within {window_days}-day window: {len(in_window):,}")
     return in_window, opps
 
 
@@ -393,7 +393,7 @@ def build_comparison(model_results: dict) -> pd.DataFrame:
     return pivot.reset_index()
 
 
-def build_attribution_coverage(linked: pd.DataFrame, opps: pd.DataFrame) -> pd.DataFrame:
+def build_attribution_coverage(linked: pd.DataFrame, opps: pd.DataFrame, lookback_days: int = ATTRIBUTION_WINDOW_DAYS, persist: bool = True) -> pd.DataFrame:
     """Document the exact eligible and linked attribution populations."""
     iswon_col = "iswon" if "iswon" in opps.columns else ("_iswon" if "_iswon" in opps.columns else None)
     eligible = opps[
@@ -407,7 +407,7 @@ def build_attribution_coverage(linked: pd.DataFrame, opps: pd.DataFrame) -> pd.D
     eligible_won = int(eligible[iswon_col].eq(True).sum()) if iswon_col else 0
     linked_won = int(linked_opps[iswon_col].eq(True).sum()) if iswon_col else 0
     coverage = pd.DataFrame([{
-        "lookback_days": ATTRIBUTION_WINDOW_DAYS,
+        "lookback_days": lookback_days,
         "all_opportunities": len(opps),
         "eligible_domain_date_amount": len(eligible),
         "linked_opportunities": len(linked_opps),
@@ -421,8 +421,26 @@ def build_attribution_coverage(linked: pd.DataFrame, opps: pd.DataFrame) -> pd.D
         "touchpoint_grain": "one account-channel presence per ISO week",
         "web_rule": "blank-UTM web sessions excluded from marketing attribution",
     }])
-    coverage.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "attribution_coverage.parquet"), index=False)
+    if persist:
+        coverage.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "attribution_coverage.parquet"), index=False)
     return coverage
+
+
+def build_attribution_sensitivity(linked: pd.DataFrame, opps: pd.DataFrame) -> pd.DataFrame:
+    """Show how linked opportunity coverage changes under shorter lookbacks.
+
+    The primary model remains the 365-day view.  Since the normalized 365-day
+    link table retains the exact days-before-opportunity value, shorter windows
+    can be evaluated without rebuilding the expensive domain merge.
+    """
+    rows = []
+    for window_days in [30, 90, 180, 365]:
+        window_linked = linked[linked["days_before_opp"].between(0, window_days)].copy()
+        coverage = build_attribution_coverage(window_linked, opps, lookback_days=window_days, persist=False)
+        rows.append(coverage.iloc[0].to_dict())
+    sensitivity = pd.DataFrame(rows)
+    sensitivity.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "attribution_sensitivity.parquet"), index=False)
+    return sensitivity
 
 
 # ---------------------------------------------------------------------------
@@ -448,6 +466,7 @@ def main():
     print("\n[3/4] Applying attribution models ...")
     model_results = apply_attribution_models(linked, opps_full)
     coverage = build_attribution_coverage(linked, opps_full)
+    sensitivity = build_attribution_sensitivity(linked, opps_full)
 
     print("\n[4/4] Writing outputs ...")
     out_path = os.path.join(ANALYSIS_DIR, "attribution_models.xlsx")
@@ -462,6 +481,7 @@ def main():
         comparison = build_comparison(model_results)
         comparison.to_excel(writer, sheet_name="Model Comparison", index=False)
         coverage.to_excel(writer, sheet_name="Coverage and Scope", index=False)
+        sensitivity.to_excel(writer, sheet_name="Lookback Sensitivity", index=False)
         pd.DataFrame([
             {"Assumption": "Lookback window", "Definition": f"Marketing touchpoint occurred 0-{ATTRIBUTION_WINDOW_DAYS} days before opportunity creation."},
             {"Assumption": "Touchpoint normalization", "Definition": "One account-channel presence per ISO week; source-row frequency is not treated as cross-channel importance."},

@@ -7,7 +7,7 @@ An end-to-end B2B marketing analytics case study that turns eight CRM and market
 The data supports targeted, measured growth—not blanket budget expansion.
 
 - Protect quality: closed-deal win rate moved from 38% in 2022 Q1 to 22% in 2024 Q2 among cohorts at least 80% resolved.
-- Expand coverage: 67.9% of target account domains have no tracked email or 6sense touch.
+- Expand coverage: 67.9% of CRM account domains have no tracked email or 6sense touch.
 - Measure before scaling: only two paid channels have tracked spend; one has a single opportunity and neither has recorded won revenue.
 - Repair measurement: 65.3% of won opportunities have zero amount, and only 11.7% of won opportunities link to eligible pre-opportunity touches.
 
@@ -31,7 +31,7 @@ data/integrated/               Analysis-ready marts and diagnostics
 outputs/analysis/              Generated Excel workbooks
 outputs/dashboard/             Canonical generated dashboard
 outputs/presentation/          Canonical executive deck
-frontend/                      Optional React/Tremor exploration surface and browser data contract
+frontend/                      React/Tremor dashboard source, browser data contract, and design system
 public/                        Deployment-ready content-preserving dashboard for Flask, Render, and Pages
 run_pipeline.py                One-command orchestration
 ```

@@ -23,6 +23,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
       - name: Compile pipeline scripts
         run: |
           python -m py_compile \
@@ -38,6 +47,11 @@ jobs:
 
       - name: Check pipeline runner
         run: python run_pipeline.py --dry-run
+
+      - name: Typecheck and build dashboard
+        run: |
+          npm run typecheck
+          python analytics_case_study/04_react_dashboard.py
 
       - name: Validate generated artifacts
         run: python analytics_case_study/06_validate_metrics.py

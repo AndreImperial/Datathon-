@@ -39,7 +39,7 @@ REQUIRED_CLEANED = {
 
 REQUIRED_INTEGRATED = {
     "master_account": ["domain__c"],
-    "channel_pipeline": ["channel_category", "deal_count", "resolved_count", "won_count", "win_rate", "resolved_share"],
+    "channel_pipeline": ["channel_category", "deal_count", "resolved_count", "won_count", "win_rate", "resolved_share", "avg_deal_size"],
     "funnel_metrics": ["channel", "stage", "count", "event_share", "metric_type"],
     "creative_performance": ["ctr"],
     "attribution_results": ["channel", "attribution_model", "attributed_pipeline"],
@@ -47,6 +47,8 @@ REQUIRED_INTEGRATED = {
     "attribution_touchpoint_quality": ["channel", "is_marketing_touch", "raw_rows"],
     "win_probability": ["_opportunity_id", "win_probability"],
     "model_stats": ["auc", "precision", "recall", "brier_score", "active_scored_rows", "validation", "feature_policy"],
+    "model_calibration": ["score_band", "n", "predicted_win_rate", "observed_win_rate", "abs_gap"],
+    "attribution_sensitivity": ["lookback_days", "linked_opportunities", "linked_won_opportunities", "linked_share_of_won_opportunities"],
     "account_coverage": ["domain", "coverage_tier"],
     "account_coverage_summary": ["coverage_tier", "accounts", "opp_rate", "opp_rate_ci_low", "opp_rate_ci_high"],
     "cohort_analysis": ["quarter", "resolved", "closed_win_rate", "win_rate", "resolved_share", "is_mature"],
@@ -107,6 +109,11 @@ def _validate_data(errors: list[str], warnings: list[str]) -> None:
         expected = channel["won_count"] / channel["resolved_count"].replace(0, np.nan)
         if not np.allclose(channel["win_rate"].fillna(-1), expected.fillna(-1), rtol=0, atol=5e-5):
             errors.append("channel_pipeline win_rate is not won / resolved")
+        if "channel_category" in opps.columns and "_amount" in opps.columns:
+            expected_avg = opps.groupby("channel_category")["_amount"].mean()
+            actual_avg = channel.set_index("channel_category")["avg_deal_size"].reindex(expected_avg.index)
+            if not np.allclose(actual_avg.fillna(-1), expected_avg.fillna(-1), rtol=0, atol=1e-4):
+                errors.append("channel_pipeline avg_deal_size does not reconcile to the source amount mean")
 
     scores = integrated["win_probability"]
     if not scores.empty:
@@ -123,6 +130,15 @@ def _validate_data(errors: list[str], warnings: list[str]) -> None:
             errors.append("model_stats active_scored_rows does not match active opportunities")
         if "time-based" not in str(row["validation"]).lower() or "present-day" not in str(row["feature_policy"]).lower():
             errors.append("model diagnostics do not document time-based validation and present-day feature exclusion")
+    calibration = integrated["model_calibration"]
+    if not calibration.empty:
+        if not calibration["predicted_win_rate"].between(0, 1).all() or not calibration["observed_win_rate"].between(0, 1).all() or not calibration["abs_gap"].between(0, 1).all():
+            errors.append("model calibration rates must remain within [0, 1]")
+        expected_gap = (calibration["predicted_win_rate"] - calibration["observed_win_rate"]).abs()
+        if not np.allclose(calibration["abs_gap"], expected_gap, rtol=0, atol=1e-8):
+            errors.append("model calibration abs_gap does not reconcile to predicted vs observed rates")
+        if not stats.empty and int(calibration["n"].sum()) != int(stats.iloc[0]["test_rows"]):
+            errors.append("model calibration bands do not reconcile to the time-based test rows")
 
     cohort = integrated["cohort_analysis"]
     if not cohort.empty:
@@ -153,6 +169,16 @@ def _validate_data(errors: list[str], warnings: list[str]) -> None:
             errors.append("attribution linked-opportunity share does not reconcile")
         if not np.isclose(row["linked_share_of_won_opportunities"], row["linked_won_opportunities"] / won.sum()):
             errors.append("attribution linked-won share does not reconcile")
+    sensitivity = integrated["attribution_sensitivity"]
+    if not sensitivity.empty:
+        windows = sensitivity["lookback_days"].astype(int).tolist()
+        if windows != [30, 90, 180, 365]:
+            errors.append("attribution sensitivity must contain ordered 30/90/180/365-day windows")
+        if not sensitivity["linked_opportunities"].is_monotonic_increasing or not sensitivity["linked_won_opportunities"].is_monotonic_increasing:
+            errors.append("attribution sensitivity linked coverage must not decrease as lookback expands")
+        expected_share = sensitivity["linked_won_opportunities"] / int(won.sum())
+        if not np.allclose(sensitivity["linked_share_of_won_opportunities"], expected_share, rtol=0, atol=1e-8):
+            errors.append("attribution sensitivity linked-won shares do not reconcile")
 
     budget = integrated["budget_scenarios"]
     if not budget.empty:
@@ -189,7 +215,7 @@ def _validate_dashboard(errors: list[str]) -> None:
     data_text = PUBLIC_DASHBOARD_DATA.read_text(encoding="utf-8", errors="ignore")
     rendered_artifact = html + "\n" + bundles + "\n" + data_text
     required = [
-        "Decision dashboard", "Essential View", "Attribution", "Channel ROI",
+        "Revenue Command Center", "Essential View", "Attribution", "Channel ROI",
         "Recommendation", "Analyst Appendix", "dashboard-data.json", "full-analysis",
         "Email Event Mix", "Budget-Neutral Measurement Plans", "time-based 80/20 holdout",
     ]
@@ -213,9 +239,12 @@ def _validate_dashboard(errors: list[str]) -> None:
     if dashboard_data.get("schema_version") != 2:
         errors.append("dashboard-data.json must use schema_version 2")
     datasets = dashboard_data.get("datasets", {})
+    chart_data = dashboard_data.get("chart_data", {})
+    if not isinstance(chart_data, dict):
+        errors.append("dashboard-data.json is missing the chart_data evidence contract")
     expected_datasets = {
-        "channel_pipeline", "cohorts", "coverage", "attribution", "attribution_coverage", "quality",
-        "feature_importance", "model_stats", "budget_scenarios", "targeting", "monthly_pipeline",
+        "channel_pipeline", "cohorts", "coverage", "attribution", "attribution_coverage", "attribution_sensitivity", "quality",
+        "feature_importance", "model_stats", "model_calibration", "budget_scenarios", "targeting", "monthly_pipeline",
         "funnel_metrics", "segment_industry", "segment_win_rate", "creative_ctr", "creative_tone",
         "email_seniority", "deal_velocity", "journey_sequences", "win_probability", "account_coverage_detail",
         "attribution_touchpoint_quality", "qa_performance",
@@ -238,6 +267,14 @@ def _validate_dashboard(errors: list[str]) -> None:
         "c-targeting-matrix", "c-cohort",
     ]
     expected_tables = ["essential_action_plan", "attribution_models", "channel_roi_summary", "decision_confidence", "recommended_actions", "case_deliverable_coverage"]
+    expected_table_columns = {
+        "essential_action_plan": ["Priority", "Decision", "Why", "Next step"],
+        "attribution_models": ["Channel", "First-Touch ($)", "Last-Touch ($)", "Linear ($)", "Time-Decay ($)", "Sourced ($)", "Influenced ($)", "Largest-Credit Model"],
+        "channel_roi_summary": ["Channel", "Deals", "Resolved", "Pipeline ($)", "Won ($)", "Closed Win Rate", "Avg Deal", "Spend ($)", "Pipeline ROI", "Revenue ROI"],
+        "decision_confidence": ["Recommendation", "Confidence", "Why We Believe It", "What To Test Next"],
+        "recommended_actions": ["Priority", "Action", "Why", "Measure Success With"],
+        "case_deliverable_coverage": ["Rubric Area", "Where It Is Answered", "What The Evaluator Should See"],
+    }
     if manifest.get("section_sequence") != expected_sections or manifest.get("section_ids") != expected_sections:
         errors.append("dashboard preservation manifest section sequence does not match the legacy dashboard")
     if manifest.get("primary_navigation") != expected_nav:
@@ -257,13 +294,71 @@ def _validate_dashboard(errors: list[str]) -> None:
         if not isinstance(item, dict):
             errors.append("chart_metadata contains a non-object entry")
             continue
-        if not item.get("fields") or item.get("source_dataset") not in datasets:
+        if not item.get("title") or not item.get("subtitle") or not item.get("caveat") or not item.get("accessible_summary") or not item.get("fields") or item.get("source_dataset") not in datasets:
             errors.append(f"chart metadata is missing fields or source dataset: {item.get('chart_id')}")
+        if not isinstance(chart_data.get(item.get("chart_id")), list):
+            errors.append(f"chart_data is missing exact rows for: {item.get('chart_id')}")
+        elif not chart_data.get(item.get("chart_id")):
+            errors.append(f"chart_data is empty for: {item.get('chart_id')}")
     tables = dashboard_data.get("tables", {})
     for table_id in expected_tables:
         contract = tables.get(table_id)
-        if not isinstance(contract, dict) or not contract.get("columns") or not isinstance(contract.get("rows"), list):
+        if not isinstance(contract, dict) or contract.get("columns") != expected_table_columns[table_id] or not isinstance(contract.get("rows"), list):
             errors.append(f"table contract is incomplete: {table_id}")
+            continue
+        columns = contract.get("columns", [])
+        for row_index, row in enumerate(contract.get("rows", [])):
+            if not isinstance(row, dict) or any(column not in row for column in columns):
+                errors.append(f"table contract row {table_id}[{row_index}] does not match its visible columns")
+                break
+
+    def _num(row: dict, key: str) -> float:
+        value = row.get(key)
+        try:
+            return float(value) if value is not None else 0.0
+        except (TypeError, ValueError):
+            return 0.0
+
+    # Exact-row contracts are the source for View data and CSV export. Check
+    # the transformed scopes that are most likely to drift if a chart starts
+    # reading a broader dataset directly in the browser.
+    source_channel = datasets.get("channel_pipeline", [])
+    if isinstance(source_channel, list) and isinstance(chart_data, dict):
+        positive = sorted([row for row in source_channel if _num(row, "total_pipeline") > 0], key=lambda row: _num(row, "total_pipeline"))
+        exported = chart_data.get("c-bar-channel", [])
+        if [row.get("channel_category") for row in exported] != [row.get("channel_category") for row in positive] or not np.allclose([_num(row, "total_pipeline") for row in exported], [_num(row, "total_pipeline") for row in positive]):
+            errors.append("c-bar-channel chart_data is not the sorted positive-pipeline scope")
+        won_positive = sorted([row for row in source_channel if _num(row, "won_pipeline") > 0], key=lambda row: _num(row, "won_pipeline"))
+        exported_won = chart_data.get("c-donut-won", [])
+        if [row.get("channel_category") for row in exported_won] != [row.get("channel_category") for row in won_positive] or not np.allclose([_num(row, "won_pipeline") for row in exported_won], [_num(row, "won_pipeline") for row in won_positive]):
+            errors.append("c-donut-won chart_data is not the sorted positive-won-revenue scope")
+        roi_rows = sorted([row for row in source_channel if _num(row, "channel_spend") > 0], key=lambda row: (_num(row, "pipeline_roi"), row.get("channel_category", "")))
+        exported_roi = chart_data.get("c-spend-pipeline", [])
+        if [row.get("channel_category") for row in exported_roi] != [row.get("channel_category") for row in roi_rows]:
+            errors.append("c-spend-pipeline chart_data is not the tracked-spend scope")
+        roi_contract = tables.get("channel_roi_summary", {})
+        roi_table_rows = roi_contract.get("rows", []) if isinstance(roi_contract, dict) else []
+        if not roi_table_rows or not any(_num(row, "Avg Deal") > 0 for row in roi_table_rows):
+            errors.append("channel_roi_summary must expose the Avg Deal column and non-zero values")
+
+    attr_source = datasets.get("attribution", [])
+    if isinstance(attr_source, list) and isinstance(chart_data, dict):
+        models = ["First-Touch", "Last-Touch", "Linear", "Time-Decay"]
+        channels = sorted({str(row.get("channel", "")) for row in attr_source})
+        expected_comparison = []
+        for channel_name in channels:
+            row = {"channel": channel_name}
+            for model_name in models:
+                row[model_name] = sum(_num(item, "attributed_pipeline") for item in attr_source if item.get("channel") == channel_name and item.get("attribution_model") == model_name)
+            expected_comparison.append(row)
+        expected_comparison.sort(key=lambda row: sum(_num(row, model_name) for model_name in models))
+        comparison = chart_data.get("c-attrib-comparison", [])
+        if [row.get("channel") for row in comparison] != [row.get("channel") for row in expected_comparison]:
+            errors.append("c-attrib-comparison chart_data channel order does not match the attribution transform")
+        for expected_row, actual_row in zip(expected_comparison, comparison):
+            if any(not np.isclose(_num(expected_row, model_name), _num(actual_row, model_name)) for model_name in models):
+                errors.append("c-attrib-comparison chart_data values do not reconcile to attribution_results")
+                break
     metrics = context.get("metrics", {})
     quality = pd.read_parquet(Path(INTEGRATED_DATA_DIR) / "data_quality_summary.parquet")
     attr = pd.read_parquet(Path(INTEGRATED_DATA_DIR) / "attribution_coverage.parquet").iloc[0]

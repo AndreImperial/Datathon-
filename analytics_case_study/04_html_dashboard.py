@@ -791,7 +791,7 @@ def account_coverage_chart():
         shared_xaxes=True,
         vertical_spacing=0.12,
         row_heights=[0.58, 0.42],
-        subplot_titles=("Target Accounts by Coverage Tier", "Observed Opportunity Rate"),
+        subplot_titles=("CRM Account Domains by Coverage Tier", "Observed Opportunity Rate"),
     )
     fig.add_trace(go.Bar(
         name="# Accounts", x=summary["coverage_tier"], y=summary["accounts"],
@@ -1087,7 +1087,7 @@ def build_dashboard_context():
             "headline": "Targeted growth, not blanket budget expansion.",
             "actions": [
                 "Protect pipeline quality by reviewing ICP and qualification before scaling broad top-of-funnel volume.",
-                "Expand coverage to unreached strong-fit target accounts.",
+                "Expand coverage to unreached strong-fit CRM account domains.",
                 "Start with email coverage, then test a 6sense overlay with a holdout before scaling.",
                 "Use sourced and influenced attribution together, with sourced as conservative credit and influenced as journey context.",
                 "Run holdout or phased tests to measure incremental lift before large budget changes.",
@@ -1095,15 +1095,17 @@ def build_dashboard_context():
         },
         "caveats": [
             "Attribution is directional and does not prove causality.",
+            "Attribution coverage changes with lookback; the primary view uses 365 days and sensitivity checks use 30, 90, 180, and 365 days.",
             "Spend ROI only covers channels with reliable tracked spend.",
             "Low-volume channels and segments can be unstable.",
             "Web traffic is partially anonymous unless matched to account domains.",
             "Win probability supports prioritization, not guaranteed outcomes.",
+            "The win model is directionally calibrated at the top score band but overpredicts middle test bands; use it for ranking, not probability promises.",
             "The email file is an engagement-event log; send-based open and click rates cannot be calculated.",
             "A large share of won opportunities has zero amount, so won revenue and revenue ROI are understated.",
         ],
         "marketing_concepts": {
-            "abm": "ABM focuses sales and marketing on a defined target account list instead of broad demand generation.",
+            "abm": "ABM focuses sales and marketing on a defined CRM account universe instead of broad demand generation.",
             "icp": "ICP defines the accounts most worth pursuing using profile fit, segment, industry, win rate, and deal size.",
             "sourced_vs_influenced": "Sourced is conservative CRM origin credit; influenced is journey context for the subset of opportunities linked to eligible pre-opportunity touches.",
             "holdout_test": "Use treatment and holdout groups to measure whether coverage expansion creates incremental meetings, opportunities, pipeline, and win-rate quality.",
@@ -1874,7 +1876,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
     <div class="decision-item">
       <strong>2. Expand coverage</strong>
-      <span>{unreached_pct} of target accounts have no tracked email or 6sense touch; test expansion with a holdout.</span>
+      <span>{unreached_pct} of CRM account domains have no tracked email or 6sense touch; test expansion with a holdout.</span>
     </div>
     <div class="decision-item">
       <strong>3. Measure before scaling</strong>
@@ -1901,7 +1903,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     </div>
     <div class="story-card coverage">
       <h2>Coverage is the clearest test opportunity</h2>
-      <p><span class="evidence-badge orange">{unreached_pct} unreached</span> target accounts define a measurable test audience, not guaranteed lift.</p>
+      <p><span class="evidence-badge orange">{unreached_pct} unreached</span> CRM account domains define a measurable test audience, not guaranteed lift.</p>
     </div>
     <div class="story-card quality">
       <h2>Pipeline quality needs executive attention</h2>
@@ -1913,7 +1915,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div id="s-essential" class="section active">
     <h2 class="section-title">Essential View</h2>
     <div class="section-desc">A focused version for decision-makers: the answer, the few charts that support it, and the next actions.</div>
-    <div class="section-takeaway"><strong>Recommended path:</strong> protect pipeline quality, test coverage on unreached target accounts, and treat attribution as directional planning evidence. <span class="evidence-badge">{influenced_pipeline} influenced</span><span class="evidence-badge orange">{unreached_pct} unreached</span><span class="evidence-badge red">{cohort_start_rate} to {cohort_end_rate} closed win rate</span></div>
+    <div class="section-takeaway"><strong>Recommended path:</strong> protect pipeline quality, test coverage on unreached CRM account domains, and treat attribution as directional planning evidence. <span class="evidence-badge">{influenced_pipeline} influenced</span><span class="evidence-badge orange">{unreached_pct} unreached</span><span class="evidence-badge red">{cohort_start_rate} to {cohort_end_rate} closed win rate</span></div>
     <div class="priority-grid">
       <div class="priority-card">
         <div class="priority-tag">Do first</div>
@@ -1923,7 +1925,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="priority-card">
         <div class="priority-tag">Test opportunity</div>
         <h3>Reach unreached accounts</h3>
-        <p>{unreached_accounts} target accounts, or {unreached_pct}, have no tracked email or 6sense touch. Prioritize strong-fit accounts and use a holdout.</p>
+        <p>{unreached_accounts} CRM account domains, or {unreached_pct}, have no tracked email or 6sense touch. Prioritize strong-fit accounts and use a holdout.</p>
       </div>
       <div class="priority-card">
         <div class="priority-tag">Budget lens</div>
@@ -1943,7 +1945,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <thead><tr><th>Priority</th><th>Decision</th><th>Why</th><th>Next step</th></tr></thead>
           <tbody>
             <tr><td><span class="priority-tag">1</span></td><td>Protect quality</td><td>Closed-deal win rate moved from {cohort_start_rate} to {cohort_end_rate} across cohorts at least 80% resolved.</td><td>Run a quarterly ICP and qualification review before scaling volume.</td></tr>
-            <tr><td><span class="priority-tag">2</span></td><td>Expand coverage</td><td>{unreached_pct} of target accounts are unreached by tracked email or 6sense.</td><td>Launch email-first coverage test with a holdout group.</td></tr>
+            <tr><td><span class="priority-tag">2</span></td><td>Expand coverage</td><td>{unreached_pct} of CRM account domains are unreached by tracked email or 6sense.</td><td>Launch email-first coverage test with a holdout group.</td></tr>
             <tr><td><span class="priority-tag">3</span></td><td>Use attribution carefully</td><td>{linked_opportunities} opportunities link to classified marketing touches; {linked_win_share} of won deals are covered.</td><td>Use journey models for hypothesis generation, then validate lift with holdouts.</td></tr>
           </tbody>
         </table>
@@ -1961,7 +1963,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="section-desc">High-level pipeline, revenue, and channel overview for a B2B ABM company targeting specific accounts with 6sense display ads, email, and events.</div>
     <div class="section-takeaway"><strong>Executive takeaway:</strong> The business has meaningful pipeline volume, but the strongest story is how marketing supports future revenue beyond direct source credit. <span class="evidence-badge">{total_pipeline} pipeline</span><span class="evidence-badge green">{won_pipeline} won</span></div>
     <div class="context-box">
-      <strong>How to read this dashboard:</strong> This company uses Account-Based Marketing (ABM) - instead of advertising to everyone, they pick specific companies ("target accounts") and run coordinated campaigns at those companies. A deal is born when a target account agrees to a sales conversation and eventually signs a contract. The job of this dashboard is to answer: <em>which marketing activities led to those deals?</em>
+      <strong>How to read this dashboard:</strong> This company uses Account-Based Marketing (ABM) - instead of advertising to everyone, it coordinates campaigns around a defined account universe. A deal is born when an account agrees to a sales conversation and eventually signs a contract. The job of this dashboard is to answer: <em>which marketing activities appeared in the path to those deals?</em>
     </div>
     <div class="chart-grid cols-2">
       <div class="chart-card">
@@ -2179,10 +2181,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- Creative & Email -->
   <div id="s-creative" class="section">
     <h2 class="section-title">Creative & Email Performance</h2>
-    <div class="section-desc">Which ad creatives and email campaigns drive the highest engagement - tells you what messaging resonates with your target accounts.</div>
+    <div class="section-desc">Which ad creatives and email campaigns drive the highest engagement - tells you what messaging resonates with the account universe.</div>
     <div class="section-takeaway"><strong>Creative takeaway:</strong> Creative performance is an efficiency lever: better messages improve account engagement before opportunities appear in CRM. <span class="evidence-badge">CTR and form fills</span><span class="evidence-badge orange">seniority engagement</span></div>
     <div class="context-box">
-      <strong>Why creative matters in ABM:</strong> In ABM, you're showing ads specifically to people at your target accounts - they'll see your ads repeatedly. If your creative is bad, they'll tune it out. If it's good, it builds brand recognition so when sales calls, the prospect already knows who you are. CTR (click-through rate) is the primary measure of creative effectiveness for display ads.
+      <strong>Why creative matters in ABM:</strong> In ABM, you're showing ads specifically to people in the account universe - they'll see your ads repeatedly. If your creative is bad, they'll tune it out. If it's good, it builds brand recognition so when sales calls, the prospect already knows who you are. CTR (click-through rate) is the primary measure of creative effectiveness for display ads.
     </div>
     <div class="chart-grid cols-2">
       <div class="chart-card">
@@ -2256,7 +2258,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="section-desc">ML win probability model, account coverage gap, deal velocity, journey sequences, and targeting matrix - datathon-level depth.</div>
     <div class="section-takeaway"><strong>Advanced takeaway:</strong> The predictive model and coverage analysis point to the same action: focus sales and marketing on high-fit accounts that are not yet fully activated. <span class="evidence-badge">AUC {model_auc}</span><span class="evidence-badge orange">{unreached_pct} unreached</span></div>
     <div class="context-box">
-      <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section adds prioritization signals for where to focus. The leakage-controlled baseline (Random Forest, AUC = {model_auc}, {model_validation}) scores {open_deals} active opportunities. The coverage analysis reveals that {unreached_pct} of target accounts have no tracked email or 6sense touchpoint.
+      <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section adds prioritization signals for where to focus. The leakage-reduced baseline (Random Forest, AUC = {model_auc}, {model_validation}) scores {open_deals} active opportunities. The coverage analysis reveals that {unreached_pct} of CRM account domains have no tracked email or 6sense touchpoint.
     </div>
     <div class="evidence-grid">
       <div class="evidence-card">
@@ -2300,8 +2302,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="chart-card full">
         <div id="c-account-coverage"></div>
         <div class="chart-explain">
-          <div class="ex-title">What this shows - Account Coverage: Has Marketing Reached Your Target Accounts?</div>
-          Of all {target_accounts} target account domains, this shows how many have been reached by email, 6sense, both, or neither. The orange line shows the observed opportunity rate (% of accounts in each group that have at least one CRM deal).
+          <div class="ex-title">What this shows - CRM Account Coverage</div>
+          Of all {target_accounts} CRM account domains, this shows how many have been reached by email, 6sense, both, or neither. The orange line shows the observed opportunity rate (% of accounts in each group that have at least one CRM deal).
           <br><br>
           <strong>The critical finding:</strong> <strong>{unreached_accounts} accounts ({unreached_pct}) have never received a single marketing touchpoint.</strong> Yet accounts reached by email alone have a {email_only_rate} opportunity rate vs. {not_reached_rate} for unreached accounts.
           <br><br>
@@ -2420,7 +2422,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="conclusion-hero">
       <div class="eyebrow">Bottom-line recommendation</div>
       <h3>Reach the right unreached accounts, start with email, test 6sense overlay with a holdout, and protect win rate as pipeline grows.</h3>
-      <p>Marketing is not just a source channel. It influenced {influenced_pipeline} of pipeline, while {unreached_accounts} target accounts ({unreached_pct}) provide a large, measurable audience for a controlled coverage test.</p>
+      <p>Marketing is not just a source channel. It influenced {influenced_pipeline} of pipeline, while {unreached_accounts} CRM account domains ({unreached_pct}) provide a large, measurable audience for a controlled coverage test.</p>
     </div>
 
     <div class="conclusion-grid">
@@ -2437,7 +2439,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <ul class="finding-list">
           <li>Among cohorts at least 80% resolved, closed-deal win rate moved from {cohort_start_rate} in {cohort_start_quarter} to {cohort_end_rate} in {cohort_end_quarter}.</li>
           <li>Marketing-sourced share was {mktg_end_pct} in the latest cohort meeting the 80% resolved threshold, so source mix deserves review.</li>
-          <li>Most target accounts are unreached, which limits ABM learning and leaves pipeline potential untouched.</li>
+          <li>Most CRM account domains are unreached, which limits ABM learning and leaves pipeline potential untouched.</li>
         </ul>
       </div>
       <div class="conclusion-card">
@@ -2453,7 +2455,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="priority-grid">
       <div class="priority-card">
         <h3><span class="priority-tag p1">P1</span> Fix coverage and quality first</h3>
-        <p>Activate unreached target accounts and tighten ICP qualification before chasing more broad top-of-funnel volume.</p>
+        <p>Activate unreached CRM account domains and tighten ICP qualification before chasing more broad top-of-funnel volume.</p>
       </div>
       <div class="priority-card">
         <h3><span class="priority-tag p2">P2</span> Operationalize the evidence</h3>
@@ -2473,9 +2475,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <thead><tr><th>Recommendation</th><th>Confidence</th><th>Why We Believe It</th><th>What To Test Next</th></tr></thead>
           <tbody>
             <tr>
-              <td><strong>Expand coverage to unreached target accounts.</strong></td>
+              <td><strong>Expand coverage to unreached CRM account domains.</strong></td>
               <td><span class="confidence-pill high">High</span></td>
-              <td>{unreached_accounts} target accounts are unreached, and reached groups show materially higher opportunity rates than unreached accounts.</td>
+              <td>{unreached_accounts} CRM account domains are unreached, and reached groups show materially higher opportunity rates than unreached accounts.</td>
               <td>Prioritize strong-fit unreached accounts and compare opportunity creation against a holdout group.</td>
             </tr>
             <tr>
@@ -2525,9 +2527,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <tbody>
             <tr>
               <td><span class="priority-tag p1">P1</span></td>
-              <td><strong>Coverage:</strong> reach unreached target accounts with email first, then test 6sense overlay with a holdout.</td>
+              <td><strong>Coverage:</strong> reach unreached CRM account domains with email first, then test 6sense overlay with a holdout.</td>
               <td>Email-only accounts show a {email_only_rate} opportunity rate and both-channel accounts show {both_rate}, compared with {not_reached_rate} for unreached accounts.</td>
-              <td>Target account coverage, opportunity rate, incremental lift, pipeline created.</td>
+              <td>Account coverage, opportunity rate, incremental lift, pipeline created.</td>
             </tr>
             <tr>
               <td><span class="priority-tag p1">P1</span></td>
@@ -2544,7 +2546,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <tr>
               <td><span class="priority-tag p2">P2</span></td>
               <td><strong>Sales prioritization:</strong> use win probability bands in weekly pipeline review.</td>
-              <td>The leakage-controlled baseline scored {open_deals} active deals using opportunity-time channel, segment, amount, and create-date fields.</td>
+              <td>The leakage-reduced baseline scored {open_deals} active deals using opportunity-time channel, segment, amount, and create-date fields.</td>
               <td>Close rate by probability band, sales follow-up SLA.</td>
             </tr>
             <tr>
@@ -2851,7 +2853,7 @@ const CHARTS = {{
 
 const CHART_META = {{
   "c-essential-contribution": ["Question: how do CRM source credit and linked-journey credit differ?", "Population: sourced uses the CRM source population; influenced uses 695 touch-linked opportunities.", "Decision use: report both numbers with coverage, using sourced as conservative credit and influenced as linked-journey context."],
-  "c-essential-coverage": ["Question: where is the largest measurable coverage test?", "Population: target account domains; groups are observational, not randomized.", "Decision use: test coverage with a holdout before claiming incremental lift."],
+  "c-essential-coverage": ["Question: where is the largest measurable coverage test?", "Population: CRM account domains; groups are observational, not randomized.", "Decision use: test coverage with a holdout before claiming incremental lift."],
   "c-essential-cohort": ["Question: is growth protecting conversion quality?", "Population: opportunities by create quarter; win rate uses resolved deals only.", "Decision use: compare mature cohorts and keep low-resolution recent cohorts provisional."],
   "c-essential-targeting": ["Question: which account cells deserve ABM focus?", "Population: opportunities with segment and profile fit.", "Decision use: prioritize high-fit cells before expanding reach."],
   "c-essential-budget": ["Question: what budget tests are worth considering?", "Population: tracked-spend channels only.", "Decision use: use scenarios to size tests, not to promise revenue."],
@@ -2871,7 +2873,7 @@ const CHART_META = {{
   "c-budget-scenario": ["Question: how much tracked budget should be reserved for measurement?", "Population: two tracked-spend channels; one has a single opportunity and neither has recorded won revenue.", "Decision use: choose a budget-neutral holdout plan, not a revenue forecast."],
   "c-feat-imp": ["Question: what signals drive the win model?", "Population: closed opportunities used for training.", "Caution: importance is predictive, not causal."],
   "c-win-prob": ["Question: how are active opportunities distributed by predicted probability?", "Population: active scored opportunities only; evaluation used a time-based holdout of resolved deals.", "Decision use: pilot bands for prioritization before setting an operating cutoff."],
-  "c-account-coverage": ["Question: where is the account coverage gap?", "Population: target account domains; volume and opportunity rate use separate panels.", "Caution: reached-account rates are observational and may reflect selection or sales activity."],
+  "c-account-coverage": ["Question: where is the account coverage gap?", "Population: CRM account domains; volume and opportunity rate use separate panels.", "Caution: reached-account rates are observational and may reflect selection or sales activity."],
   "c-deal-velocity": ["Question: how long do won deals take by channel?", "Population: closed-won opportunities with valid close dates and at least five wins per channel.", "Caution: medians describe historical cases, not guaranteed sales-cycle timing."],
   "c-journey": ["Question: what touchpoint sequences appear before wins?", "Population: won deals with linked pre-opportunity touchpoints.", "Caution: sequences are descriptive."],
   "c-targeting-matrix": ["Question: which segment/profile-fit cells deserve ABM priority?", "Population: opportunities with segment and profile fit; every cell shows n.", "Caution: cells below 30 deals are exploratory regardless of color."],
@@ -2885,7 +2887,7 @@ const CHART_STORY = {{
     action: "Report sourced as conservative credit and place linkage coverage beside influenced credit."
   }},
   "c-essential-coverage": {{
-    finding: "A large share of target accounts still has no tracked email or 6sense touch.",
+    finding: "A large share of CRM account domains still has no tracked email or 6sense touch.",
     meaning: "The largest measurable opportunity is testing coverage among strong-fit accounts already in the ICP universe.",
     action: "Launch a strong-fit account coverage test with a holdout group before claiming lift."
   }},
@@ -2915,7 +2917,7 @@ const CHART_STORY = {{
     action: "Use both views in CMO reporting and place linked-opportunity coverage beside influenced credit."
   }},
   "c-account-coverage": {{
-    finding: "Many target accounts are not yet covered by tracked marketing touches.",
+    finding: "Many CRM account domains are not yet covered by tracked marketing touches.",
     meaning: "Unreached strong-fit accounts create a clean audience for learning without changing the ICP universe.",
     action: "Build a randomized or phased coverage test for unreached strong-fit accounts."
   }},

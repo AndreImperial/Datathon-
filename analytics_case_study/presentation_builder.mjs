@@ -128,7 +128,7 @@ function byKey(rows, key, value) { return rows.find((r) => r[key] === value) || 
   kpi(s, M, 420, 255, moneyM(data.totals.pipeline), "Recorded pipeline", "white", `${data.totals.opportunities.toLocaleString()} deduplicated opportunities`);
   kpi(s, 335, 420, 255, moneyM(data.totals.won_revenue), "Recorded won revenue", "white", `${pct(data.totals.closed_win_rate, 1)} closed-deal win rate`);
   kpi(s, 608, 420, 255, String(data.totals.active), "Active opportunities", "white", "Scored only after leakage controls");
-  kpi(s, 881, 420, 255, pct(data.totals.unreached_rate, 1), "Target accounts unreached", "white", "Largest testable audience");
+  kpi(s, 881, 420, 255, pct(data.totals.unreached_rate, 1), "CRM domains unreached", "white", "Largest testable audience");
   text(s, "Recommendation  /  protect quality • expand strong-fit coverage • reserve spend for causal measurement", M, 640, 1120, 28, { size: 13, bold: true, color: "#BFD4FF" });
   notes(s, ["data/cleaned/opportunities.parquet", "data/integrated/account_coverage_summary.parquet", "data/integrated/model_stats.parquet"], "Pipeline and won revenue use recorded CRM amounts. Closed win rate is won divided by resolved outcomes. Active opportunities are excluded from that denominator.");
 }
@@ -137,7 +137,7 @@ function byKey(rows, key, value) { return rows.find((r) => r[key] === value) || 
 {
   const s = presentation.slides.add(); s.background.fill = C.bg; title(s, 2, "The executive answer: scale learning before spend", "Three decisions connect the analysis to an operating plan.");
   callout(s, M, 205, 354, 330, "1  Protect pipeline quality", `Closed-deal win rate moved from 38% in 2022 Q1 to 22% in 2024 Q2 among cohorts at least 80% resolved. Review ICP and qualification before broad acquisition grows.`, C.red, C.paleRed);
-  callout(s, 463, 205, 354, 330, "2  Expand strong-fit coverage", `${pct(data.totals.unreached_rate, 1)} of target account domains have no tracked email or 6sense touch. Use that audience for a randomized or phased coverage test.`, C.blue, C.paleBlue);
+  callout(s, 463, 205, 354, 330, "2  Expand strong-fit coverage", `${pct(data.totals.unreached_rate, 1)} of CRM account domains have no tracked email or 6sense touch. Use that audience for a randomized or phased coverage test.`, C.blue, C.paleBlue);
   callout(s, 862, 205, 354, 330, "3  Measure before reallocating", "Only two paid channels have tracked spend; one has a single opportunity and neither has recorded won revenue. Reserve a holdout instead of claiming an optimizer.", C.amber, C.paleAmber);
   text(s, "Decision rule", M, 565, 150, 24, { size: 13, bold: true, color: C.blue });
   text(s, "Scale only after incremental qualified opportunities or pipeline are demonstrated without degrading closed-deal quality.", 190, 555, 970, 48, { size: 20, bold: true, color: C.navy });
@@ -208,7 +208,7 @@ function byKey(rows, key, value) { return rows.find((r) => r[key] === value) || 
   const s = presentation.slides.add(); s.background.fill = C.bg; title(s, 7, "The largest measurable opportunity is account coverage", "Reached-account opportunity rates are observational and include selection effects.");
   const order = ["Not Reached", "Email Only", "Both Channels", "6sense Only"];
   const rows = order.map((name) => byKey(data.coverage, "coverage_tier", name));
-  const frame = chartCard(s, M, 205, 720, 405, "Target accounts by tracked coverage", "Counts by normalized company domain");
+  const frame = chartCard(s, M, 205, 720, 405, "CRM account domains by tracked coverage", "Counts by normalized company domain");
   s.charts.add("bar", { position: frame, categories: order, series: [{ name: "Accounts", values: rows.map((r) => Number(r.accounts || 0)), fill: C.blue, points: [{ idx: 0, fill: C.amber }] }], barOptions: { direction: "bar", grouping: "clustered", gapWidth: 48 }, hasLegend: false, xAxis: { min: 0, majorGridlines: { style: "solid", fill: C.line, width: 1 }, textStyle: { fill: C.muted, fontSize: 10 } }, yAxis: { textStyle: { fill: C.ink, fontSize: 12, bold: true }, line: { style: "solid", fill: C.line, width: 1 } }, dataLabels: { showValue: true, position: "outEnd", textStyle: { fill: C.navy, fontSize: 12, bold: true } }, chartFill: C.white, plotAreaFill: C.white });
   text(s, "Observed opportunity rate", 830, 215, 386, 28, { size: 16, bold: true, color: C.navy });
   rows.forEach((r, i) => {

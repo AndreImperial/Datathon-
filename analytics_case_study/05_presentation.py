@@ -119,29 +119,47 @@ def build_payload() -> dict:
 
 
 def _runtime() -> tuple[Path, Path]:
-    node = Path(os.environ.get("NODE_EXE", "")) if os.environ.get("NODE_EXE") else None
+    """Resolve the bundled presentation runtime without mutating its install.
+
+    The artifact-tool package is intentionally mounted read-only by Codex.  A
+    temporary node_modules junction (created below) gives the user-authored
+    builder normal ESM resolution while keeping the repository self-contained.
+    """
+    node = Path(os.environ.get("RUNTIME_NODE", "")) if os.environ.get("RUNTIME_NODE") else None
+    if not node or not node.exists():
+        node = Path(os.environ.get("NODE_EXE", "")) if os.environ.get("NODE_EXE") else None
     if not node or not node.exists():
         node = Path.home() / ".cache/codex-runtimes/codex-primary-runtime/dependencies/node/bin/node.exe"
     if not node.exists():
         found = shutil.which("node")
         if not found:
-            raise RuntimeError("Node.js was not found. Set NODE_EXE or install Node.js.")
+            raise RuntimeError("Node.js was not found. Set RUNTIME_NODE or NODE_EXE.")
         node = Path(found)
 
-    skill_root = Path(os.environ.get("CODEX_PRESENTATIONS_SKILL_DIR", "")) if os.environ.get("CODEX_PRESENTATIONS_SKILL_DIR") else None
-    if not skill_root or not skill_root.exists():
-        candidates = sorted((Path.home() / ".codex/plugins/cache/openai-primary-runtime/presentations").glob("*/skills/presentations"))
-        if not candidates:
-            raise RuntimeError("Presentations runtime was not found. Set CODEX_PRESENTATIONS_SKILL_DIR.")
-        skill_root = candidates[-1]
-    return node, skill_root
+    modules = Path(os.environ.get("RUNTIME_NODE_MODULES", "")) if os.environ.get("RUNTIME_NODE_MODULES") else None
+    if not modules or not modules.exists():
+        modules = node.parent.parent / "node_modules"
+    if not modules.exists():
+        raise RuntimeError("Bundled Node.js packages were not found. Set RUNTIME_NODE_MODULES.")
+    return node, modules
+
+
+def _link_runtime_modules(workspace: Path, runtime_modules: Path) -> None:
+    target = workspace / "node_modules"
+    try:
+        target.symlink_to(runtime_modules, target_is_directory=True)
+    except (OSError, NotImplementedError):
+        if os.name != "nt":
+            raise
+        # Junctions work on standard Windows developer machines without
+        # requiring Administrator privileges.
+        subprocess.run(["cmd", "/c", "mklink", "/J", str(target), str(runtime_modules)], check=True, capture_output=True)
 
 
 def main() -> None:
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
     payload = build_payload()
-    node, skill_root = _runtime()
-    setup = skill_root / "container_tools/setup_artifact_tool_workspace.mjs"
+    node, runtime_modules = _runtime()
 
     with tempfile.TemporaryDirectory(prefix="marketing-deck-") as tmp_name:
         tmp = Path(tmp_name)
@@ -149,7 +167,7 @@ def main() -> None:
         render_dir = tmp / "render"
         payload_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
         shutil.copy2(BUILDER, tmp / BUILDER.name)
-        subprocess.run([str(node), str(setup), "--workspace", str(tmp)], cwd=Path.home(), check=True)
+        _link_runtime_modules(tmp, runtime_modules)
         subprocess.run(
             [str(node), str(tmp / BUILDER.name), "--data", str(payload_path), "--output", str(OUTPUT), "--render-dir", str(render_dir)],
             cwd=tmp,

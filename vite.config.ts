@@ -17,6 +17,8 @@ export default defineConfig({
       output: {
         manualChunks: {
           motion: ["gsap", "motion"],
+          recharts: ["recharts"],
+          tremor: ["@tremor/react"],
         },
       },
     },
