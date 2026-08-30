@@ -51,23 +51,23 @@ const groups: SectionGroup[] = [
     ],
   },
   {
-    id: "appendix-group",
-    label: "Analyst Appendix",
-    icon: <Archive size={16} />,
-    children: [{ id: "s-appendix", label: "Case Deliverable Coverage" }],
-  },
-  {
     id: "recommendation-group",
     label: "Recommendation",
     icon: <Check size={16} />,
     children: [{ id: "s-conclusion", label: "Conclusion & Action Plan" }],
   },
+  {
+    id: "appendix-group",
+    label: "Analyst Appendix",
+    icon: <Archive size={16} />,
+    children: [{ id: "s-appendix", label: "Case Deliverable Coverage" }],
+  },
 ];
 
-const sectionOrder: SectionId[] = [
-  "s-essential", "s-exec", "s-attrib", "s-channel", "s-segment",
-  "s-creative", "s-budget", "s-advanced", "s-appendix", "s-conclusion",
-];
+// Keep progress and print order wired to the preservation contract so a visual
+// redesign cannot silently reorder the analytical story. The five sidebar
+// groups retain the separately locked primary-navigation order above.
+const sectionOrder: SectionId[] = [...REQUIRED_SECTION_IDS];
 
 const chartPlacementIds = [
   "c-essential-contribution", "c-essential-coverage", "c-essential-cohort",
@@ -394,7 +394,7 @@ function AttributionSensitivityPanel({ data }: { data: DashboardData }) {
   const rows = [...data.datasets.attribution_sensitivity].sort((a, b) => numberValue(a, "lookback_days") - numberValue(b, "lookback_days"));
   if (!rows.length) return null;
   return <section className="method-panel" aria-labelledby="lookback-sensitivity-title">
-    <div className="method-panel-head"><div><span className="panel-eyebrow">Robustness check</span><h3 id="lookback-sensitivity-title">Attribution lookback sensitivity</h3></div><span className="panel-note">Primary view: 365 days</span></div>
+    <div className="method-panel-head"><div><h3 id="lookback-sensitivity-title">Attribution lookback sensitivity</h3></div><span className="panel-note">Primary view: 365 days · Robustness check</span></div>
     <p className="method-panel-copy">Shorter windows link fewer CRM opportunities and won deals. The ranking is therefore a scope-sensitive planning signal, not a stable incrementality estimate.</p>
     <div className="method-metrics">{rows.map((row) => <div className={`method-metric${numberValue(row, "lookback_days") === 365 ? " is-primary" : ""}`} key={String(row.lookback_days)}><span>{numberValue(row, "lookback_days")} days</span><strong>{numberValue(row, "linked_opportunities").toLocaleString()}</strong><small>linked opps · {pct(numberValue(row, "linked_share_of_won_opportunities"))} of won deals</small></div>)}</div>
   </section>;
@@ -404,7 +404,7 @@ function CalibrationPanel({ data }: { data: DashboardData }) {
   const rows = data.datasets.model_calibration;
   if (!rows.length) return null;
   return <section className="method-panel calibration-panel" aria-labelledby="calibration-title">
-    <div className="method-panel-head"><div><span className="panel-eyebrow">Model diagnostic</span><h3 id="calibration-title">Predicted vs observed win rate</h3></div><span className="panel-note">Time-based test holdout</span></div>
+    <div className="method-panel-head"><div><h3 id="calibration-title">Predicted vs observed win rate</h3></div><span className="panel-note">Time-based test holdout · Model diagnostic</span></div>
     <p className="method-panel-copy">The highest score band is directionally aligned; middle bands overpredict observed wins. Use scores to prioritize review, not as a promise of close probability.</p>
     <div className="calibration-rows" role="table" aria-label="Model calibration by test score band"><div className="calibration-head" role="row"><span role="columnheader">Score band</span><span role="columnheader">n</span><span role="columnheader">Predicted</span><span role="columnheader">Observed</span><span role="columnheader">Gap</span></div>{rows.map((row) => <div className="calibration-row" role="row" key={textValue(row, "score_band")}><span role="cell">{textValue(row, "score_band")}</span><span role="cell">{numberValue(row, "n").toLocaleString()}</span><span role="cell">{pct(numberValue(row, "predicted_win_rate"))}</span><span role="cell">{pct(numberValue(row, "observed_win_rate"))}</span><span role="cell" className={numberValue(row, "abs_gap") > 0.1 ? "gap-high" : ""}>{pct(numberValue(row, "abs_gap"))}</span></div>)}</div>
   </section>;

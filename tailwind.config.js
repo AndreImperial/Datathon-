@@ -10,16 +10,43 @@ export default {
     "fill-cyan-500", "stroke-cyan-500",
     "fill-emerald-500", "stroke-emerald-500",
     "fill-slate-500", "stroke-slate-500",
+    "fill-amber-500", "stroke-amber-500",
+    "fill-gray-500", "stroke-gray-500",
   ],
   theme: {
     extend: {
       colors: {
-        ink: "#12233f",
-        cobalt: "#1e40af",
-        azure: "#3b82f6",
-        amber: "#d97706",
-        teal: "#0f766e",
-        canvas: "#f4f6fa",
+        ink: "#17343b",
+        cobalt: "#206a78",
+        azure: "#4c8e9b",
+        amber: {
+          500: "#a45a35",
+          600: "#8f4d2e",
+          DEFAULT: "#a45a35",
+        },
+        teal: "#4d7a6c",
+        canvas: "#f2f5f3",
+        blue: {
+          500: "#206a78",
+          600: "#1b5b67",
+          700: "#164b55",
+        },
+        cyan: {
+          500: "#4c8e9b",
+          600: "#3b7783",
+        },
+        emerald: {
+          500: "#4d7a6c",
+          600: "#3f685b",
+        },
+        slate: {
+          500: "#718286",
+          600: "#647477",
+        },
+        gray: {
+          500: "#879496",
+          600: "#6f7f82",
+        },
       },
       fontFamily: {
         sans: ["Manrope Variable", "Manrope", "sans-serif"],

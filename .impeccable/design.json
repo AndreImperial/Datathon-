@@ -1,0 +1,116 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-30T21:09:03.5654356+08:00",
+  "title": "Design System: Revenue Command Center",
+  "extensions": {
+    "colorMeta": {
+      "petrol": { "role": "primary", "displayName": "Deep Petrol", "canonical": "#17343b", "tonalRamp": ["#0b1d21", "#17343b", "#24515a", "#35666e", "#5c8589", "#8eaaab", "#c2d3d1", "#f2f7f5"] },
+      "ocean-teal": { "role": "primary", "displayName": "Ocean Teal", "canonical": "#206a78", "tonalRamp": ["#0c2d33", "#154b56", "#206a78", "#4c8e9b", "#79aeb6", "#a8cbd0", "#d4e5e7", "#f2f8f8"] },
+      "evidence-green": { "role": "secondary", "displayName": "Mineral Green", "canonical": "#4d7a6c", "tonalRamp": ["#193129", "#315648", "#4d7a6c", "#72988a", "#99b5aa", "#bed0c9", "#dfe9e5", "#f4f8f6"] },
+      "copper": { "role": "tertiary", "displayName": "Copper", "canonical": "#a45a35", "tonalRamp": ["#3b1b0d", "#6c351c", "#a45a35", "#c47a55", "#dca083", "#ecc5b2", "#f6e1d7", "#fdf5f1"] },
+      "terracotta": { "role": "tertiary", "displayName": "Terracotta Risk", "canonical": "#a54540", "tonalRamp": ["#3a1514", "#6b2926", "#a54540", "#c46963", "#dc918c", "#edb9b6", "#f7dddb", "#fdf4f3"] },
+      "mineral-mist": { "role": "neutral", "displayName": "Mineral Mist", "canonical": "#f2f5f3", "tonalRamp": ["#17201d", "#34413d", "#52615c", "#74827d", "#98a49f", "#bdc6c2", "#dde3e0", "#f2f5f3"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Editorial Display", "purpose": "Section theses and decisive conclusions." },
+      "headline": { "displayName": "Decision Headline", "purpose": "Recommendation and feature panels." },
+      "title": { "displayName": "Evidence Title", "purpose": "Charts, tables, and analytical modules." },
+      "body": { "displayName": "Interface Body", "purpose": "Explanations, controls, and data." },
+      "label": { "displayName": "Operational Label", "purpose": "Metadata, scope, confidence, and status." }
+    },
+    "shadows": [
+      { "name": "ambient", "value": "0 8px 24px rgba(23, 52, 59, 0.08)", "purpose": "Hover feedback on inspectable analytical containers." },
+      { "name": "ambient-hover", "value": "0 14px 30px rgba(23, 52, 59, 0.14)", "purpose": "Strongest permitted card elevation." },
+      { "name": "drawer", "value": "-18px 0 42px rgba(23, 52, 59, 0.16)", "purpose": "Directional depth for the caveats drawer." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "cubic-bezier(.16, 1, .3, 1)", "purpose": "Short control, progress, and layout state changes." },
+      { "name": "duration-fast", "value": "180ms", "purpose": "Hover and focus-adjacent state feedback." },
+      { "name": "reduced-motion", "value": "0.01ms; no smooth scroll or motion-led reveal", "purpose": "Preserve final state and hierarchy without animation." }
+    ],
+    "breakpoints": [
+      { "name": "wide", "value": "1280px" },
+      { "name": "compact", "value": "1180px" },
+      { "name": "tablet", "value": "980px" },
+      { "name": "drawer", "value": "899px" },
+      { "name": "mobile", "value": "520px" },
+      { "name": "narrow", "value": "449px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "A restrained petrol action for the page's strongest command.",
+      "html": "<button class=\"ds-button-primary\">Open action plan</button>",
+      "css": ".ds-button-primary { min-height: 40px; padding: 0 14px; border: 1px solid var(--ink, #17343b); border-radius: 6px; color: #fff; background: var(--ink, #17343b); font: 750 11px/1.2 Manrope, sans-serif; transition: background .18s cubic-bezier(.16,1,.3,1); } .ds-button-primary:hover { background: var(--ink-soft, #24515a); } .ds-button-primary:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px var(--ocean-teal, #206a78); }"
+    },
+    {
+      "name": "Utility Button",
+      "kind": "button",
+      "refersTo": "button-utility",
+      "description": "Compact evidence controls with a 44px mobile target.",
+      "html": "<button class=\"ds-button-utility\">Export</button>",
+      "css": ".ds-button-utility { min-height: 32px; padding: 0 10px; border: 1px solid var(--line-strong, #b7c9c4); border-radius: 6px; color: var(--body, #45565b); background: #fff; font: 750 11px/1.2 Manrope, sans-serif; transition: border-color .18s cubic-bezier(.16,1,.3,1), color .18s cubic-bezier(.16,1,.3,1), background .18s cubic-bezier(.16,1,.3,1); } .ds-button-utility:hover { border-color: #6c969c; color: #1f6573; background: #edf5f4; } .ds-button-utility:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px var(--ocean-teal, #206a78); } @media (max-width: 899px) { .ds-button-utility { min-width: 44px; min-height: 44px; } }"
+    },
+    {
+      "name": "Evidence Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "A ruled paper module for charts and analytical evidence.",
+      "html": "<article class=\"ds-evidence-card\"><h3>Pipeline contribution</h3><p>Direct units, interpretation, caveat, and data alternative stay together.</p></article>",
+      "css": ".ds-evidence-card { padding: 14px; border: 1px solid var(--line-strong, #b7c9c4); border-radius: 10px; color: var(--ink, #17343b); background: #fff; transition: border-color .18s cubic-bezier(.16,1,.3,1), box-shadow .18s cubic-bezier(.16,1,.3,1); } .ds-evidence-card h3 { margin: 0 0 8px; font: 650 17px/1.16 Newsreader, Georgia, serif; letter-spacing: -.012em; } .ds-evidence-card p { margin: 0; color: var(--body, #45565b); font: 400 12px/1.55 Manrope, sans-serif; } .ds-evidence-card:hover { border-color: #6d9295; box-shadow: 0 8px 24px rgba(23,52,59,.08); }"
+    },
+    {
+      "name": "Confidence Chip",
+      "kind": "chip",
+      "refersTo": "chip",
+      "description": "A textual confidence marker whose meaning survives without color.",
+      "html": "<span class=\"ds-confidence-chip\">Directional</span>",
+      "css": ".ds-confidence-chip { display: inline-flex; min-height: 23px; align-items: center; padding: 0 7px; border: 1px solid #d9b69f; border-radius: 5px; color: #7d4b35; background: #faeee7; font: 850 9px/1 Manrope, sans-serif; letter-spacing: .02em; }"
+    },
+    {
+      "name": "Navigation Item",
+      "kind": "nav",
+      "description": "A petrol-rail destination with the signature copper trace.",
+      "html": "<a class=\"ds-nav-item ds-nav-item-active\" href=\"#\">Essential View</a>",
+      "css": ".ds-nav-item { position: relative; display: flex; min-height: 36px; align-items: center; padding: 0 10px 0 14px; border: 1px solid transparent; border-radius: 6px; color: #bad0d0; background: #17343b; font: 520 12px/1.2 Manrope, sans-serif; text-decoration: none; } .ds-nav-item:hover { border-color: #3a6469; color: #fff; background: #1d4147; } .ds-nav-item-active { border-color: #4d7e82; color: #fff; background: #214d55; } .ds-nav-item-active::before { content: \"\"; position: absolute; inset: 8px auto 8px 0; width: 2px; background: #e2aa67; } .ds-nav-item:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px var(--ocean-teal, #206a78); }"
+    },
+    {
+      "name": "Data Table",
+      "kind": "custom",
+      "description": "A compact, tabular evidence surface with mineral row states.",
+      "html": "<table class=\"ds-table\"><thead><tr><th>Channel</th><th>Pipeline</th></tr></thead><tbody><tr><td>Email</td><td>$12.4M</td></tr><tr><td>Events</td><td>$8.1M</td></tr></tbody></table>",
+      "css": ".ds-table { width: 100%; border-collapse: collapse; color: #45565b; background: #fff; font: 400 12px/1.4 Manrope, sans-serif; font-variant-numeric: tabular-nums; } .ds-table th, .ds-table td { padding: 9px 10px; border-bottom: 1px solid #d7e0dd; text-align: left; } .ds-table th { color: #24515a; background: #e6eeeb; font-size: 10px; } .ds-table tbody tr:nth-child(even) { background: #f4f8f6; } .ds-table tbody tr:hover { background: #e9f2f1; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Signal Atlas",
+    "overview": "The interface feels like an operator's evidence desk: deep petrol framing, mineral paper, ruled modules, ocean-teal signals, and warm copper or terracotta only where interpretation demands attention. It is dense but not cramped, editorial but not theatrical, and designed to make analytical confidence visible. The page is a presentation layer over a validated schema-v2 data contract. Preserve the source metrics, caveats, required section order, chart/table parity, export paths, presentation and print modes, and the /full-analysis archive. Visual changes must not silently recalculate, omit, or reframe the evidence.",
+    "keyCharacteristics": [
+      "Decision first; evidence, implication, and action remain traceable.",
+      "Petrol command rail, mineral canvas, paper modules, and fine rules.",
+      "Newsreader gives conclusions authority; Manrope keeps controls and data legible.",
+      "Color carries semantic meaning and is reinforced by labels, patterns, or copy."
+    ],
+    "rules": [
+      { "name": "The Accountable Color Rule", "body": "A semantic color keeps the same meaning across KPIs, charts, caveats, and actions; labels and patterns preserve that meaning without color.", "section": "colors" },
+      { "name": "The Two-Voice Rule", "body": "Newsreader speaks for interpretation; Manrope speaks for operation and evidence. Do not introduce a third display or UI family.", "section": "typography" },
+      { "name": "The Content-Preservation Rule", "body": "Responsive and presentation modes may reflow or focus the evidence, but must retain required sections, labels, denominators, accessible summaries, table/download alternatives, and the original analytical order.", "section": "layout" },
+      { "name": "The Ruled-First Rule", "body": "Prefer a one-pixel mineral border or tonal step before adding elevation.", "section": "elevation" }
+    ],
+    "dos": [
+      "**Do** lead with the operating decision, then show evidence, limitations, and the measurable action.",
+      "**Do** keep chart summaries, caveats, data tables, downloads, print output, and schema validation intact.",
+      "**Do** use rules and mineral tonal layers as the primary composition system.",
+      "**Do** retain 44px mobile controls and visible keyboard focus."
+    ],
+    "donts": [
+      "**Don't** replace the signal atlas with a generic blue KPI wall, glassmorphism, gradients, or decorative 3D.",
+      "**Don't** use warm colors ornamentally or let color become the only carrier of meaning.",
+      "**Don't** hide analytical sections, change denominators, or overstate observational evidence as causal.",
+      "**Don't** preload the chart module or let chart code block the decision-first shell."
+    ]
+  }
+}

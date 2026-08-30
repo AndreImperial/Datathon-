@@ -13,6 +13,7 @@ export default defineConfig({
     outDir: resolve(rootDirectory, "public"),
     emptyOutDir: true,
     sourcemap: false,
+    modulePreload: false,
     rollupOptions: {
       output: {
         manualChunks: {

@@ -24,17 +24,17 @@ import type { DashboardDatasets, DataRow } from "../types";
 import { numberValue, textValue } from "../types";
 
 export const COLORS = {
-  ink: "#12233F",
-  blue: "#1E40AF",
-  azure: "#3B82F6",
-  teal: "#0F766E",
-  amber: "#D97706",
-  red: "#B42318",
-  violet: "#6D4AFF",
-  slate: "#627087",
-  pale: "#F8FAFC",
-  grid: "#D6DFEA",
-  muted: "#627087",
+  ink: "#17343B",
+  blue: "#206A78",
+  azure: "#4C8E9B",
+  teal: "#4D7A6C",
+  amber: "#A45A35",
+  red: "#A54540",
+  violet: "#7A638F",
+  slate: "#718286",
+  pale: "#F8FAF9",
+  grid: "#D7E0DD",
+  muted: "#647477",
 };
 
 const money = (value: number) => {
@@ -45,7 +45,7 @@ const money = (value: number) => {
 };
 const pct = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
 const short = (value: string, length = 26) => value.length > length ? `${value.slice(0, length - 1)}…` : value;
-const tooltipStyle = { background: COLORS.ink, border: "1px solid #3f566c", borderRadius: 4, color: "#fff", fontSize: 12 };
+const tooltipStyle = { background: COLORS.ink, border: "1px solid #4f7175", borderRadius: 4, color: "#fff", fontSize: 12 };
 const axisTick = { fill: COLORS.muted, fontSize: 11 };
 const gridProps = { stroke: COLORS.grid, strokeDasharray: "3 4", vertical: false };
 
@@ -257,7 +257,7 @@ export function Heatmap({ data, xKey, yKey, valueKey, valueFormatter = (value: n
   const [min, max] = domain;
   return <div className="heatmap" style={{ gridTemplateColumns: `minmax(120px, 1.3fr) repeat(${xs.length}, minmax(76px, 1fr))` }}>
     <div className="heatmap-corner" />{xs.map((x) => <div className="heatmap-x" key={x}>{short(x, 17)}</div>)}
-    {ys.map((y) => <div className="heatmap-row" key={y}><div className="heatmap-y">{short(y, 24)}</div>{xs.map((x) => { const row = data.find((item) => textValue(item, yKey) === y && textValue(item, xKey) === x); const value = row ? numberValue(row, valueKey) : 0; const ratio = max > min ? Math.max(0, Math.min(1, (value - min) / (max - min))) : 0; const low = lowSampleKey && row ? numberValue(row, lowSampleKey) < 30 : false; return <div className={`heatmap-cell${low ? " is-low" : ""}`} key={`${y}-${x}`} style={{ backgroundColor: `rgba(30,64,175,${0.08 + ratio * 0.82})`, color: ratio > 0.48 ? "#fff" : COLORS.ink }} title={`${y} · ${x}: ${valueFormatter(value)}${low ? " · Low n" : ""}`}>{row ? <><strong>{valueFormatter(value)}</strong>{low && <small>Low n</small>}</> : <span>—</span>}</div>; })}</div>)}
+    {ys.map((y) => <div className="heatmap-row" key={y}><div className="heatmap-y">{short(y, 24)}</div>{xs.map((x) => { const row = data.find((item) => textValue(item, yKey) === y && textValue(item, xKey) === x); const value = row ? numberValue(row, valueKey) : 0; const ratio = max > min ? Math.max(0, Math.min(1, (value - min) / (max - min))) : 0; const low = lowSampleKey && row ? numberValue(row, lowSampleKey) < 30 : false; return <div className={`heatmap-cell${low ? " is-low" : ""}`} key={`${y}-${x}`} style={{ backgroundColor: `rgba(32,106,120,${0.08 + ratio * 0.82})`, color: ratio > 0.48 ? "#fff" : COLORS.ink }} title={`${y} · ${x}: ${valueFormatter(value)}${low ? " · Low n" : ""}`}>{row ? <><strong>{valueFormatter(value)}</strong>{low && <small>Low n</small>}</> : <span>—</span>}</div>; })}</div>)}
   </div>;
 }
 
