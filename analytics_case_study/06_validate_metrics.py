@@ -252,6 +252,9 @@ def _validate_dashboard(errors: list[str]) -> None:
     missing_datasets = sorted(name for name in expected_datasets if not isinstance(datasets.get(name), list))
     if missing_datasets:
         errors.append("dashboard-data.json is missing datasets: " + ", ".join(missing_datasets))
+    unknown_datasets = sorted(name for name in datasets if name not in expected_datasets)
+    if unknown_datasets:
+        errors.append("dashboard-data.json contains unknown datasets: " + ", ".join(unknown_datasets))
     empty_datasets = sorted(name for name in expected_datasets if isinstance(datasets.get(name), list) and not datasets[name])
     if empty_datasets:
         errors.append("dashboard-data.json contains empty required datasets: " + ", ".join(empty_datasets))
@@ -283,6 +286,8 @@ def _validate_dashboard(errors: list[str]) -> None:
         errors.append("dashboard preservation manifest chart placement counts do not match 24 placements / 21 definitions")
     if manifest.get("table_ids") != expected_tables or manifest.get("table_count") != 6:
         errors.append("dashboard preservation manifest table contract does not contain the six visible evidence tables")
+    if len(manifest.get("distinct_chart_definitions", [])) != 21 or len(set(manifest.get("distinct_chart_definitions", []))) != 21:
+        errors.append("dashboard preservation manifest distinct chart definitions must contain 21 unique IDs")
     if not all(phrase in manifest.get("required_audit_phrases", []) for phrase in ["Email Event Mix", "Budget-Neutral Measurement Plans", "time-based 80/20 holdout"]):
         errors.append("dashboard preservation manifest is missing required audit phrases")
 
@@ -294,16 +299,30 @@ def _validate_dashboard(errors: list[str]) -> None:
         if not isinstance(item, dict):
             errors.append("chart_metadata contains a non-object entry")
             continue
-        if not item.get("title") or not item.get("subtitle") or not item.get("caveat") or not item.get("accessible_summary") or not item.get("fields") or item.get("source_dataset") not in datasets:
+        if item.get("section_id") not in expected_sections:
+            errors.append(f"chart metadata references an unknown section: {item.get('chart_id')}")
+        if not item.get("title") or not item.get("subtitle") or not item.get("caveat") or not item.get("accessible_summary") or not isinstance(item.get("fields"), list) or not item.get("fields") or not all(isinstance(field, str) and field for field in item.get("fields", [])) or item.get("source_dataset") not in datasets:
             errors.append(f"chart metadata is missing fields or source dataset: {item.get('chart_id')}")
         if not isinstance(chart_data.get(item.get("chart_id")), list):
             errors.append(f"chart_data is missing exact rows for: {item.get('chart_id')}")
-        elif not chart_data.get(item.get("chart_id")):
-            errors.append(f"chart_data is empty for: {item.get('chart_id')}")
+        else:
+            rows = chart_data.get(item.get("chart_id"))
+            if not rows:
+                errors.append(f"chart_data is empty for: {item.get('chart_id')}")
+            elif any(not isinstance(row, dict) for row in rows):
+                errors.append(f"chart_data contains a non-object row for: {item.get('chart_id')}")
+        source_rows = datasets.get(item.get("source_dataset"))
+        if isinstance(source_rows, list) and isinstance(item.get("fields"), list):
+            missing_source_fields = [field for field in item["fields"] if not any(isinstance(row, dict) and field in row for row in source_rows)]
+            if missing_source_fields:
+                errors.append(f"chart metadata source fields are absent from {item.get('source_dataset')}: {item.get('chart_id')} ({', '.join(missing_source_fields)})")
+    unknown_chart_data = sorted(name for name in chart_data if name not in expected_charts) if isinstance(chart_data, dict) else []
+    if unknown_chart_data:
+        errors.append("chart_data contains unknown chart placements: " + ", ".join(unknown_chart_data))
     tables = dashboard_data.get("tables", {})
     for table_id in expected_tables:
         contract = tables.get(table_id)
-        if not isinstance(contract, dict) or contract.get("columns") != expected_table_columns[table_id] or not isinstance(contract.get("rows"), list):
+        if not isinstance(contract, dict) or contract.get("columns") != expected_table_columns[table_id] or not isinstance(contract.get("rows"), list) or not isinstance(contract.get("source_datasets"), list) or not isinstance(contract.get("sortable"), bool):
             errors.append(f"table contract is incomplete: {table_id}")
             continue
         columns = contract.get("columns", [])
@@ -311,6 +330,32 @@ def _validate_dashboard(errors: list[str]) -> None:
             if not isinstance(row, dict) or any(column not in row for column in columns):
                 errors.append(f"table contract row {table_id}[{row_index}] does not match its visible columns")
                 break
+
+    # Confidence intervals are part of the public contract.  Validate every
+    # interval pair that appears in a dataset so a malformed export cannot
+    # quietly reach a chart as an impossible percentage.
+    interval_pairs = [
+        ("ci_low", "ci_high"),
+        ("opp_rate_ci_low", "opp_rate_ci_high"),
+        ("win_rate_ci_low", "win_rate_ci_high"),
+    ]
+    for dataset_name, rows in datasets.items():
+        if not isinstance(rows, list):
+            continue
+        for row_index, row in enumerate(rows):
+            if not isinstance(row, dict):
+                continue
+            for low_key, high_key in interval_pairs:
+                if low_key not in row and high_key not in row:
+                    continue
+                try:
+                    low = float(row.get(low_key))
+                    high = float(row.get(high_key))
+                except (TypeError, ValueError):
+                    errors.append(f"{dataset_name}[{row_index}] has non-numeric confidence interval fields")
+                    continue
+                if not (0 <= low <= high <= 1):
+                    errors.append(f"{dataset_name}[{row_index}] has an invalid confidence interval: {low_key}={low}, {high_key}={high}")
 
     def _num(row: dict, key: str) -> float:
         value = row.get(key)

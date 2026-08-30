@@ -178,6 +178,7 @@ a { color: inherit; }
 .chart-legend span { display: inline-flex; align-items: center; gap: 5px; }
 .chart-legend i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .chart-legend i.diamond { border-radius: 1px; transform: rotate(45deg); }
+.chart-legend i.cohort-marker.provisional { border: 2px solid var(--amber); background: var(--surface); }
 .facet-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
 .facet { min-width: 0; }
 .heatmap { display: grid; gap: 2px; overflow-x: auto; padding: 10px 0; }
@@ -726,6 +727,8 @@ button, input, table { font-family: inherit; }
 .chart-actions { gap: 4px; }
 .chart-stage { padding-top: 2px; }
 .chart-accessible-summary { margin: 8px 0 0; padding-top: 8px; border-top: 1px solid #dbe2e8; color: var(--muted); font-size: 11px; line-height: 1.5; }
+.chart-caveat-visible { align-items: flex-start; margin: 9px 0 0; padding: 8px 9px; border: 1px solid #f1d5a5; border-top: 2px solid var(--amber); border-radius: 3px; color: #7c4a03; background: #fff8eb; font-size: 10px; line-height: 1.45; }
+.chart-caveat-visible svg { flex: none; margin-top: 1px; }
 .chart-explanation { margin-top: 8px; }
 .explanation-row { padding-top: 8px; }
 .explanation-row strong, .explanation-body { font-size: 11px; }
@@ -791,6 +794,14 @@ footer { padding: 17px 24px; border-color: var(--line); background: #f1f4f7; fon
   .command-rail { grid-template-columns: minmax(0, 1.35fr) minmax(260px, .65fr); }
 }
 
+/* Compact routes still carry the decision header and four KPI cells. Stack
+   them before the remaining content column becomes narrower than the 300px +
+   600px minimums used by the desktop composition; otherwise the KPI rail can
+   be clipped while the page itself still reports no horizontal overflow. */
+@media (max-width: 1180px) {
+  .command-strip.is-compact { grid-template-columns: 1fr; }
+}
+
 @media (max-width: 980px) {
   .data-meta { display: none; }
   .command-kpis { grid-template-columns: repeat(2, 1fr); }
@@ -805,6 +816,10 @@ footer { padding: 17px 24px; border-color: var(--line); background: #f1f4f7; fon
 
 @media (max-width: 899px) {
   .sidebar { width: min(88vw, 330px); box-shadow: none; }
+  /* Presentation mode removes the desktop rail, but the mobile trigger must
+     still open the navigation drawer so the five destinations remain
+     reachable on small screens. */
+  .presentation-mode .sidebar { display: flex; }
   .nav-backdrop { position: fixed; inset: 0; z-index: 90; display: block; border: 0; background: rgba(8, 21, 33, .58); }
   #main-content { margin-left: 0; }
   .topbar { min-height: 60px; padding: 9px 13px; }

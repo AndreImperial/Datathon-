@@ -9,6 +9,7 @@ import { Flip } from "gsap/Flip";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { ChartMetadata, DashboardData, DataRow, SectionId } from "./types";
 import { numberValue, REQUIRED_SECTION_IDS, textValue } from "./types";
+import { AnimatedNavIndicator } from "./components/AceternityMotion";
 
 gsap.registerPlugin(Flip, ScrollTrigger);
 
@@ -278,8 +279,12 @@ function downloadRows(filename: string, rows: DataRow[]) {
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  // Attach the link before clicking for Safari/WebView compatibility, then
+  // defer revocation so the download consumer has time to read the blob.
+  link.style.display = "none";
+  document.body.appendChild(link);
   link.click();
-  URL.revokeObjectURL(url);
+  window.setTimeout(() => { URL.revokeObjectURL(url); link.remove(); }, 1000);
 }
 
 function downloadEvidence(data: DashboardData) {
@@ -321,6 +326,10 @@ function validatePayload(value: unknown): DashboardData {
   const metadataErrors = payload.chart_metadata.filter((item) => !item.title || !item.subtitle || !item.source_dataset || !item.caveat || !item.accessible_summary || !Array.isArray(item.fields) || !item.fields.length);
   if (metadataErrors.length) throw new Error(`Dashboard chart metadata is incomplete: ${metadataErrors.map((item) => item.chart_id).join(", ")}`);
   const chartData = payload.chart_data as Record<string, unknown>;
+  const unknownChartData = Object.keys(chartData).filter((id) => !chartPlacementIds.includes(id));
+  if (unknownChartData.length) throw new Error(`Dashboard chart data contains unknown placements: ${unknownChartData.join(", ")}`);
+  const metadataScopeErrors = payload.chart_metadata.filter((item) => !(REQUIRED_SECTION_IDS as string[]).includes(item.section_id) || !Array.isArray(datasets[item.source_dataset]));
+  if (metadataScopeErrors.length) throw new Error(`Dashboard chart metadata references an invalid section or dataset: ${metadataScopeErrors.map((item) => item.chart_id).join(", ")}`);
   const missingChartData = chartPlacementIds.filter((id) => !Array.isArray(chartData[id]));
   if (missingChartData.length) throw new Error(`Dashboard chart data is missing placements: ${missingChartData.join(", ")}`);
   const emptyChartData = chartPlacementIds.filter((id) => !(chartData[id] as unknown[]).length);
@@ -328,7 +337,7 @@ function validatePayload(value: unknown): DashboardData {
   if (payload.manifest.chart_placement_count !== chartPlacementIds.length || payload.manifest.distinct_chart_count !== 21 || payload.manifest.section_ids.length !== REQUIRED_SECTION_IDS.length || payload.manifest.table_count !== tableIds.length) throw new Error("Dashboard preservation manifest is incomplete.");
   const incompleteTables = tableIds.filter((id) => {
     const table = payload.tables[id as keyof typeof payload.tables];
-    return !table?.columns?.length || !Array.isArray(table.rows) || table.rows.some((row) => table.columns.some((column) => !(column in row)));
+    return !table?.columns?.length || !Array.isArray(table.rows) || !Array.isArray(table.source_datasets) || typeof table.sortable !== "boolean" || table.rows.some((row) => table.columns.some((column) => !(column in row)));
   });
   if (incompleteTables.length) throw new Error(`Dashboard table contract is incomplete: ${incompleteTables.join(", ")}`);
   return payload;
@@ -361,7 +370,8 @@ function ChartCard({ id, metadata, data, totalPipeline, coverageMix, presenting 
     <div className="chart-heading"><div><h3 id={`${id}-title`}>{title}</h3><p id={`${id}-subtitle`}>{subtitle}</p></div><div className="chart-actions"><button type="button" className="icon-button" title="View chart data" aria-label={`View data for ${title}`} aria-expanded={table} aria-controls={tableId} onClick={() => setTable((value) => !value)}><FileText size={15} /></button><button type="button" className="icon-button" title="Download chart data" aria-label={`Download data for ${title}`} onClick={() => downloadRows(`${id}.csv`, chartRows)}><Download size={15} /></button></div></div>
     <div className="chart-visual" role="img" aria-labelledby={`${id}-title ${id}-subtitle`} aria-describedby={summaryId}><Suspense fallback={<div className="chart-empty" role="status">Loading visual…</div>}><ChartRenderer id={id} data={data.datasets} totalPipeline={totalPipeline} coverageMix={coverageMix} /></Suspense></div>
     <p id={summaryId} className="chart-accessible-summary">{metadata?.accessible_summary}</p>
-    {info && <div className="chart-explanation"><div className="explanation-row"><strong>{info.title}</strong><button type="button" className="text-button" aria-expanded={details} onClick={() => setDetails((value) => !value)}>{details ? "Hide details" : "How to read"}<ChevronDown className={details ? "rotate" : ""} size={14} /></button></div>{details && <div className="explanation-body"><p>{info.body}</p><div className="insight"><Sparkles size={14} />{interpolate(info.insight, data)}</div>{metadata?.caveat && <p className="chart-caveat"><CircleAlert size={14} />{metadata.caveat}</p>}</div>}</div>}
+    {metadata?.caveat && <p className="chart-caveat chart-caveat-visible"><CircleAlert size={14} /><span>{metadata.caveat}</span></p>}
+    {info && <div className="chart-explanation"><div className="explanation-row"><strong>{info.title}</strong><button type="button" className="text-button" aria-expanded={details} onClick={() => setDetails((value) => !value)}>{details ? "Hide details" : "How to read"}<ChevronDown className={details ? "rotate" : ""} size={14} /></button></div>{details && <div className="explanation-body"><p>{info.body}</p><div className="insight"><Sparkles size={14} />{interpolate(info.insight, data)}</div></div>}</div>}
     {table && <DataTable id={tableId} rows={chartRows} label={`${title} data`} />}
     {presenting && <span className="presentation-mark" aria-hidden="true">Evidence</span>}
   </article>;
@@ -523,6 +533,7 @@ function App() {
   const root = useRef<HTMLDivElement>(null);
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const menuWasOpen = useRef(false);
   const caveatsTrigger = useRef<HTMLButtonElement>(null);
   const caveatsClose = useRef<HTMLButtonElement>(null);
   const caveatsWasOpen = useRef(false);
@@ -576,8 +587,15 @@ function App() {
 
   useEffect(() => { document.body.classList.toggle("presentation-mode", presenting); localStorage.setItem("dashboardMode", presenting ? "presentation" : "analyst"); window.setTimeout(() => ScrollTrigger.refresh(), 200); }, [presenting]);
   useEffect(() => {
-    if (!menuOpen) { document.body.style.overflow = ""; return; }
-    document.body.style.overflow = "hidden";
+    if (!menuOpen) {
+      // The trigger lives inside #main-content, which is inert while the
+      // drawer is open.  Restore focus on the next frame, after the inert
+      // attribute has been removed by the overlay effect.
+      if (menuWasOpen.current) window.requestAnimationFrame(() => menuButton.current?.focus());
+      menuWasOpen.current = false;
+      return;
+    }
+    menuWasOpen.current = true;
     closeButton.current?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") { event.preventDefault(); setMenuOpen(false); menuButton.current?.focus(); return; }
@@ -592,17 +610,15 @@ function App() {
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+    return () => { window.removeEventListener("keydown", onKey); };
   }, [menuOpen]);
   useEffect(() => {
     if (!caveatsOpen) {
-      if (caveatsWasOpen.current) caveatsTrigger.current?.focus();
+      if (caveatsWasOpen.current) window.requestAnimationFrame(() => caveatsTrigger.current?.focus());
       caveatsWasOpen.current = false;
-      document.body.style.overflow = "";
       return;
     }
     caveatsWasOpen.current = true;
-    document.body.style.overflow = "hidden";
     caveatsClose.current?.focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") { event.preventDefault(); setCaveatsOpen(false); return; }
@@ -617,8 +633,32 @@ function App() {
       else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
     };
     window.addEventListener("keydown", onKey);
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = ""; };
+    return () => { window.removeEventListener("keydown", onKey); };
   }, [caveatsOpen]);
+  useEffect(() => {
+    document.body.style.overflow = menuOpen || caveatsOpen ? "hidden" : "";
+    return () => { document.body.style.overflow = ""; };
+  }, [menuOpen, caveatsOpen]);
+  useEffect(() => {
+    // Keep the rest of the application out of the accessibility tree while
+    // an overlay is active.  Focus trapping prevents keyboard escape, while
+    // inert/aria-hidden also blocks programmatic and screen-reader traversal.
+    const main = document.querySelector<HTMLElement>("#main-content");
+    const sidebar = document.querySelector<HTMLElement>("#dashboard-navigation");
+    const setInert = (node: HTMLElement | null, active: boolean) => {
+      if (!node) return;
+      if (active) {
+        node.setAttribute("inert", "");
+        node.setAttribute("aria-hidden", "true");
+      } else {
+        node.removeAttribute("inert");
+        node.removeAttribute("aria-hidden");
+      }
+    };
+    setInert(main, menuOpen || caveatsOpen);
+    setInert(sidebar, caveatsOpen);
+    return () => { setInert(main, false); setInert(sidebar, false); };
+  }, [menuOpen, caveatsOpen]);
   useEffect(() => {
     const beforePrint = () => setPrintAll(true);
     const afterPrint = () => setPrintAll(false);
@@ -664,7 +704,7 @@ function App() {
   };
 
   return <div ref={root} className="app-shell">
-    <aside id="dashboard-navigation" className={`sidebar ${menuOpen ? "is-open" : ""}`} role={menuOpen ? "dialog" : undefined} aria-label="Dashboard sections" aria-modal={menuOpen ? "true" : undefined}><div className="brand"><span>RC</span><div><strong>Revenue Command Center</strong><small>Marketing analytics · {data.meta.period}</small></div></div><button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button><div className="nav-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find evidence" aria-label="Search dashboard sections" /></div><nav className="section-nav">{filteredGroups.map((group) => <div className="nav-group" key={group.id}><div className="nav-group-label">{group.icon}<span>{group.label}</span></div>{group.children.map((item) => <a key={item.id} href={`#${item.id}`} className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={(event) => { event.preventDefault(); openSection(item.id); }}><span>{item.label}</span>{active === item.id && <span className="nav-active" aria-hidden="true" />}</a>)}</div>)}</nav>{search.trim() && !hasSearchResults && <p className="nav-empty" role="status">No sections match “{search}”.</p>}<a className="legacy-link" href="/full-analysis"><ExternalLink size={15} /><span><strong>Full analysis archive</strong><small>Original Plotly reference</small></span></a><div className="sidebar-note"><ShieldCheck size={16} /><span>Validated Parquet evidence<br />Schema v{data.schema_version}</span></div></aside>{menuOpen && <button type="button" className="nav-backdrop" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation" />}
+    <aside id="dashboard-navigation" className={`sidebar ${menuOpen ? "is-open" : ""}`} role={menuOpen ? "dialog" : undefined} aria-label="Dashboard sections" aria-modal={menuOpen ? "true" : undefined}><div className="brand"><span>RC</span><div><strong>Revenue Command Center</strong><small>Marketing analytics · {data.meta.period}</small></div></div><button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button><div className="nav-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find evidence" aria-label="Search dashboard sections" /></div><nav className="section-nav">{filteredGroups.map((group) => <div className="nav-group" key={group.id}><div className="nav-group-label">{group.icon}<span>{group.label}</span></div>{group.children.map((item) => <a key={item.id} href={`#${item.id}`} className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={(event) => { event.preventDefault(); openSection(item.id); }}><span>{item.label}</span>{active === item.id && <AnimatedNavIndicator />}</a>)}</div>)}</nav>{search.trim() && !hasSearchResults && <p className="nav-empty" role="status">No sections match “{search}”.</p>}<a className="legacy-link" href="/full-analysis"><ExternalLink size={15} /><span><strong>Full analysis archive</strong><small>Original Plotly reference</small></span></a><div className="sidebar-note"><ShieldCheck size={16} /><span>Validated Parquet evidence<br />Schema v{data.schema_version}</span></div></aside>{menuOpen && <button type="button" className="nav-backdrop" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation" />}
       <main id="main-content"><header className="topbar"><div className="topbar-left"><button ref={menuButton} className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="dashboard-navigation"><Menu size={18} /></button><div><h1>Revenue Command Center</h1><span className="top-context">Marketing Analytics / {activeGroup?.label ?? "Dashboard"}</span></div></div><div className="top-actions"><span className="data-meta">{metrics.data_year_range} · {metrics.total_opportunities} opportunities · 8 sources</span><span className="validated"><Check size={13} /> Evidence validated</span><button ref={caveatsTrigger} className="action-button" type="button" title="View data caveats" onClick={() => setCaveatsOpen(true)} aria-haspopup="dialog" aria-expanded={caveatsOpen}><Info size={15} /> Caveats</button><button className="action-button utility-export" type="button" title="Export all evidence" onClick={() => downloadEvidence(data)}><Download size={15} /> Export</button><button className="action-button utility-print" type="button" title="Print all dashboard sections" onClick={() => { setPrintAll(true); window.setTimeout(() => { window.print(); window.setTimeout(() => setPrintAll(false), 1500); }, 120); }}><Printer size={15} /> Print</button><button className={`mode-button ${presenting ? "active" : ""}`} type="button" title={presenting ? "Switch to analyst mode" : "Switch to presentation mode"} onClick={togglePresentation} aria-pressed={presenting}><Presentation size={15} /> {presenting ? "Analyst mode" : "Presentation mode"}</button><button className="icon-button utility-reset" type="button" onClick={() => { setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }} title="Reset dashboard" aria-label="Reset dashboard"><RotateCcw size={16} /></button></div></header>
       <section className={`command-strip ${active === "s-essential" ? "" : "is-compact"}`} aria-label="Executive operating summary"><div className="command-decision"><h2>Protect win quality. Expand account coverage through a measured holdout.</h2><p>Attribution guides where to investigate; it does not justify blanket budget scaling.</p><span>Operating decision · measurement required</span></div><div className="command-kpis"><div><span>Total pipeline</span><strong>{metrics.total_pipeline}</strong><small>{metrics.total_opportunities} opportunities</small></div><div><span>Recorded won revenue</span><strong>{metrics.won_revenue}</strong><small>{metrics.closed_deal_win_rate} resolved win rate</small></div><div><span>Marketing sourced</span><strong>{metrics.marketing_sourced_pipeline}</strong><small>{metrics.marketing_sourced_share} of pipeline</small></div><div><span>Influenced signal</span><strong>{metrics.marketing_influenced_pipeline}</strong><small>{metrics.attribution_linked_won_share} of wins linked</small></div></div></section>
       <StoryStrip data={data} />
@@ -672,7 +712,7 @@ function App() {
       <div className={`section-viewport ${printAll ? "print-all" : ""}`}>{printAll ? sectionOrder.map((id) => <div className="print-section" key={id}>{renderSection(id)}</div>) : renderSection(active)}</div>
       <footer><span>Marketing Analytics Decision System</span><span>Source: validated integrated datasets · {data.meta.methodology}</span></footer>
     </main>
-    {caveatsOpen && <><button className="drawer-backdrop" aria-label="Close caveats" onClick={() => setCaveatsOpen(false)} /><aside className="caveats-drawer" role="dialog" aria-modal="true" aria-labelledby="caveats-title"><div className="drawer-head"><h2 id="caveats-title">Data Caveats</h2><button ref={caveatsClose} type="button" className="icon-button" onClick={() => setCaveatsOpen(false)} aria-label="Close caveats"><X size={17} /></button></div><p>These constraints stay visible because they change what the dashboard can safely claim.</p><ul>{data.context.caveats.map((caveat) => <li key={caveat}>{caveat}</li>)}</ul><div className="drawer-source"><strong>Methodology</strong><span>{data.meta.methodology}</span></div></aside></>}
+    {caveatsOpen && <><button type="button" tabIndex={-1} className="drawer-backdrop" aria-hidden="true" aria-label="Close caveats" onClick={() => setCaveatsOpen(false)} /><aside className="caveats-drawer" role="dialog" aria-modal="true" aria-labelledby="caveats-title"><div className="drawer-head"><h2 id="caveats-title">Data Caveats</h2><button ref={caveatsClose} type="button" className="icon-button" onClick={() => setCaveatsOpen(false)} aria-label="Close caveats"><X size={17} /></button></div><p>These constraints stay visible because they change what the dashboard can safely claim.</p><ul>{data.context.caveats.map((caveat) => <li key={caveat}>{caveat}</li>)}</ul><div className="drawer-source"><strong>Methodology</strong><span>{data.meta.methodology}</span></div></aside></>}
   </div>;
 }
 

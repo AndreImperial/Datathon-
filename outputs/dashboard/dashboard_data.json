@@ -5,7 +5,7 @@
     "period": "2018–2024",
     "generated_from": "validated Parquet outputs",
     "methodology": "365-day primary attribution with 30/90/180/365-day sensitivity; resolved-outcome win rates; cohort maturity controls",
-    "generated_at": "2026-08-30T11:31:20.633578+00:00",
+    "generated_at": "2026-08-30T12:20:13.442913+00:00",
     "source_freshness": "Generated from the latest validated integrated and cleaned Parquet outputs."
   },
   "context": {
@@ -1077,7 +1077,7 @@
         "active_scored_rows": 447,
         "validation": "time-based 80/20 holdout; preprocessing fit on train only",
         "feature_policy": "opportunity-time fields only; present-day account snapshot fields excluded",
-        "calibration_mean_abs_gap": 0.06537146047494578,
+        "calibration_mean_abs_gap": 0.0653714604749458,
         "calibration_max_abs_gap": 0.13942325627692664
       }
     ],
@@ -1085,9 +1085,9 @@
       {
         "score_band": "Test quintile 1",
         "n": 114,
-        "predicted_win_rate": 0.157416413880665,
+        "predicted_win_rate": 0.15741641388066502,
         "observed_win_rate": 0.15789473684210525,
-        "abs_gap": 0.000478322961440264
+        "abs_gap": 0.00047832296144023623
       },
       {
         "score_band": "Test quintile 2",
@@ -1099,9 +1099,9 @@
       {
         "score_band": "Test quintile 3",
         "n": 113,
-        "predicted_win_rate": 0.32504047162296495,
+        "predicted_win_rate": 0.325040471622965,
         "observed_win_rate": 0.21238938053097345,
-        "abs_gap": 0.1126510910919915
+        "abs_gap": 0.11265109109199156
       },
       {
         "score_band": "Test quintile 4",
@@ -4859,7 +4859,7 @@
         "_amount": 31829.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.7733831110668794,
+        "win_probability": 0.7733831110668795,
         "amount_quality": "positive amount"
       },
       {
@@ -4899,7 +4899,7 @@
         "_amount": 62.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7410267602055233,
+        "win_probability": 0.741026760205523,
         "amount_quality": "positive amount"
       },
       {
@@ -4909,7 +4909,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Commercial",
-        "win_probability": 0.7408532634654529,
+        "win_probability": 0.740853263465453,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -4939,7 +4939,7 @@
         "_amount": 165.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7391186414334947,
+        "win_probability": 0.7391186414334949,
         "amount_quality": "positive amount"
       },
       {
@@ -4949,7 +4949,7 @@
         "_amount": 1092.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7338072971228524,
+        "win_probability": 0.7338072971228526,
         "amount_quality": "positive amount"
       },
       {
@@ -4959,7 +4959,7 @@
         "_amount": 1839.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7222770753936162,
+        "win_probability": 0.7222770753936161,
         "amount_quality": "positive amount"
       },
       {
@@ -4979,7 +4979,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Commercial",
-        "win_probability": 0.7085438876638861,
+        "win_probability": 0.708543887663886,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5009,7 +5009,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5019,7 +5019,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5029,7 +5029,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5039,7 +5039,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5049,7 +5049,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5059,7 +5059,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5069,7 +5069,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5079,7 +5079,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5089,7 +5089,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5099,7 +5099,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5109,7 +5109,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5119,7 +5119,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.6949564927593276,
+        "win_probability": 0.6949564927593278,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5129,7 +5129,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.6949564927593276,
+        "win_probability": 0.6949564927593278,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5139,7 +5139,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.6949564927593276,
+        "win_probability": 0.6949564927593278,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5149,7 +5149,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.6949564927593276,
+        "win_probability": 0.6949564927593278,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5159,7 +5159,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.6949564927593276,
+        "win_probability": 0.6949564927593278,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5189,7 +5189,7 @@
         "_amount": 2892.14,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.6686242435977318,
+        "win_probability": 0.6686242435977319,
         "amount_quality": "positive amount"
       },
       {
@@ -5249,7 +5249,7 @@
         "_amount": 21803.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.6280307894735511,
+        "win_probability": 0.6280307894735512,
         "amount_quality": "positive amount"
       },
       {
@@ -5279,7 +5279,7 @@
         "_amount": 20000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.5967227843521208,
+        "win_probability": 0.5967227843521207,
         "amount_quality": "positive amount"
       },
       {
@@ -5319,7 +5319,7 @@
         "_amount": 3886.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.5778032982687785,
+        "win_probability": 0.5778032982687784,
         "amount_quality": "positive amount"
       },
       {
@@ -5369,7 +5369,7 @@
         "_amount": 28661.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.5258996614209511,
+        "win_probability": 0.525899661420951,
         "amount_quality": "positive amount"
       },
       {
@@ -5409,7 +5409,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.5067782149378326,
+        "win_probability": 0.5067782149378325,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5449,7 +5449,7 @@
         "_amount": 5500.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.460577145705846,
+        "win_probability": 0.46057714570584596,
         "amount_quality": "positive amount"
       },
       {
@@ -5459,7 +5459,7 @@
         "_amount": 44809.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.45947470729289913,
+        "win_probability": 0.4594747072928992,
         "amount_quality": "positive amount"
       },
       {
@@ -5469,7 +5469,7 @@
         "_amount": 5335.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.45842697364493995,
+        "win_probability": 0.4584269736449398,
         "amount_quality": "positive amount"
       },
       {
@@ -5479,7 +5479,7 @@
         "_amount": 125000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.45669511302671384,
+        "win_probability": 0.4566951130267137,
         "amount_quality": "positive amount"
       },
       {
@@ -5489,7 +5489,7 @@
         "_amount": 50000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.45669511302671384,
+        "win_probability": 0.4566951130267137,
         "amount_quality": "positive amount"
       },
       {
@@ -5499,7 +5499,7 @@
         "_amount": 45000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.45669511302671384,
+        "win_probability": 0.4566951130267137,
         "amount_quality": "positive amount"
       },
       {
@@ -5539,7 +5539,7 @@
         "_amount": 0.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.45015555987675987,
+        "win_probability": 0.4501555598767598,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5549,7 +5549,7 @@
         "_amount": 0.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.45015555987675987,
+        "win_probability": 0.4501555598767598,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5569,7 +5569,7 @@
         "_amount": 15000.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.44846522607256917,
+        "win_probability": 0.44846522607256906,
         "amount_quality": "positive amount"
       },
       {
@@ -5579,7 +5579,7 @@
         "_amount": 11956.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.44810664806306194,
+        "win_probability": 0.4481066480630618,
         "amount_quality": "positive amount"
       },
       {
@@ -5629,7 +5629,7 @@
         "_amount": 13500.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.4325668530190097,
+        "win_probability": 0.4325668530190098,
         "amount_quality": "positive amount"
       },
       {
@@ -5639,7 +5639,7 @@
         "_amount": 1500000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.43120288005611507,
+        "win_probability": 0.431202880056115,
         "amount_quality": "positive amount"
       },
       {
@@ -5649,7 +5649,7 @@
         "_amount": 110000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.43120288005611507,
+        "win_probability": 0.431202880056115,
         "amount_quality": "positive amount"
       },
       {
@@ -5659,7 +5659,7 @@
         "_amount": 75000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.43120288005611507,
+        "win_probability": 0.431202880056115,
         "amount_quality": "positive amount"
       },
       {
@@ -5669,7 +5669,7 @@
         "_amount": 50000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.43120288005611507,
+        "win_probability": 0.431202880056115,
         "amount_quality": "positive amount"
       },
       {
@@ -5699,7 +5699,7 @@
         "_amount": 5022.25,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.4277360220403046,
+        "win_probability": 0.4277360220403047,
         "amount_quality": "positive amount"
       },
       {
@@ -5709,7 +5709,7 @@
         "_amount": 5000.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.4277360220403046,
+        "win_probability": 0.4277360220403047,
         "amount_quality": "positive amount"
       },
       {
@@ -5719,7 +5719,7 @@
         "_amount": 5000.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.4277360220403046,
+        "win_probability": 0.4277360220403047,
         "amount_quality": "positive amount"
       },
       {
@@ -5739,7 +5739,7 @@
         "_amount": 33000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.4186191509587922,
+        "win_probability": 0.4186191509587921,
         "amount_quality": "positive amount"
       },
       {
@@ -5759,7 +5759,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.4178891154551778,
+        "win_probability": 0.41788911545517793,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5769,7 +5769,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.4178891154551778,
+        "win_probability": 0.41788911545517793,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5809,7 +5809,7 @@
         "_amount": 21364.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.4140881669009059,
+        "win_probability": 0.41408816690090583,
         "amount_quality": "positive amount"
       },
       {
@@ -5819,7 +5819,7 @@
         "_amount": 9000.0,
         "channel_category": "6sense_event",
         "segment__c": "Commercial",
-        "win_probability": 0.4126564217034279,
+        "win_probability": 0.4126564217034278,
         "amount_quality": "positive amount"
       },
       {
@@ -5829,7 +5829,7 @@
         "_amount": 0.0,
         "channel_category": "web_inbound",
         "segment__c": "Commercial",
-        "win_probability": 0.411250926550562,
+        "win_probability": 0.41125092655056206,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5849,7 +5849,7 @@
         "_amount": 31085.0,
         "channel_category": "email_mqa",
         "segment__c": "Commercial",
-        "win_probability": 0.40844563828065306,
+        "win_probability": 0.40844563828065295,
         "amount_quality": "positive amount"
       },
       {
@@ -5859,7 +5859,7 @@
         "_amount": 16303.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.4082364232485031,
+        "win_probability": 0.40823642324850296,
         "amount_quality": "positive amount"
       },
       {
@@ -5889,7 +5889,7 @@
         "_amount": 0.0,
         "channel_category": "web_inbound",
         "segment__c": "Commercial",
-        "win_probability": 0.4026038114765037,
+        "win_probability": 0.40260381147650365,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5899,7 +5899,7 @@
         "_amount": 28382.0,
         "channel_category": "email_mqa",
         "segment__c": "Commercial",
-        "win_probability": 0.401766425112611,
+        "win_probability": 0.40176642511261096,
         "amount_quality": "positive amount"
       },
       {
@@ -5909,7 +5909,7 @@
         "_amount": 8941.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3976285029543283,
+        "win_probability": 0.3976285029543282,
         "amount_quality": "positive amount"
       },
       {
@@ -5919,7 +5919,7 @@
         "_amount": 28945.0,
         "channel_category": "6sense_event",
         "segment__c": "Mid",
-        "win_probability": 0.3948096384784342,
+        "win_probability": 0.39480963847843414,
         "amount_quality": "positive amount"
       },
       {
@@ -5929,7 +5929,7 @@
         "_amount": 25000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.39320238043272016,
+        "win_probability": 0.39320238043272004,
         "amount_quality": "positive amount"
       },
       {
@@ -5939,7 +5939,7 @@
         "_amount": 0.0,
         "channel_category": "web_inbound",
         "segment__c": "Commercial",
-        "win_probability": 0.392209755096566,
+        "win_probability": 0.3922097550965662,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5949,7 +5949,7 @@
         "_amount": 0.0,
         "channel_category": "web_inbound",
         "segment__c": "Commercial",
-        "win_probability": 0.392209755096566,
+        "win_probability": 0.3922097550965662,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -5959,7 +5959,7 @@
         "_amount": 30000.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.3905519191019903,
+        "win_probability": 0.3905519191019902,
         "amount_quality": "positive amount"
       },
       {
@@ -5969,7 +5969,7 @@
         "_amount": 11931.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.3904561610910436,
+        "win_probability": 0.39045616109104364,
         "amount_quality": "positive amount"
       },
       {
@@ -5979,7 +5979,7 @@
         "_amount": 23007.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.3895437827270811,
+        "win_probability": 0.38954378272708107,
         "amount_quality": "positive amount"
       },
       {
@@ -6009,7 +6009,7 @@
         "_amount": 24237.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.38917658936408656,
+        "win_probability": 0.3891765893640865,
         "amount_quality": "positive amount"
       },
       {
@@ -6049,7 +6049,7 @@
         "_amount": 500000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.37785061205605225,
+        "win_probability": 0.3778506120560522,
         "amount_quality": "positive amount"
       },
       {
@@ -6059,7 +6059,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.37646360667848633,
+        "win_probability": 0.3764636066784864,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -6069,7 +6069,7 @@
         "_amount": 15000.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.37006679183116603,
+        "win_probability": 0.3700667918311661,
         "amount_quality": "positive amount"
       },
       {
@@ -6109,7 +6109,7 @@
         "_amount": 24545.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.3528643989319371,
+        "win_probability": 0.3528643989319372,
         "amount_quality": "positive amount"
       },
       {
@@ -6149,7 +6149,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": null,
-        "win_probability": 0.346398885988183,
+        "win_probability": 0.34639888598818325,
         "amount_quality": "positive amount"
       },
       {
@@ -6159,7 +6159,7 @@
         "_amount": 23606.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.3463701929779428,
+        "win_probability": 0.34637019297794275,
         "amount_quality": "positive amount"
       },
       {
@@ -6169,7 +6169,7 @@
         "_amount": 23400.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.3463701929779428,
+        "win_probability": 0.34637019297794275,
         "amount_quality": "positive amount"
       },
       {
@@ -6189,7 +6189,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": null,
-        "win_probability": 0.3434458197308854,
+        "win_probability": 0.3434458197308853,
         "amount_quality": "positive amount"
       },
       {
@@ -6199,7 +6199,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": null,
-        "win_probability": 0.3434458197308854,
+        "win_probability": 0.3434458197308853,
         "amount_quality": "positive amount"
       },
       {
@@ -6209,7 +6209,7 @@
         "_amount": 19800.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.3430037707421964,
+        "win_probability": 0.34300377074219635,
         "amount_quality": "positive amount"
       },
       {
@@ -6259,7 +6259,7 @@
         "_amount": 16182.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3361617107469197,
+        "win_probability": 0.33616171074691975,
         "amount_quality": "positive amount"
       },
       {
@@ -6299,7 +6299,7 @@
         "_amount": 20000.0,
         "channel_category": "6sense_event",
         "segment__c": "Commercial",
-        "win_probability": 0.3326346608831572,
+        "win_probability": 0.33263466088315724,
         "amount_quality": "positive amount"
       },
       {
@@ -6309,7 +6309,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.3315227586870386,
+        "win_probability": 0.3315227586870385,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -6319,7 +6319,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.3315227586870386,
+        "win_probability": 0.3315227586870385,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -6329,7 +6329,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.3315227586870386,
+        "win_probability": 0.3315227586870385,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -6339,7 +6339,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.3315227586870386,
+        "win_probability": 0.3315227586870385,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -6349,7 +6349,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.3315227586870386,
+        "win_probability": 0.3315227586870385,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -6369,7 +6369,7 @@
         "_amount": 10000.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.32527272371046495,
+        "win_probability": 0.325272723710465,
         "amount_quality": "positive amount"
       },
       {
@@ -6379,7 +6379,7 @@
         "_amount": 30000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.32175255338164105,
+        "win_probability": 0.321752553381641,
         "amount_quality": "positive amount"
       },
       {
@@ -6389,7 +6389,7 @@
         "_amount": 30000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.32175255338164105,
+        "win_probability": 0.321752553381641,
         "amount_quality": "positive amount"
       },
       {
@@ -6399,7 +6399,7 @@
         "_amount": 30000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.32175255338164105,
+        "win_probability": 0.321752553381641,
         "amount_quality": "positive amount"
       },
       {
@@ -6409,7 +6409,7 @@
         "_amount": 8491.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.3211945006751054,
+        "win_probability": 0.32119450067510535,
         "amount_quality": "positive amount"
       },
       {
@@ -6479,7 +6479,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3196004772387981,
+        "win_probability": 0.3196004772387982,
         "amount_quality": "positive amount"
       },
       {
@@ -6489,7 +6489,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3196004772387981,
+        "win_probability": 0.3196004772387982,
         "amount_quality": "positive amount"
       },
       {
@@ -6499,7 +6499,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3196004772387981,
+        "win_probability": 0.3196004772387982,
         "amount_quality": "positive amount"
       },
       {
@@ -6509,7 +6509,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3196004772387981,
+        "win_probability": 0.3196004772387982,
         "amount_quality": "positive amount"
       },
       {
@@ -6519,7 +6519,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3196004772387981,
+        "win_probability": 0.3196004772387982,
         "amount_quality": "positive amount"
       },
       {
@@ -6529,7 +6529,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3196004772387981,
+        "win_probability": 0.3196004772387982,
         "amount_quality": "positive amount"
       },
       {
@@ -6539,7 +6539,7 @@
         "_amount": 10294.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.31761346434565263,
+        "win_probability": 0.3176134643456526,
         "amount_quality": "positive amount"
       },
       {
@@ -6549,7 +6549,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": "Mid",
-        "win_probability": 0.3175660445160834,
+        "win_probability": 0.31756604451608333,
         "amount_quality": "positive amount"
       },
       {
@@ -6829,7 +6829,7 @@
         "_amount": 2800.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.3009560703514873,
+        "win_probability": 0.30095607035148725,
         "amount_quality": "positive amount"
       },
       {
@@ -6859,7 +6859,7 @@
         "_amount": 8983.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2979944752327497,
+        "win_probability": 0.29799447523274963,
         "amount_quality": "positive amount"
       },
       {
@@ -6939,7 +6939,7 @@
         "_amount": 10000.0,
         "channel_category": "web_inbound",
         "segment__c": "Commercial",
-        "win_probability": 0.29532239466615257,
+        "win_probability": 0.2953223946661525,
         "amount_quality": "positive amount"
       },
       {
@@ -6949,7 +6949,7 @@
         "_amount": 10000.0,
         "channel_category": "web_inbound",
         "segment__c": "Commercial",
-        "win_probability": 0.29532239466615257,
+        "win_probability": 0.2953223946661525,
         "amount_quality": "positive amount"
       },
       {
@@ -6969,7 +6969,7 @@
         "_amount": 5000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.29361121213330704,
+        "win_probability": 0.2936112121333071,
         "amount_quality": "positive amount"
       },
       {
@@ -6999,7 +6999,7 @@
         "_amount": 12500.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.29028157734597143,
+        "win_probability": 0.2902815773459714,
         "amount_quality": "positive amount"
       },
       {
@@ -7029,7 +7029,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.28827961193277785,
+        "win_probability": 0.2882796119327779,
         "amount_quality": "positive amount"
       },
       {
@@ -7049,7 +7049,7 @@
         "_amount": 18000.0,
         "channel_category": "6sense_channel",
         "segment__c": "Commercial",
-        "win_probability": 0.286810686600691,
+        "win_probability": 0.2868106866006909,
         "amount_quality": "positive amount"
       },
       {
@@ -7069,7 +7069,7 @@
         "_amount": 4703.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.28600400548250926,
+        "win_probability": 0.2860040054825093,
         "amount_quality": "positive amount"
       },
       {
@@ -7079,7 +7079,7 @@
         "_amount": 20000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.28510375573950714,
+        "win_probability": 0.2851037557395072,
         "amount_quality": "positive amount"
       },
       {
@@ -7139,7 +7139,7 @@
         "_amount": 10500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2828479959089947,
+        "win_probability": 0.28284799590899473,
         "amount_quality": "positive amount"
       },
       {
@@ -7149,7 +7149,7 @@
         "_amount": 18651.0,
         "channel_category": "email_mqa",
         "segment__c": "Commercial",
-        "win_probability": 0.2732916619698745,
+        "win_probability": 0.2732916619698744,
         "amount_quality": "positive amount"
       },
       {
@@ -7209,7 +7209,7 @@
         "_amount": 30000.0,
         "channel_category": "web_inbound",
         "segment__c": "Enterprise",
-        "win_probability": 0.26791551453905926,
+        "win_probability": 0.2679155145390594,
         "amount_quality": "positive amount"
       },
       {
@@ -7249,7 +7249,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.26091105206050286,
+        "win_probability": 0.2609110520605029,
         "amount_quality": "positive amount"
       },
       {
@@ -7319,7 +7319,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.25176578682445044,
+        "win_probability": 0.2517657868244504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7359,7 +7359,7 @@
         "_amount": 14812.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.24942358819176846,
+        "win_probability": 0.24942358819176844,
         "amount_quality": "positive amount"
       },
       {
@@ -7369,7 +7369,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": "Enterprise",
-        "win_probability": 0.2484799552882128,
+        "win_probability": 0.24847995528821276,
         "amount_quality": "positive amount"
       },
       {
@@ -7379,7 +7379,7 @@
         "_amount": 20000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.24831390963632408,
+        "win_probability": 0.24831390963632413,
         "amount_quality": "positive amount"
       },
       {
@@ -7389,7 +7389,7 @@
         "_amount": 17500.0,
         "channel_category": "referral",
         "segment__c": "Enterprise",
-        "win_probability": 0.24801875018699648,
+        "win_probability": 0.2480187501869965,
         "amount_quality": "positive amount"
       },
       {
@@ -7429,7 +7429,7 @@
         "_amount": 12760.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.24437618672966685,
+        "win_probability": 0.24437618672966682,
         "amount_quality": "positive amount"
       },
       {
@@ -7449,7 +7449,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7459,7 +7459,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7469,7 +7469,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7479,7 +7479,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7489,7 +7489,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7499,7 +7499,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7509,7 +7509,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7519,7 +7519,7 @@
         "_amount": null,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7529,7 +7529,7 @@
         "_amount": null,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7539,7 +7539,7 @@
         "_amount": null,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7609,7 +7609,7 @@
         "_amount": 0.0,
         "channel_category": "event",
         "segment__c": "Enterprise",
-        "win_probability": 0.23549612008254242,
+        "win_probability": 0.2354961200825424,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7619,7 +7619,7 @@
         "_amount": 25000.0,
         "channel_category": "6sense_channel",
         "segment__c": "Enterprise",
-        "win_probability": 0.2341166714114544,
+        "win_probability": 0.23411667141145437,
         "amount_quality": "positive amount"
       },
       {
@@ -7639,7 +7639,7 @@
         "_amount": 12500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.23000636257751972,
+        "win_probability": 0.23000636257751966,
         "amount_quality": "positive amount"
       },
       {
@@ -7649,7 +7649,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": "Enterprise",
-        "win_probability": 0.2299673991764206,
+        "win_probability": 0.22996739917642056,
         "amount_quality": "positive amount"
       },
       {
@@ -7659,7 +7659,7 @@
         "_amount": 12717.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.22947172772220673,
+        "win_probability": 0.22947172772220667,
         "amount_quality": "positive amount"
       },
       {
@@ -7669,7 +7669,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": "Enterprise",
-        "win_probability": 0.22890845732427514,
+        "win_probability": 0.22890845732427517,
         "amount_quality": "positive amount"
       },
       {
@@ -7679,7 +7679,7 @@
         "_amount": 0.0,
         "channel_category": "event",
         "segment__c": "Enterprise",
-        "win_probability": 0.22763569142277013,
+        "win_probability": 0.2276356914227701,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7709,7 +7709,7 @@
         "_amount": 15000.0,
         "channel_category": "6sense_channel",
         "segment__c": "Mid",
-        "win_probability": 0.22254121251561584,
+        "win_probability": 0.22254121251561582,
         "amount_quality": "positive amount"
       },
       {
@@ -7719,7 +7719,7 @@
         "_amount": 0.0,
         "channel_category": "6sense_channel",
         "segment__c": "Enterprise",
-        "win_probability": 0.22034195439866827,
+        "win_probability": 0.22034195439866833,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7729,7 +7729,7 @@
         "_amount": 0.0,
         "channel_category": "6sense_channel",
         "segment__c": "Enterprise",
-        "win_probability": 0.22034195439866827,
+        "win_probability": 0.22034195439866833,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7969,7 +7969,7 @@
         "_amount": 0.0,
         "channel_category": "web_inbound",
         "segment__c": "Enterprise",
-        "win_probability": 0.20817249847857164,
+        "win_probability": 0.20817249847857167,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -7979,7 +7979,7 @@
         "_amount": 20000.0,
         "channel_category": "other",
         "segment__c": null,
-        "win_probability": 0.20455063878419902,
+        "win_probability": 0.20455063878419907,
         "amount_quality": "positive amount"
       },
       {
@@ -7989,7 +7989,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -7999,7 +7999,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -8009,7 +8009,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -8019,7 +8019,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -8029,7 +8029,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -8039,7 +8039,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -8049,7 +8049,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -8059,7 +8059,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -8139,7 +8139,7 @@
         "_amount": 0.0,
         "channel_category": "web_inbound",
         "segment__c": "Enterprise",
-        "win_probability": 0.19748458658043236,
+        "win_probability": 0.19748458658043233,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -8159,7 +8159,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.1956868571847367,
+        "win_probability": 0.19568685718473666,
         "amount_quality": "positive amount"
       },
       {
@@ -8169,7 +8169,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.1956868571847367,
+        "win_probability": 0.19568685718473666,
         "amount_quality": "positive amount"
       },
       {
@@ -8179,7 +8179,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.1956868571847367,
+        "win_probability": 0.19568685718473666,
         "amount_quality": "positive amount"
       },
       {
@@ -8189,7 +8189,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.1956868571847367,
+        "win_probability": 0.19568685718473666,
         "amount_quality": "positive amount"
       },
       {
@@ -8199,7 +8199,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.1956868571847367,
+        "win_probability": 0.19568685718473666,
         "amount_quality": "positive amount"
       },
       {
@@ -8209,7 +8209,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.1956868571847367,
+        "win_probability": 0.19568685718473666,
         "amount_quality": "positive amount"
       },
       {
@@ -8219,7 +8219,7 @@
         "_amount": 16981.0,
         "channel_category": "event",
         "segment__c": "Enterprise",
-        "win_probability": 0.19462146536790997,
+        "win_probability": 0.19462146536791003,
         "amount_quality": "positive amount"
       },
       {
@@ -8599,7 +8599,7 @@
         "_amount": 15000.0,
         "channel_category": "6sense_event",
         "segment__c": "Enterprise",
-        "win_probability": 0.18316940825903305,
+        "win_probability": 0.18316940825903302,
         "amount_quality": "positive amount"
       },
       {
@@ -8609,7 +8609,7 @@
         "_amount": 10000.0,
         "channel_category": "6sense_event",
         "segment__c": "Enterprise",
-        "win_probability": 0.18022734406796115,
+        "win_probability": 0.18022734406796118,
         "amount_quality": "positive amount"
       },
       {
@@ -8759,7 +8759,7 @@
         "_amount": 20000.0,
         "channel_category": "6sense_event",
         "segment__c": "Enterprise",
-        "win_probability": 0.17221638445493911,
+        "win_probability": 0.1722163844549391,
         "amount_quality": "positive amount"
       },
       {
@@ -8769,7 +8769,7 @@
         "_amount": 0.0,
         "channel_category": "email_mqa",
         "segment__c": "Mid",
-        "win_probability": 0.1678387007594749,
+        "win_probability": 0.16783870075947493,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -8779,7 +8779,7 @@
         "_amount": 0.0,
         "channel_category": "email_mqa",
         "segment__c": "Mid",
-        "win_probability": 0.1678387007594749,
+        "win_probability": 0.16783870075947493,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -8789,7 +8789,7 @@
         "_amount": 0.0,
         "channel_category": "email_mqa",
         "segment__c": "Mid",
-        "win_probability": 0.1678387007594749,
+        "win_probability": 0.16783870075947493,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -8799,7 +8799,7 @@
         "_amount": 0.0,
         "channel_category": "email_mqa",
         "segment__c": "Mid",
-        "win_probability": 0.1678387007594749,
+        "win_probability": 0.16783870075947493,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -8809,7 +8809,7 @@
         "_amount": 0.0,
         "channel_category": "email_mqa",
         "segment__c": "Mid",
-        "win_probability": 0.1678387007594749,
+        "win_probability": 0.16783870075947493,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -8879,7 +8879,7 @@
         "_amount": 10000.0,
         "channel_category": "6sense_channel",
         "segment__c": "Enterprise",
-        "win_probability": 0.1594483778990858,
+        "win_probability": 0.15944837789908578,
         "amount_quality": "positive amount"
       },
       {
@@ -8899,7 +8899,7 @@
         "_amount": 20000.0,
         "channel_category": "event",
         "segment__c": "Enterprise",
-        "win_probability": 0.14872859886714462,
+        "win_probability": 0.14872859886714465,
         "amount_quality": "positive amount"
       },
       {
@@ -12414,7 +12414,7 @@
         "_amount": 31829.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.7733831110668794,
+        "win_probability": 0.7733831110668795,
         "amount_quality": "positive amount"
       },
       {
@@ -12454,7 +12454,7 @@
         "_amount": 62.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7410267602055233,
+        "win_probability": 0.741026760205523,
         "amount_quality": "positive amount"
       },
       {
@@ -12464,7 +12464,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Commercial",
-        "win_probability": 0.7408532634654529,
+        "win_probability": 0.740853263465453,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12494,7 +12494,7 @@
         "_amount": 165.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7391186414334947,
+        "win_probability": 0.7391186414334949,
         "amount_quality": "positive amount"
       },
       {
@@ -12504,7 +12504,7 @@
         "_amount": 1092.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7338072971228524,
+        "win_probability": 0.7338072971228526,
         "amount_quality": "positive amount"
       },
       {
@@ -12514,7 +12514,7 @@
         "_amount": 1839.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7222770753936162,
+        "win_probability": 0.7222770753936161,
         "amount_quality": "positive amount"
       },
       {
@@ -12534,7 +12534,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Commercial",
-        "win_probability": 0.7085438876638861,
+        "win_probability": 0.708543887663886,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12564,7 +12564,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12574,7 +12574,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12584,7 +12584,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12594,7 +12594,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12604,7 +12604,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12614,7 +12614,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12624,7 +12624,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12634,7 +12634,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12644,7 +12644,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12654,7 +12654,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12664,7 +12664,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.7016406634623603,
+        "win_probability": 0.7016406634623601,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12674,7 +12674,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.6949564927593276,
+        "win_probability": 0.6949564927593278,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12684,7 +12684,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.6949564927593276,
+        "win_probability": 0.6949564927593278,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12694,7 +12694,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.6949564927593276,
+        "win_probability": 0.6949564927593278,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12704,7 +12704,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.6949564927593276,
+        "win_probability": 0.6949564927593278,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12714,7 +12714,7 @@
         "_amount": 0.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.6949564927593276,
+        "win_probability": 0.6949564927593278,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -12744,7 +12744,7 @@
         "_amount": 2892.14,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.6686242435977318,
+        "win_probability": 0.6686242435977319,
         "amount_quality": "positive amount"
       },
       {
@@ -12804,7 +12804,7 @@
         "_amount": 21803.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.6280307894735511,
+        "win_probability": 0.6280307894735512,
         "amount_quality": "positive amount"
       },
       {
@@ -12834,7 +12834,7 @@
         "_amount": 20000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.5967227843521208,
+        "win_probability": 0.5967227843521207,
         "amount_quality": "positive amount"
       },
       {
@@ -12874,7 +12874,7 @@
         "_amount": 3886.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.5778032982687785,
+        "win_probability": 0.5778032982687784,
         "amount_quality": "positive amount"
       },
       {
@@ -12924,7 +12924,7 @@
         "_amount": 28661.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.5258996614209511,
+        "win_probability": 0.525899661420951,
         "amount_quality": "positive amount"
       },
       {
@@ -12964,7 +12964,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.5067782149378326,
+        "win_probability": 0.5067782149378325,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13004,7 +13004,7 @@
         "_amount": 5500.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.460577145705846,
+        "win_probability": 0.46057714570584596,
         "amount_quality": "positive amount"
       },
       {
@@ -13014,7 +13014,7 @@
         "_amount": 44809.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.45947470729289913,
+        "win_probability": 0.4594747072928992,
         "amount_quality": "positive amount"
       },
       {
@@ -13024,7 +13024,7 @@
         "_amount": 5335.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.45842697364493995,
+        "win_probability": 0.4584269736449398,
         "amount_quality": "positive amount"
       },
       {
@@ -13034,7 +13034,7 @@
         "_amount": 125000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.45669511302671384,
+        "win_probability": 0.4566951130267137,
         "amount_quality": "positive amount"
       },
       {
@@ -13044,7 +13044,7 @@
         "_amount": 50000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.45669511302671384,
+        "win_probability": 0.4566951130267137,
         "amount_quality": "positive amount"
       },
       {
@@ -13054,7 +13054,7 @@
         "_amount": 45000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.45669511302671384,
+        "win_probability": 0.4566951130267137,
         "amount_quality": "positive amount"
       },
       {
@@ -13094,7 +13094,7 @@
         "_amount": 0.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.45015555987675987,
+        "win_probability": 0.4501555598767598,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13104,7 +13104,7 @@
         "_amount": 0.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.45015555987675987,
+        "win_probability": 0.4501555598767598,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13124,7 +13124,7 @@
         "_amount": 15000.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.44846522607256917,
+        "win_probability": 0.44846522607256906,
         "amount_quality": "positive amount"
       },
       {
@@ -13134,7 +13134,7 @@
         "_amount": 11956.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.44810664806306194,
+        "win_probability": 0.4481066480630618,
         "amount_quality": "positive amount"
       },
       {
@@ -13184,7 +13184,7 @@
         "_amount": 13500.0,
         "channel_category": "existing_client",
         "segment__c": "Mid",
-        "win_probability": 0.4325668530190097,
+        "win_probability": 0.4325668530190098,
         "amount_quality": "positive amount"
       },
       {
@@ -13194,7 +13194,7 @@
         "_amount": 1500000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.43120288005611507,
+        "win_probability": 0.431202880056115,
         "amount_quality": "positive amount"
       },
       {
@@ -13204,7 +13204,7 @@
         "_amount": 110000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.43120288005611507,
+        "win_probability": 0.431202880056115,
         "amount_quality": "positive amount"
       },
       {
@@ -13214,7 +13214,7 @@
         "_amount": 75000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.43120288005611507,
+        "win_probability": 0.431202880056115,
         "amount_quality": "positive amount"
       },
       {
@@ -13224,7 +13224,7 @@
         "_amount": 50000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.43120288005611507,
+        "win_probability": 0.431202880056115,
         "amount_quality": "positive amount"
       },
       {
@@ -13254,7 +13254,7 @@
         "_amount": 5022.25,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.4277360220403046,
+        "win_probability": 0.4277360220403047,
         "amount_quality": "positive amount"
       },
       {
@@ -13264,7 +13264,7 @@
         "_amount": 5000.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.4277360220403046,
+        "win_probability": 0.4277360220403047,
         "amount_quality": "positive amount"
       },
       {
@@ -13274,7 +13274,7 @@
         "_amount": 5000.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.4277360220403046,
+        "win_probability": 0.4277360220403047,
         "amount_quality": "positive amount"
       },
       {
@@ -13294,7 +13294,7 @@
         "_amount": 33000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.4186191509587922,
+        "win_probability": 0.4186191509587921,
         "amount_quality": "positive amount"
       },
       {
@@ -13314,7 +13314,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.4178891154551778,
+        "win_probability": 0.41788911545517793,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13324,7 +13324,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.4178891154551778,
+        "win_probability": 0.41788911545517793,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13364,7 +13364,7 @@
         "_amount": 21364.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.4140881669009059,
+        "win_probability": 0.41408816690090583,
         "amount_quality": "positive amount"
       },
       {
@@ -13374,7 +13374,7 @@
         "_amount": 9000.0,
         "channel_category": "6sense_event",
         "segment__c": "Commercial",
-        "win_probability": 0.4126564217034279,
+        "win_probability": 0.4126564217034278,
         "amount_quality": "positive amount"
       },
       {
@@ -13384,7 +13384,7 @@
         "_amount": 0.0,
         "channel_category": "web_inbound",
         "segment__c": "Commercial",
-        "win_probability": 0.411250926550562,
+        "win_probability": 0.41125092655056206,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13404,7 +13404,7 @@
         "_amount": 31085.0,
         "channel_category": "email_mqa",
         "segment__c": "Commercial",
-        "win_probability": 0.40844563828065306,
+        "win_probability": 0.40844563828065295,
         "amount_quality": "positive amount"
       },
       {
@@ -13414,7 +13414,7 @@
         "_amount": 16303.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.4082364232485031,
+        "win_probability": 0.40823642324850296,
         "amount_quality": "positive amount"
       },
       {
@@ -13444,7 +13444,7 @@
         "_amount": 0.0,
         "channel_category": "web_inbound",
         "segment__c": "Commercial",
-        "win_probability": 0.4026038114765037,
+        "win_probability": 0.40260381147650365,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13454,7 +13454,7 @@
         "_amount": 28382.0,
         "channel_category": "email_mqa",
         "segment__c": "Commercial",
-        "win_probability": 0.401766425112611,
+        "win_probability": 0.40176642511261096,
         "amount_quality": "positive amount"
       },
       {
@@ -13464,7 +13464,7 @@
         "_amount": 8941.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3976285029543283,
+        "win_probability": 0.3976285029543282,
         "amount_quality": "positive amount"
       },
       {
@@ -13474,7 +13474,7 @@
         "_amount": 28945.0,
         "channel_category": "6sense_event",
         "segment__c": "Mid",
-        "win_probability": 0.3948096384784342,
+        "win_probability": 0.39480963847843414,
         "amount_quality": "positive amount"
       },
       {
@@ -13484,7 +13484,7 @@
         "_amount": 25000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.39320238043272016,
+        "win_probability": 0.39320238043272004,
         "amount_quality": "positive amount"
       },
       {
@@ -13494,7 +13494,7 @@
         "_amount": 0.0,
         "channel_category": "web_inbound",
         "segment__c": "Commercial",
-        "win_probability": 0.392209755096566,
+        "win_probability": 0.3922097550965662,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13504,7 +13504,7 @@
         "_amount": 0.0,
         "channel_category": "web_inbound",
         "segment__c": "Commercial",
-        "win_probability": 0.392209755096566,
+        "win_probability": 0.3922097550965662,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13514,7 +13514,7 @@
         "_amount": 30000.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.3905519191019903,
+        "win_probability": 0.3905519191019902,
         "amount_quality": "positive amount"
       },
       {
@@ -13524,7 +13524,7 @@
         "_amount": 11931.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.3904561610910436,
+        "win_probability": 0.39045616109104364,
         "amount_quality": "positive amount"
       },
       {
@@ -13534,7 +13534,7 @@
         "_amount": 23007.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.3895437827270811,
+        "win_probability": 0.38954378272708107,
         "amount_quality": "positive amount"
       },
       {
@@ -13564,7 +13564,7 @@
         "_amount": 24237.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.38917658936408656,
+        "win_probability": 0.3891765893640865,
         "amount_quality": "positive amount"
       },
       {
@@ -13604,7 +13604,7 @@
         "_amount": 500000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.37785061205605225,
+        "win_probability": 0.3778506120560522,
         "amount_quality": "positive amount"
       },
       {
@@ -13614,7 +13614,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.37646360667848633,
+        "win_probability": 0.3764636066784864,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13624,7 +13624,7 @@
         "_amount": 15000.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.37006679183116603,
+        "win_probability": 0.3700667918311661,
         "amount_quality": "positive amount"
       },
       {
@@ -13664,7 +13664,7 @@
         "_amount": 24545.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.3528643989319371,
+        "win_probability": 0.3528643989319372,
         "amount_quality": "positive amount"
       },
       {
@@ -13704,7 +13704,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": null,
-        "win_probability": 0.346398885988183,
+        "win_probability": 0.34639888598818325,
         "amount_quality": "positive amount"
       },
       {
@@ -13714,7 +13714,7 @@
         "_amount": 23606.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.3463701929779428,
+        "win_probability": 0.34637019297794275,
         "amount_quality": "positive amount"
       },
       {
@@ -13724,7 +13724,7 @@
         "_amount": 23400.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.3463701929779428,
+        "win_probability": 0.34637019297794275,
         "amount_quality": "positive amount"
       },
       {
@@ -13744,7 +13744,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": null,
-        "win_probability": 0.3434458197308854,
+        "win_probability": 0.3434458197308853,
         "amount_quality": "positive amount"
       },
       {
@@ -13754,7 +13754,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": null,
-        "win_probability": 0.3434458197308854,
+        "win_probability": 0.3434458197308853,
         "amount_quality": "positive amount"
       },
       {
@@ -13764,7 +13764,7 @@
         "_amount": 19800.0,
         "channel_category": "existing_client",
         "segment__c": "Enterprise",
-        "win_probability": 0.3430037707421964,
+        "win_probability": 0.34300377074219635,
         "amount_quality": "positive amount"
       },
       {
@@ -13814,7 +13814,7 @@
         "_amount": 16182.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3361617107469197,
+        "win_probability": 0.33616171074691975,
         "amount_quality": "positive amount"
       },
       {
@@ -13854,7 +13854,7 @@
         "_amount": 20000.0,
         "channel_category": "6sense_event",
         "segment__c": "Commercial",
-        "win_probability": 0.3326346608831572,
+        "win_probability": 0.33263466088315724,
         "amount_quality": "positive amount"
       },
       {
@@ -13864,7 +13864,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.3315227586870386,
+        "win_probability": 0.3315227586870385,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13874,7 +13874,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.3315227586870386,
+        "win_probability": 0.3315227586870385,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13884,7 +13884,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.3315227586870386,
+        "win_probability": 0.3315227586870385,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13894,7 +13894,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.3315227586870386,
+        "win_probability": 0.3315227586870385,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13904,7 +13904,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.3315227586870386,
+        "win_probability": 0.3315227586870385,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -13924,7 +13924,7 @@
         "_amount": 10000.0,
         "channel_category": "referral",
         "segment__c": "Commercial",
-        "win_probability": 0.32527272371046495,
+        "win_probability": 0.325272723710465,
         "amount_quality": "positive amount"
       },
       {
@@ -13934,7 +13934,7 @@
         "_amount": 30000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.32175255338164105,
+        "win_probability": 0.321752553381641,
         "amount_quality": "positive amount"
       },
       {
@@ -13944,7 +13944,7 @@
         "_amount": 30000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.32175255338164105,
+        "win_probability": 0.321752553381641,
         "amount_quality": "positive amount"
       },
       {
@@ -13954,7 +13954,7 @@
         "_amount": 30000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.32175255338164105,
+        "win_probability": 0.321752553381641,
         "amount_quality": "positive amount"
       },
       {
@@ -13964,7 +13964,7 @@
         "_amount": 8491.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.3211945006751054,
+        "win_probability": 0.32119450067510535,
         "amount_quality": "positive amount"
       },
       {
@@ -14034,7 +14034,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3196004772387981,
+        "win_probability": 0.3196004772387982,
         "amount_quality": "positive amount"
       },
       {
@@ -14044,7 +14044,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3196004772387981,
+        "win_probability": 0.3196004772387982,
         "amount_quality": "positive amount"
       },
       {
@@ -14054,7 +14054,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3196004772387981,
+        "win_probability": 0.3196004772387982,
         "amount_quality": "positive amount"
       },
       {
@@ -14064,7 +14064,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3196004772387981,
+        "win_probability": 0.3196004772387982,
         "amount_quality": "positive amount"
       },
       {
@@ -14074,7 +14074,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3196004772387981,
+        "win_probability": 0.3196004772387982,
         "amount_quality": "positive amount"
       },
       {
@@ -14084,7 +14084,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.3196004772387981,
+        "win_probability": 0.3196004772387982,
         "amount_quality": "positive amount"
       },
       {
@@ -14094,7 +14094,7 @@
         "_amount": 10294.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.31761346434565263,
+        "win_probability": 0.3176134643456526,
         "amount_quality": "positive amount"
       },
       {
@@ -14104,7 +14104,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": "Mid",
-        "win_probability": 0.3175660445160834,
+        "win_probability": 0.31756604451608333,
         "amount_quality": "positive amount"
       },
       {
@@ -14384,7 +14384,7 @@
         "_amount": 2800.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.3009560703514873,
+        "win_probability": 0.30095607035148725,
         "amount_quality": "positive amount"
       },
       {
@@ -14414,7 +14414,7 @@
         "_amount": 8983.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2979944752327497,
+        "win_probability": 0.29799447523274963,
         "amount_quality": "positive amount"
       },
       {
@@ -14494,7 +14494,7 @@
         "_amount": 10000.0,
         "channel_category": "web_inbound",
         "segment__c": "Commercial",
-        "win_probability": 0.29532239466615257,
+        "win_probability": 0.2953223946661525,
         "amount_quality": "positive amount"
       },
       {
@@ -14504,7 +14504,7 @@
         "_amount": 10000.0,
         "channel_category": "web_inbound",
         "segment__c": "Commercial",
-        "win_probability": 0.29532239466615257,
+        "win_probability": 0.2953223946661525,
         "amount_quality": "positive amount"
       },
       {
@@ -14524,7 +14524,7 @@
         "_amount": 5000.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.29361121213330704,
+        "win_probability": 0.2936112121333071,
         "amount_quality": "positive amount"
       },
       {
@@ -14554,7 +14554,7 @@
         "_amount": 12500.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.29028157734597143,
+        "win_probability": 0.2902815773459714,
         "amount_quality": "positive amount"
       },
       {
@@ -14584,7 +14584,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.28827961193277785,
+        "win_probability": 0.2882796119327779,
         "amount_quality": "positive amount"
       },
       {
@@ -14604,7 +14604,7 @@
         "_amount": 18000.0,
         "channel_category": "6sense_channel",
         "segment__c": "Commercial",
-        "win_probability": 0.286810686600691,
+        "win_probability": 0.2868106866006909,
         "amount_quality": "positive amount"
       },
       {
@@ -14624,7 +14624,7 @@
         "_amount": 4703.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.28600400548250926,
+        "win_probability": 0.2860040054825093,
         "amount_quality": "positive amount"
       },
       {
@@ -14634,7 +14634,7 @@
         "_amount": 20000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.28510375573950714,
+        "win_probability": 0.2851037557395072,
         "amount_quality": "positive amount"
       },
       {
@@ -14694,7 +14694,7 @@
         "_amount": 10500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2828479959089947,
+        "win_probability": 0.28284799590899473,
         "amount_quality": "positive amount"
       },
       {
@@ -14704,7 +14704,7 @@
         "_amount": 18651.0,
         "channel_category": "email_mqa",
         "segment__c": "Commercial",
-        "win_probability": 0.2732916619698745,
+        "win_probability": 0.2732916619698744,
         "amount_quality": "positive amount"
       },
       {
@@ -14764,7 +14764,7 @@
         "_amount": 30000.0,
         "channel_category": "web_inbound",
         "segment__c": "Enterprise",
-        "win_probability": 0.26791551453905926,
+        "win_probability": 0.2679155145390594,
         "amount_quality": "positive amount"
       },
       {
@@ -14804,7 +14804,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Commercial",
-        "win_probability": 0.26091105206050286,
+        "win_probability": 0.2609110520605029,
         "amount_quality": "positive amount"
       },
       {
@@ -14874,7 +14874,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.25176578682445044,
+        "win_probability": 0.2517657868244504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -14914,7 +14914,7 @@
         "_amount": 14812.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.24942358819176846,
+        "win_probability": 0.24942358819176844,
         "amount_quality": "positive amount"
       },
       {
@@ -14924,7 +14924,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": "Enterprise",
-        "win_probability": 0.2484799552882128,
+        "win_probability": 0.24847995528821276,
         "amount_quality": "positive amount"
       },
       {
@@ -14934,7 +14934,7 @@
         "_amount": 20000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.24831390963632408,
+        "win_probability": 0.24831390963632413,
         "amount_quality": "positive amount"
       },
       {
@@ -14944,7 +14944,7 @@
         "_amount": 17500.0,
         "channel_category": "referral",
         "segment__c": "Enterprise",
-        "win_probability": 0.24801875018699648,
+        "win_probability": 0.2480187501869965,
         "amount_quality": "positive amount"
       },
       {
@@ -14984,7 +14984,7 @@
         "_amount": 12760.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.24437618672966685,
+        "win_probability": 0.24437618672966682,
         "amount_quality": "positive amount"
       },
       {
@@ -15004,7 +15004,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15014,7 +15014,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15024,7 +15024,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15034,7 +15034,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15044,7 +15044,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15054,7 +15054,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15064,7 +15064,7 @@
         "_amount": 0.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15074,7 +15074,7 @@
         "_amount": null,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15084,7 +15084,7 @@
         "_amount": null,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15094,7 +15094,7 @@
         "_amount": null,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.2424536515645851,
+        "win_probability": 0.24245365156458504,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15164,7 +15164,7 @@
         "_amount": 0.0,
         "channel_category": "event",
         "segment__c": "Enterprise",
-        "win_probability": 0.23549612008254242,
+        "win_probability": 0.2354961200825424,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15174,7 +15174,7 @@
         "_amount": 25000.0,
         "channel_category": "6sense_channel",
         "segment__c": "Enterprise",
-        "win_probability": 0.2341166714114544,
+        "win_probability": 0.23411667141145437,
         "amount_quality": "positive amount"
       },
       {
@@ -15194,7 +15194,7 @@
         "_amount": 12500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.23000636257751972,
+        "win_probability": 0.23000636257751966,
         "amount_quality": "positive amount"
       },
       {
@@ -15204,7 +15204,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": "Enterprise",
-        "win_probability": 0.2299673991764206,
+        "win_probability": 0.22996739917642056,
         "amount_quality": "positive amount"
       },
       {
@@ -15214,7 +15214,7 @@
         "_amount": 12717.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.22947172772220673,
+        "win_probability": 0.22947172772220667,
         "amount_quality": "positive amount"
       },
       {
@@ -15224,7 +15224,7 @@
         "_amount": 20000.0,
         "channel_category": "referral",
         "segment__c": "Enterprise",
-        "win_probability": 0.22890845732427514,
+        "win_probability": 0.22890845732427517,
         "amount_quality": "positive amount"
       },
       {
@@ -15234,7 +15234,7 @@
         "_amount": 0.0,
         "channel_category": "event",
         "segment__c": "Enterprise",
-        "win_probability": 0.22763569142277013,
+        "win_probability": 0.2276356914227701,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15264,7 +15264,7 @@
         "_amount": 15000.0,
         "channel_category": "6sense_channel",
         "segment__c": "Mid",
-        "win_probability": 0.22254121251561584,
+        "win_probability": 0.22254121251561582,
         "amount_quality": "positive amount"
       },
       {
@@ -15274,7 +15274,7 @@
         "_amount": 0.0,
         "channel_category": "6sense_channel",
         "segment__c": "Enterprise",
-        "win_probability": 0.22034195439866827,
+        "win_probability": 0.22034195439866833,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15284,7 +15284,7 @@
         "_amount": 0.0,
         "channel_category": "6sense_channel",
         "segment__c": "Enterprise",
-        "win_probability": 0.22034195439866827,
+        "win_probability": 0.22034195439866833,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15524,7 +15524,7 @@
         "_amount": 0.0,
         "channel_category": "web_inbound",
         "segment__c": "Enterprise",
-        "win_probability": 0.20817249847857164,
+        "win_probability": 0.20817249847857167,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15534,7 +15534,7 @@
         "_amount": 20000.0,
         "channel_category": "other",
         "segment__c": null,
-        "win_probability": 0.20455063878419902,
+        "win_probability": 0.20455063878419907,
         "amount_quality": "positive amount"
       },
       {
@@ -15544,7 +15544,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -15554,7 +15554,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -15564,7 +15564,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -15574,7 +15574,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -15584,7 +15584,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -15594,7 +15594,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -15604,7 +15604,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -15614,7 +15614,7 @@
         "_amount": 15000.0,
         "channel_category": "other",
         "segment__c": "Mid",
-        "win_probability": 0.20325808697786016,
+        "win_probability": 0.2032580869778602,
         "amount_quality": "positive amount"
       },
       {
@@ -15694,7 +15694,7 @@
         "_amount": 0.0,
         "channel_category": "web_inbound",
         "segment__c": "Enterprise",
-        "win_probability": 0.19748458658043236,
+        "win_probability": 0.19748458658043233,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -15714,7 +15714,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.1956868571847367,
+        "win_probability": 0.19568685718473666,
         "amount_quality": "positive amount"
       },
       {
@@ -15724,7 +15724,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.1956868571847367,
+        "win_probability": 0.19568685718473666,
         "amount_quality": "positive amount"
       },
       {
@@ -15734,7 +15734,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.1956868571847367,
+        "win_probability": 0.19568685718473666,
         "amount_quality": "positive amount"
       },
       {
@@ -15744,7 +15744,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.1956868571847367,
+        "win_probability": 0.19568685718473666,
         "amount_quality": "positive amount"
       },
       {
@@ -15754,7 +15754,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.1956868571847367,
+        "win_probability": 0.19568685718473666,
         "amount_quality": "positive amount"
       },
       {
@@ -15764,7 +15764,7 @@
         "_amount": 17500.0,
         "channel_category": "other",
         "segment__c": "Enterprise",
-        "win_probability": 0.1956868571847367,
+        "win_probability": 0.19568685718473666,
         "amount_quality": "positive amount"
       },
       {
@@ -15774,7 +15774,7 @@
         "_amount": 16981.0,
         "channel_category": "event",
         "segment__c": "Enterprise",
-        "win_probability": 0.19462146536790997,
+        "win_probability": 0.19462146536791003,
         "amount_quality": "positive amount"
       },
       {
@@ -16154,7 +16154,7 @@
         "_amount": 15000.0,
         "channel_category": "6sense_event",
         "segment__c": "Enterprise",
-        "win_probability": 0.18316940825903305,
+        "win_probability": 0.18316940825903302,
         "amount_quality": "positive amount"
       },
       {
@@ -16164,7 +16164,7 @@
         "_amount": 10000.0,
         "channel_category": "6sense_event",
         "segment__c": "Enterprise",
-        "win_probability": 0.18022734406796115,
+        "win_probability": 0.18022734406796118,
         "amount_quality": "positive amount"
       },
       {
@@ -16314,7 +16314,7 @@
         "_amount": 20000.0,
         "channel_category": "6sense_event",
         "segment__c": "Enterprise",
-        "win_probability": 0.17221638445493911,
+        "win_probability": 0.1722163844549391,
         "amount_quality": "positive amount"
       },
       {
@@ -16324,7 +16324,7 @@
         "_amount": 0.0,
         "channel_category": "email_mqa",
         "segment__c": "Mid",
-        "win_probability": 0.1678387007594749,
+        "win_probability": 0.16783870075947493,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -16334,7 +16334,7 @@
         "_amount": 0.0,
         "channel_category": "email_mqa",
         "segment__c": "Mid",
-        "win_probability": 0.1678387007594749,
+        "win_probability": 0.16783870075947493,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -16344,7 +16344,7 @@
         "_amount": 0.0,
         "channel_category": "email_mqa",
         "segment__c": "Mid",
-        "win_probability": 0.1678387007594749,
+        "win_probability": 0.16783870075947493,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -16354,7 +16354,7 @@
         "_amount": 0.0,
         "channel_category": "email_mqa",
         "segment__c": "Mid",
-        "win_probability": 0.1678387007594749,
+        "win_probability": 0.16783870075947493,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -16364,7 +16364,7 @@
         "_amount": 0.0,
         "channel_category": "email_mqa",
         "segment__c": "Mid",
-        "win_probability": 0.1678387007594749,
+        "win_probability": 0.16783870075947493,
         "amount_quality": "zero/missing amount"
       },
       {
@@ -16434,7 +16434,7 @@
         "_amount": 10000.0,
         "channel_category": "6sense_channel",
         "segment__c": "Enterprise",
-        "win_probability": 0.1594483778990858,
+        "win_probability": 0.15944837789908578,
         "amount_quality": "positive amount"
       },
       {
@@ -16454,7 +16454,7 @@
         "_amount": 20000.0,
         "channel_category": "event",
         "segment__c": "Enterprise",
-        "win_probability": 0.14872859886714462,
+        "win_probability": 0.14872859886714465,
         "amount_quality": "positive amount"
       },
       {

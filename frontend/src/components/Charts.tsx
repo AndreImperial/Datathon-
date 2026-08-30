@@ -75,25 +75,36 @@ export function PipelineChart({ data, won = false }: { data: DataRow[]; won?: bo
 export function MonthlyPipelineChart({ data }: { data: DataRow[] }) {
   const channels = Array.from(new Set(data.map((row) => textValue(row, "channel"))));
   const months = Array.from(new Set(data.map((row) => textValue(row, "month")))).sort();
+  // Keep the long-tail "Other" bucket last so the stack and legend read as a
+  // ranked story.  The source contract already limits this dataset to the
+  // top-five channel groups plus that neutral bucket.
+  const totals = new Map(channels.map((channel) => [channel, data.filter((row) => textValue(row, "channel") === channel).reduce((sum, row) => sum + numberValue(row, "pipeline"), 0)]));
+  const orderedChannels = [...channels].sort((a, b) => {
+    if (a === "Other") return 1;
+    if (b === "Other") return -1;
+    return (totals.get(b) ?? 0) - (totals.get(a) ?? 0);
+  });
   const rows = months.map((month) => {
     const row: Record<string, string | number> = { month };
-    channels.forEach((channel) => {
+    orderedChannels.forEach((channel) => {
       const match = data.find((item) => textValue(item, "month") === month && textValue(item, "channel") === channel);
       row[channel] = match ? numberValue(match, "pipeline") : 0;
     });
     return row;
   });
-  if (!rows.length || !channels.length) return <EmptyChart />;
+  if (!rows.length || !orderedChannels.length) return <EmptyChart />;
   const palette = ["blue", "teal", "amber", "slate", "cyan", "gray"];
   return <ChartShell minHeight={330}><TremorAreaChart
     className="tremor-chart"
     data={rows}
     index="month"
-    categories={channels}
-    colors={palette.slice(0, channels.length)}
+    categories={orderedChannels}
+    colors={palette.slice(0, orderedChannels.length)}
     valueFormatter={(value) => money(value)}
+    stack
     showLegend
     showGridLines={false}
+    showGradient={false}
     showAnimation={false}
     curveType="monotone"
   /></ChartShell>;
@@ -104,10 +115,17 @@ export function CohortChart({ data }: { data: DataRow[] }) {
   if (!rows.length) return <EmptyChart />;
   const lineRows = rows.map((row) => ({
     quarter: textValue(row, "quarter"),
+    is_mature: Boolean(row.is_mature),
     // `closed_win_rate` is the canonical contract key; the fallback keeps
     // the evidence line resilient if an older validated cohort export only
     // exposes the legacy `win_rate` alias.
     "Closed-deal win rate": numberValue(row, "closed_win_rate", numberValue(row, "win_rate")) * 100,
+    winError: (() => {
+      const rate = numberValue(row, "closed_win_rate", numberValue(row, "win_rate"));
+      const low = numberValue(row, "win_rate_ci_low", numberValue(row, "ci_low", rate));
+      const high = numberValue(row, "win_rate_ci_high", numberValue(row, "ci_high", rate));
+      return [Math.max(0, (rate - low) * 100), Math.max(0, (high - rate) * 100)];
+    })(),
     "Resolved share": numberValue(row, "resolved_share") * 100,
   }));
   const pipelineRows = rows.map((row) => ({ quarter: textValue(row, "quarter"), Pipeline: numberValue(row, "pipeline") }));
@@ -122,12 +140,12 @@ export function CohortChart({ data }: { data: DataRow[] }) {
           <XAxis dataKey="quarter" tick={axisTick} interval="preserveStartEnd" />
           <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} tick={axisTick} width={42} />
           <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${value.toFixed(0)}%`, ""]} />
-          <Line type="monotone" dataKey="Closed-deal win rate" stroke={COLORS.amber} strokeWidth={2.5} dot={{ r: 2.5, fill: COLORS.amber }} activeDot={{ r: 4 }} connectNulls isAnimationActive={false} />
+          <Line type="monotone" dataKey="Closed-deal win rate" stroke={COLORS.amber} strokeWidth={2.5} dot={(props: { cx?: number; cy?: number; payload?: { is_mature?: boolean } }) => <circle cx={props.cx} cy={props.cy} r={props.payload?.is_mature ? 2.8 : 4.5} fill={props.payload?.is_mature ? COLORS.amber : COLORS.pale} stroke={COLORS.amber} strokeWidth={props.payload?.is_mature ? 1 : 2} strokeDasharray={props.payload?.is_mature ? undefined : "2 2"} />} activeDot={{ r: 4 }} connectNulls isAnimationActive={false}><ErrorBar dataKey="winError" direction="y" width={4} stroke={COLORS.amber} /></Line>
           <Line type="monotone" dataKey="Resolved share" stroke={COLORS.teal} strokeWidth={2.5} dot={{ r: 2.5, fill: COLORS.teal }} activeDot={{ r: 4 }} connectNulls isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </ChartShell>
-    <div className="chart-legend" aria-label="Cohort quality legend"><span><i style={{ background: COLORS.amber }} />Closed-deal win rate</span><span><i style={{ background: COLORS.teal }} />Resolved share</span></div>
+    <div className="chart-legend" aria-label="Cohort quality legend"><span><i style={{ background: COLORS.amber }} />Closed-deal win rate · 95% interval</span><span><i style={{ background: COLORS.teal }} />Resolved share</span><span><i className="cohort-marker provisional" />Hollow marker · provisional cohort</span></div>
   </div>;
 }
 
@@ -169,9 +187,7 @@ export function CoverageChart({ data }: { data: DataRow[] }) {
     <div className="mini-chart-label">Observed opportunity rate · 95% Wilson interval</div>
     <ChartShell minHeight={190}><ResponsiveContainer width="100%" height={190}><ComposedChart data={rows} margin={{ left: 0, right: 20, top: 18, bottom: 34 }}>
       <CartesianGrid {...gridProps} /><XAxis dataKey="tier" tick={axisTick} angle={-16} textAnchor="end" height={48} /><YAxis domain={[0, 60]} tickFormatter={(value) => `${value}%`} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${value.toFixed(1)}%`, "Opportunity rate"]} />
-      <Bar dataKey="rate" fill={COLORS.teal} radius={[5, 5, 0, 0]} barSize={22} isAnimationActive={false}><ErrorBar dataKey="error" width={5} stroke={COLORS.slate} /><LabelList dataKey="rate" position="top" formatter={(value: number) => `${value.toFixed(1)}%`} fill={COLORS.ink} fontSize={10} /></Bar>
-      <Line dataKey="rate" stroke={COLORS.teal} dot={{ fill: COLORS.teal, r: 5 }} activeDot={{ r: 7 }} isAnimationActive={false} />
-      {rows.map((row) => <ReferenceLine key={row.tier} x={row.tier} stroke="transparent" />)}
+      <Line dataKey="rate" name="Opportunity rate" stroke="transparent" strokeWidth={0} dot={{ fill: COLORS.teal, r: 5, stroke: COLORS.teal, strokeWidth: 1 }} activeDot={{ r: 7 }} isAnimationActive={false}><ErrorBar dataKey="error" direction="y" width={5} stroke={COLORS.slate} /><LabelList dataKey="rate" position="top" formatter={(value: number) => `${value.toFixed(1)}%`} fill={COLORS.ink} fontSize={10} /></Line>
     </ComposedChart></ResponsiveContainer></ChartShell>
   </div>;
 }
@@ -218,6 +234,7 @@ export function RoiChart({ data }: { data: DataRow[] }) {
   const points = (key: "pipeline" | "revenue") => rows.map((row, index) => ({ x: row[key], y: index }));
   return <><ChartShell minHeight={Math.max(220, rows.length * 70)}><ResponsiveContainer width="100%" height={Math.max(220, rows.length * 70)}><ScatterChart layout="vertical" margin={{ left: 12, right: 34, top: 12, bottom: 18 }}>
     <CartesianGrid {...gridProps} /><XAxis type="number" dataKey="x" domain={[0, "auto"]} tickFormatter={(value) => `${value}×`} tick={axisTick} /><YAxis type="number" dataKey="y" domain={[-0.5, rows.length - 0.5]} ticks={rows.map((_, index) => index)} tickFormatter={(value) => rows[value]?.channel ?? ""} width={120} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [`${Number(value).toFixed(1)}×`, name === "Pipeline ROI" ? "Pipeline ROI" : "Revenue ROI"]} />
+    {rows.map((row, index) => <ReferenceLine key={`roi-range-${row.channel}`} segment={[{ x: Math.min(row.pipeline, row.revenue), y: index }, { x: Math.max(row.pipeline, row.revenue), y: index }]} stroke={COLORS.slate} strokeWidth={3} strokeOpacity={0.55} />)}
     <Scatter name="Pipeline ROI" data={points("pipeline")} dataKey="x" fill={COLORS.blue} shape="circle" isAnimationActive={false} />
     <Scatter name="Revenue ROI" data={points("revenue")} dataKey="x" fill={COLORS.teal} shape="diamond" isAnimationActive={false} />
   </ScatterChart></ResponsiveContainer></ChartShell><div className="chart-legend" aria-label="ROI legend"><span><i className="dot" style={{ background: COLORS.blue }} />Pipeline ROI</span><span><i className="diamond" style={{ background: COLORS.teal }} />Revenue ROI</span></div></>;
@@ -245,10 +262,10 @@ export function Heatmap({ data, xKey, yKey, valueKey, valueFormatter = (value: n
 }
 
 export function SegmentWinRateChart({ data }: { data: DataRow[] }) {
-  const rows = data.map((row) => { const rate = numberValue(row, "win_rate"); return { segment: textValue(row, "segment__c"), rate: rate * 100, error: [Math.max(0, (rate - numberValue(row, "ci_low")) * 100), Math.max(0, (numberValue(row, "ci_high") - rate) * 100)], deals: numberValue(row, "deals"), avg: numberValue(row, "avg_deal") }; }).sort((a, b) => a.rate - b.rate);
+  const rows = data.map((row) => { const rate = numberValue(row, "win_rate"); const deals = numberValue(row, "deals"); const avg = numberValue(row, "avg_deal"); return { segment: textValue(row, "segment__c"), rate: rate * 100, error: [Math.max(0, (rate - numberValue(row, "ci_low", rate)) * 100), Math.max(0, (numberValue(row, "ci_high", rate) - rate) * 100)], deals, avg, display: `n=${deals.toLocaleString()} · avg ${money(avg)}` }; }).sort((a, b) => a.rate - b.rate);
   if (!rows.length) return <EmptyChart />;
   return <ChartShell minHeight={Math.max(230, rows.length * 54)}><ResponsiveContainer width="100%" height={Math.max(230, rows.length * 54)}><ComposedChart data={rows} layout="vertical" margin={{ left: 8, right: 90, top: 12, bottom: 20 }}>
-    <CartesianGrid {...gridProps} /><XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} tick={axisTick} /><YAxis type="category" dataKey="segment" width={110} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [name === "rate" ? `${value.toFixed(1)}%` : value, name === "rate" ? "Win rate" : name]} /><Bar dataKey="rate" fill={COLORS.blue} barSize={16} radius={[0, 4, 4, 0]} isAnimationActive={false}><ErrorBar dataKey="error" width={6} stroke={COLORS.slate} /><LabelList dataKey="deals" position="right" formatter={(value: number) => `n=${value}`} fill={COLORS.muted} fontSize={10} /></Bar>
+    <CartesianGrid {...gridProps} /><XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} tick={axisTick} /><YAxis type="category" dataKey="segment" width={110} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [name === "rate" ? `${value.toFixed(1)}%` : value, name === "rate" ? "Win rate" : name]} /><Line dataKey="rate" name="Win rate" stroke="transparent" strokeWidth={0} dot={{ fill: COLORS.blue, r: 5, stroke: COLORS.blue, strokeWidth: 1 }} activeDot={{ r: 7 }} isAnimationActive={false}><ErrorBar dataKey="error" direction="x" width={6} stroke={COLORS.slate} /><LabelList dataKey="display" position="right" fill={COLORS.muted} fontSize={10} /></Line>
   </ComposedChart></ResponsiveContainer></ChartShell>;
 }
 
@@ -278,9 +295,9 @@ export function ProbabilityHistogram({ data }: { data: DataRow[] }) {
 }
 
 export function VelocityChart({ data }: { data: DataRow[] }) {
-  const rows = data.filter((row) => numberValue(row, "deal_count") >= 5).map((row) => ({ channel: textValue(row, "channel_category"), median: numberValue(row, "median_days"), error: [Math.max(0, numberValue(row, "median_days") - numberValue(row, "p25")), Math.max(0, numberValue(row, "p75") - numberValue(row, "median_days"))], count: numberValue(row, "deal_count") })).sort((a, b) => a.median - b.median);
+  const rows = data.filter((row) => numberValue(row, "deal_count") >= 5).map((row) => { const median = numberValue(row, "median_days"); const count = numberValue(row, "deal_count"); return { channel: textValue(row, "channel_category"), median, error: [Math.max(0, median - numberValue(row, "p25", median)), Math.max(0, numberValue(row, "p75", median) - median)], count, display: `n=${count.toLocaleString()}` }; }).sort((a, b) => a.median - b.median);
   if (!rows.length) return <EmptyChart message="No channel has at least five won deals." />;
-  return <ChartShell minHeight={Math.max(240, rows.length * 42)}><ResponsiveContainer width="100%" height={Math.max(240, rows.length * 42)}><ComposedChart data={rows} layout="vertical" margin={{ left: 10, right: 70, top: 10, bottom: 20 }}><CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={(value) => `${value}d`} tick={axisTick} /><YAxis type="category" dataKey="channel" width={120} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${value.toFixed(0)} days`, "Median"]} /><Bar dataKey="median" fill={COLORS.blue} barSize={17} radius={[0, 4, 4, 0]} isAnimationActive={false}><ErrorBar dataKey="error" width={7} stroke={COLORS.slate} /><LabelList dataKey="count" position="right" formatter={(value: number) => `n=${value}`} fill={COLORS.muted} fontSize={10} /></Bar></ComposedChart></ResponsiveContainer></ChartShell>;
+  return <ChartShell minHeight={Math.max(240, rows.length * 42)}><ResponsiveContainer width="100%" height={Math.max(240, rows.length * 42)}><ComposedChart data={rows} layout="vertical" margin={{ left: 10, right: 70, top: 10, bottom: 20 }}><CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={(value) => `${value}d`} tick={axisTick} /><YAxis type="category" dataKey="channel" width={120} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${value.toFixed(0)} days`, "Median"]} /><Line dataKey="median" name="Median days" stroke="transparent" strokeWidth={0} dot={{ fill: COLORS.blue, r: 5, stroke: COLORS.blue, strokeWidth: 1 }} activeDot={{ r: 7 }} isAnimationActive={false}><ErrorBar dataKey="error" direction="x" width={7} stroke={COLORS.slate} /><LabelList dataKey="display" position="right" fill={COLORS.muted} fontSize={10} /></Line></ComposedChart></ResponsiveContainer></ChartShell>;
 }
 
 export function TargetingHeatmap({ data }: { data: DataRow[] }) {
