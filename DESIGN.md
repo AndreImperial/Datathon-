@@ -2,24 +2,25 @@
 name: Revenue Command Center
 description: A signal-atlas interface that turns validated marketing evidence into an accountable operating decision.
 colors:
-  petrol: "#17343b"
-  petrol-soft: "#24515a"
-  body: "#45565b"
-  muted: "#647477"
-  muted-light: "#879496"
-  mineral-mist: "#f2f5f3"
-  mineral-paper: "#ffffff"
-  mineral-soft: "#f8faf9"
-  mineral-line: "#d7e0dd"
-  mineral-line-strong: "#b7c9c4"
-  ocean-teal: "#206a78"
-  ocean-teal-light: "#4c8e9b"
-  evidence-green: "#4d7a6c"
-  copper: "#a45a35"
-  copper-soft: "#faeee7"
-  terracotta: "#a54540"
-  terracotta-soft: "#fbedec"
-  model-violet: "#7a638f"
+  petrol: "#061316"
+  petrol-soft: "#102b31"
+  ink: "#edf7f4"
+  body: "#c0cfcc"
+  muted: "#94aaa7"
+  muted-light: "#78908e"
+  mineral-mist: "#0a171b"
+  mineral-paper: "#102329"
+  mineral-soft: "#152f35"
+  mineral-line: "#28464c"
+  mineral-line-strong: "#3a5c62"
+  ocean-teal: "#70c9d2"
+  ocean-teal-light: "#9ae0e5"
+  evidence-green: "#84cbaa"
+  copper: "#efad79"
+  copper-soft: "#3a2a24"
+  terracotta: "#ed9087"
+  terracotta-soft: "#3b2527"
+  model-violet: "#c4a8e0"
 typography:
   display:
     fontFamily: "Newsreader Variable, Georgia, serif"
@@ -67,8 +68,8 @@ spacing:
   section: "52px"
 components:
   button-primary:
-    backgroundColor: "{colors.petrol}"
-    textColor: "{colors.mineral-paper}"
+    backgroundColor: "{colors.ocean-teal}"
+    textColor: "{colors.petrol}"
     rounded: "{rounded.control}"
     padding: "0 14px"
     height: "40px"
@@ -80,7 +81,7 @@ components:
     height: "32px"
   card:
     backgroundColor: "{colors.mineral-paper}"
-    textColor: "{colors.petrol}"
+    textColor: "{colors.ink}"
     rounded: "{rounded.panel}"
     padding: "14px"
   chip:
@@ -95,19 +96,19 @@ components:
 
 **Creative North Star: "The Signal Atlas"**
 
-The interface feels like an operator's evidence desk: deep petrol framing, mineral paper, ruled modules, ocean-teal signals, and warm copper or terracotta only where interpretation demands attention. It is dense but not cramped, editorial but not theatrical, and designed to make analytical confidence visible.
+The interface feels like an operator's evidence desk after hours: deep petrol framing, blue-black mineral surfaces, ruled modules, luminous ocean-teal signals, and warm copper or terracotta only where interpretation demands attention. It is dark-first for low ambient light, dense but not cramped, editorial but not theatrical, and designed to make analytical confidence visible.
 
 The page is a presentation layer over a validated schema-v2 data contract. Preserve the source metrics, caveats, required section order, chart/table parity, export paths, presentation and print modes, and the `/full-analysis` archive. Visual changes must not silently recalculate, omit, or reframe the evidence.
 
 **Key Characteristics:**
 - Decision first; evidence, implication, and action remain traceable.
-- Petrol command rail, mineral canvas, paper modules, and fine rules.
+- Petrol command rail, mineral canvas, night-paper modules, and fine rules.
 - Newsreader gives conclusions authority; Manrope keeps controls and data legible.
 - Color carries semantic meaning and is reinforced by labels, patterns, or copy.
 
 ## Colors
 
-Petrol and mineral neutrals form the environment; ocean teal marks navigation and evidence, copper marks measurement caveats, and terracotta is reserved for material risk.
+Petrol and mineral blue-black neutrals form the environment; ocean teal marks navigation and evidence, copper marks measurement caveats, and terracotta is reserved for material risk.
 
 ### Primary
 - **Deep Petrol:** The rail, decision fields, primary actions, and strongest text.
@@ -123,11 +124,13 @@ Petrol and mineral neutrals form the environment; ocean teal marks navigation an
 
 ### Neutral
 - **Mineral Mist:** Page canvas.
-- **Mineral Paper / Soft Mineral:** Primary and inset surfaces.
+- **Mineral Paper / Soft Mineral:** Primary and inset night surfaces.
 - **Body / Muted / Muted Light:** Reading hierarchy without lowering essential evidence below accessible contrast.
 - **Mineral Line / Strong Line:** Structure panels, tables, and chart frames.
 
 **The Accountable Color Rule.** A semantic color keeps the same meaning across KPIs, charts, caveats, and actions; labels and patterns preserve that meaning without color.
+
+**Dark-first contract.** The dark theme is the primary operating mode. Surfaces step from `Mineral Mist` canvas to `Mineral Paper` cards and `Surface Raised` insets; body text stays pale enough for AA contrast, while semantic accents remain luminous and restrained. Print mode intentionally reverts to a white paper treatment for legibility and ink economy.
 
 ## Typography
 
@@ -147,7 +150,7 @@ Petrol and mineral neutrals form the environment; ocean teal marks navigation an
 
 ## Layout
 
-The desktop shell uses a fixed 252px command rail and a sticky 64px utility header. Content is capped at 1600px and follows a 24px outer rhythm. The command strip pairs one petrol decision field with four aligned KPI cells; sections use a thesis-and-explanation split before ruled evidence modules.
+The desktop shell uses a fixed 252px command rail and a sticky 64px utility header. Content is capped at 1600px and follows a 24px outer rhythm. The command strip pairs one petrol decision field with four aligned KPI cells; sections use a thesis-and-explanation split before ruled evidence modules. Dark surfaces are layered by tonal elevation rather than by glow or decorative gradients.
 
 At 1280px the rail narrows and major canvases stack. At 980px two-column evidence and headings become single-column. Below 900px the rail becomes a modal drawer, the main margin clears, and all top-level controls become 44px touch targets. Below 520px KPIs and method metrics stack; below 450px header actions wrap. Print mode reveals all sections, removes navigation and utility chrome, and avoids breaking evidence modules where possible.
 
@@ -167,15 +170,15 @@ Geometry is compact and engineered: 6px controls, 8px inset callouts, 10px analy
 
 ### Buttons
 - **Shape:** Compact controls use 6px corners; primary text actions are 40px high. Mobile header and chart controls are 44px square.
-- **Primary:** Petrol field with white text; hover shifts to soft petrol.
-- **Utility:** Mineral paper with a strong mineral border; hover uses an ocean-teal border and pale teal surface.
+- **Primary:** Ocean-teal field with dark petrol text; hover shifts to luminous ocean teal.
+- **Utility:** Mineral night-paper with a strong mineral border; hover uses an ocean-teal border and blue-green surface.
 - **Focus:** Every interactive element receives a high-contrast dual focus treatment: a 2px white inner outline plus a 5px ocean-teal outer ring, both offset from the control.
 
 ### Chips
 - **Style:** Small, labeled semantic markers with 5px corners. Confidence and priority meaning must be readable in text.
 
 ### Cards / Containers
-- **Style:** Paper surfaces, 10px corners, strong mineral borders, and 14–15px internal padding.
+- **Style:** Night-paper surfaces, 10px corners, strong mineral borders, and 14–15px internal padding.
 - **State:** Resting cards are flat. Inspectable chart and table cards gain an ocean-teal border and the ambient shadow on hover; joined narrative cards use a tonal background change instead of lift.
 
 ### Tables

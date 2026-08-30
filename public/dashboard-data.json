@@ -5,7 +5,7 @@
     "period": "2018–2024",
     "generated_from": "validated Parquet outputs",
     "methodology": "365-day primary attribution with 30/90/180/365-day sensitivity; resolved-outcome win rates; cohort maturity controls",
-    "generated_at": "2026-08-30T13:23:23.076866+00:00",
+    "generated_at": "2026-08-30T14:10:36.427380+00:00",
     "source_freshness": "Generated from the latest validated integrated and cleaned Parquet outputs."
   },
   "context": {

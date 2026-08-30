@@ -24,17 +24,17 @@ import type { DashboardDatasets, DataRow } from "../types";
 import { numberValue, textValue } from "../types";
 
 export const COLORS = {
-  ink: "#17343B",
-  blue: "#206A78",
-  azure: "#4C8E9B",
-  teal: "#4D7A6C",
-  amber: "#A45A35",
-  red: "#A54540",
-  violet: "#7A638F",
-  slate: "#718286",
-  pale: "#F8FAF9",
-  grid: "#D7E0DD",
-  muted: "#647477",
+  ink: "#EDF7F4",
+  blue: "#70C9D2",
+  azure: "#9AE0E5",
+  teal: "#84CBAA",
+  amber: "#EFAD79",
+  red: "#ED9087",
+  violet: "#C4A8E0",
+  slate: "#78908E",
+  pale: "#102329",
+  grid: "#28464C",
+  muted: "#94AAA7",
 };
 
 const money = (value: number) => {
@@ -45,7 +45,7 @@ const money = (value: number) => {
 };
 const pct = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
 const short = (value: string, length = 26) => value.length > length ? `${value.slice(0, length - 1)}…` : value;
-const tooltipStyle = { background: COLORS.ink, border: "1px solid #4f7175", borderRadius: 4, color: "#fff", fontSize: 12 };
+const tooltipStyle = { background: "#071417", border: "1px solid #4F858A", borderRadius: 4, color: "#F4FBF8", fontSize: 12 };
 const axisTick = { fill: COLORS.muted, fontSize: 11 };
 const gridProps = { stroke: COLORS.grid, strokeDasharray: "3 4", vertical: false };
 
