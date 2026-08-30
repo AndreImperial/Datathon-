@@ -21,7 +21,11 @@ STEPS = [
     ("Export core analysis", "analytics_case_study/03_analysis.py"),
     ("Run attribution models", "analytics_case_study/03b_attribution.py"),
     ("Run advanced analytics", "analytics_case_study/03c_advanced_analytics.py"),
-    ("Generate improved content-preserving dashboard", "analytics_case_study/04_html_dashboard.py"),
+    # Generate the Plotly dashboard first so it remains the immutable
+    # analytical baseline, then build the React presentation from its
+    # validated context and Parquet-backed data contract.
+    ("Generate immutable legacy dashboard", "analytics_case_study/04_html_dashboard.py"),
+    ("Build content-preserving React dashboard", "analytics_case_study/04_react_dashboard.py"),
     ("Generate presentation", "analytics_case_study/05_presentation.py"),
     ("Validate outputs", "analytics_case_study/06_validate_metrics.py"),
 ]

@@ -34,6 +34,7 @@
     "cohort_end_win_rate": "22%",
     "cohort_start_quarter": "2022Q1",
     "cohort_end_quarter": "2024Q2",
+    "latest_mature_marketing_sourced_share": "23%",
     "model_auc": "0.712",
     "model_validation": "time-based 80/20 holdout; preprocessing fit on train only",
     "active_scored_opportunities": "447",

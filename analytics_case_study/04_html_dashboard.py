@@ -1068,6 +1068,7 @@ def build_dashboard_context():
             "cohort_end_win_rate": cohort_vals["cohort_end_rate"],
             "cohort_start_quarter": cohort_vals["cohort_start_quarter"],
             "cohort_end_quarter": cohort_vals["cohort_end_quarter"],
+            "latest_mature_marketing_sourced_share": cohort_vals["mktg_end_pct"],
             "model_auc": model_auc_text(),
             "model_validation": model_validation_text(),
             "active_scored_opportunities": f"{open_deals:,}",
@@ -3313,4 +3314,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
