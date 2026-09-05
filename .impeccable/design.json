@@ -1,116 +1,190 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-30T21:09:03.5654356+08:00",
+  "generatedAt": "2026-09-05T23:41:22.0063206+08:00",
   "title": "Design System: Revenue Command Center",
   "extensions": {
+    "conceptSeed": "83de77a9",
     "colorMeta": {
-      "petrol": { "role": "primary", "displayName": "Deep Petrol", "canonical": "#061316", "tonalRamp": ["#020a0c", "#061316", "#102b31", "#23474e", "#3b6468", "#78908e", "#c8dbd8", "#f4fbf8"] },
-      "ocean-teal": { "role": "primary", "displayName": "Ocean Teal", "canonical": "#70c9d2", "tonalRamp": ["#0a292f", "#173a43", "#3c929e", "#70c9d2", "#9ae0e5", "#bcebed", "#d8f5f5", "#f4fbfa"] },
-      "evidence-green": { "role": "secondary", "displayName": "Mineral Green", "canonical": "#84cbaa", "tonalRamp": ["#102b24", "#17372f", "#3f7767", "#61ad8d", "#84cbaa", "#a3dfbf", "#c8ecd8", "#effbf4"] },
-      "copper": { "role": "tertiary", "displayName": "Copper", "canonical": "#efad79", "tonalRamp": ["#25140d", "#3a2a24", "#704833", "#b86f4e", "#efad79", "#f3bd98", "#f8dac8", "#fff3ea"] },
-      "terracotta": { "role": "tertiary", "displayName": "Terracotta Risk", "canonical": "#ed9087", "tonalRamp": ["#251112", "#3b2527", "#8b4e4e", "#c76d67", "#ed9087", "#f3aaa2", "#f8d1cc", "#fff0ee"] },
-      "mineral-mist": { "role": "neutral", "displayName": "Mineral Mist", "canonical": "#0a171b", "tonalRamp": ["#050d0f", "#0a171b", "#102329", "#152f35", "#1a373d", "#28464c", "#3a5c62", "#edf7f4"] }
+      "canvas": { "role": "primary", "displayName": "Command Black", "canonical": "#070708", "tonalRamp": ["#070708", "#111113", "#171719", "#242122", "#332f30", "#5f5859", "#aaa1a2", "#f7f4f4"] },
+      "paper": { "role": "neutral", "displayName": "Evidence Plane", "canonical": "#111113", "tonalRamp": ["#070708", "#111113", "#171719", "#242122", "#433a3b", "#777071", "#bcb3b4", "#f7f4f4"] },
+      "carbon": { "role": "primary", "displayName": "Command Black", "canonical": "#070708", "tonalRamp": ["#070708", "#111113", "#251013", "#43151b", "#7b1620", "#b70f1c", "#e12636", "#ff7b84"] },
+      "ink": { "role": "neutral", "displayName": "Warm White Ink", "canonical": "#f7f4f4", "tonalRamp": ["#070708", "#171719", "#332f30", "#5f5859", "#91888a", "#c2babb", "#ded8d9", "#f7f4f4"] },
+      "body": { "role": "neutral", "displayName": "Quiet Silver", "canonical": "#c2babb", "tonalRamp": ["#111113", "#242122", "#433a3b", "#6e6667", "#91888a", "#aaa1a2", "#c2babb", "#f7f4f4"] },
+      "line": { "role": "neutral", "displayName": "Charcoal Rule", "canonical": "#2d2829", "tonalRamp": ["#070708", "#111113", "#171719", "#2d2829", "#433a3b", "#6e6667", "#aaa1a2", "#ded8d9"] },
+      "crimson": { "role": "primary", "displayName": "Registration Crimson", "canonical": "#e12636", "tonalRamp": ["#301216", "#58131a", "#8c111b", "#b70f1c", "#e12636", "#ff6672", "#ff9aa2", "#ffdadd"] },
+      "scarlet": { "role": "secondary", "displayName": "Comparative Scarlet", "canonical": "#ff7b84", "tonalRamp": ["#29171a", "#532228", "#8c3840", "#c4515b", "#ff7b84", "#ffa2a9", "#ffc7cb", "#fff0f1"] },
+      "graphite": { "role": "secondary", "displayName": "Validation White", "canonical": "#f2eeee", "tonalRamp": ["#111113", "#242122", "#433a3b", "#6e6667", "#91888a", "#bcb3b4", "#ded8d9", "#f2eeee"] },
+      "oxblood": { "role": "tertiary", "displayName": "Measured Oxblood", "canonical": "#c4616a", "tonalRamp": ["#29171a", "#4d2328", "#71343b", "#9f4a52", "#c4616a", "#df8f96", "#efbcc0", "#ffe8ea"] },
+      "risk": { "role": "tertiary", "displayName": "Risk Crimson", "canonical": "#ff4f5d", "tonalRamp": ["#301216", "#5e151c", "#981421", "#cf1c2b", "#ff4f5d", "#ff7d87", "#ffadb4", "#ffe0e3"] },
+      "burgundy": { "role": "tertiary", "displayName": "Model Burgundy", "canonical": "#9f5660", "tonalRamp": ["#241316", "#432027", "#63313a", "#82444e", "#9f5660", "#bf7f87", "#ddaeb3", "#f5e4e7"] }
     },
     "typographyMeta": {
-      "display": { "displayName": "Editorial Display", "purpose": "Section theses and decisive conclusions." },
-      "headline": { "displayName": "Decision Headline", "purpose": "Recommendation and feature panels." },
-      "title": { "displayName": "Evidence Title", "purpose": "Charts, tables, and analytical modules." },
-      "body": { "displayName": "Interface Body", "purpose": "Explanations, controls, and data." },
-      "label": { "displayName": "Operational Label", "purpose": "Metadata, scope, confidence, and status." }
+      "display": { "displayName": "Ledger Display", "purpose": "Section theses in the single self-hosted Manrope voice." },
+      "headline": { "displayName": "Decision Headline", "purpose": "Executive memo and conclusion statements." },
+      "title": { "displayName": "Evidence Title", "purpose": "Charts, tables, methods, and ledger modules." },
+      "body": { "displayName": "Evidence Body", "purpose": "Operational explanation and analytical interpretation." },
+      "label": { "displayName": "Register Label", "purpose": "Compact metadata, scope, state, and navigation labels." },
+      "numericRule": { "displayName": "Tabular Numerals", "purpose": "All KPIs, tables, chart labels, and quantitative ledgers use tabular numerals." }
     },
     "shadows": [
-      { "name": "ambient", "value": "0 10px 28px rgba(0, 0, 0, 0.24)", "purpose": "Hover feedback on inspectable analytical containers." },
-      { "name": "ambient-hover", "value": "0 16px 36px rgba(0, 0, 0, 0.38)", "purpose": "Strongest permitted card elevation." },
-      { "name": "drawer", "value": "-18px 0 42px rgba(0, 0, 0, 0.38)", "purpose": "Directional depth for the caveats drawer." }
+      { "name": "panel-low", "value": "0 12px 34px rgba(0, 0, 0, .32)", "purpose": "Low resting depth for the joined executive schedule." },
+      { "name": "panel-hover", "value": "0 18px 48px rgba(0, 0, 0, .48)", "purpose": "Inspection feedback on chart cards and the utility menu." },
+      { "name": "spine", "value": "8px 0 28px rgba(0, 0, 0, .38)", "purpose": "Separates the fixed command spine from the evidence field." },
+      { "name": "drawer", "value": "-18px 0 42px rgba(0, 0, 0, .55)", "purpose": "Directional depth for the modal caveats drawer." }
     ],
     "motion": [
-      { "name": "ease-standard", "value": "cubic-bezier(.16, 1, .3, 1)", "purpose": "Short control, progress, and layout state changes." },
-      { "name": "duration-fast", "value": "180ms", "purpose": "Hover and focus-adjacent state feedback." },
-      { "name": "reduced-motion", "value": "0.01ms; no smooth scroll or motion-led reveal", "purpose": "Preserve final state and hierarchy without animation." }
+      { "name": "ease-standard", "value": "cubic-bezier(.16, 1, .3, 1)", "purpose": "Short control, drawer, and layout state changes." },
+      { "name": "duration-fast", "value": "180ms", "purpose": "Hover, focus-adjacent, and compact control feedback." },
+      { "name": "duration-drawer", "value": "260ms", "purpose": "Mobile spine slide-in transition." },
+      { "name": "duration-layout", "value": "320ms", "purpose": "Progress and presentation-mode continuity." },
+      { "name": "reduced-motion", "value": ".01ms; one iteration; scroll-behavior auto", "purpose": "Preserves final state while removing motion-led transitions and smooth scrolling." }
     ],
     "breakpoints": [
-      { "name": "wide", "value": "1280px" },
-      { "name": "compact", "value": "1180px" },
-      { "name": "tablet", "value": "980px" },
-      { "name": "drawer", "value": "899px" },
-      { "name": "mobile", "value": "520px" },
-      { "name": "narrow", "value": "449px" }
-    ]
+      { "name": "spine-compact", "value": "1320px" },
+      { "name": "schedule-stack", "value": "1120px" },
+      { "name": "drawer", "value": "900px" },
+      { "name": "ledger-stack", "value": "680px" },
+      { "name": "narrow-mobile", "value": "520px" }
+    ],
+    "layout": {
+      "desktopSpine": "240px fixed carbon-black spine; 224px below 1320px",
+      "utilityBar": "68px sticky black bar; 64px in drawer mode",
+      "workingSheet": "1600px maximum-width charcoal evidence field with 28px desktop gutters",
+      "executiveSchedule": "Near-black decision memo joined to four charcoal KPI cells; 13px outer radius",
+      "storyStrip": "Three-step horizontal evidence → implication → action register",
+      "analyticalSpread": "12-column evidence grid; principal canvas 2.2fr paired with a 0.8fr action and quality ledger",
+      "presentation": "Spine removed, sheet expands to 1740px, evidence rail reflows beside the main canvas",
+      "print": "All ten sections render in order; chrome is removed; inverse surfaces become ink-safe paper"
+    },
+    "chartSemantics": {
+      "placementCount": 24,
+      "definitionCount": 21,
+      "defaultSeries": "Registration Crimson #e12636",
+      "positiveOrValidated": "Validation White #f2eeee",
+      "caveatOrProvisional": "Measured Oxblood #c4616a",
+      "materialRisk": "Risk Crimson #ff4f5d",
+      "fourthAttributionSeries": "Model Burgundy #9f5660",
+      "redundantEncoding": "Use labels, direct units, marker shapes, stripes, dots, dashed intervals, and legends so color is never the only carrier.",
+      "evidenceContract": "Every placement retains title, subtitle, source dataset, direct units, accessible summary, visible caveat, CSV download, and explicit Data/Chart alternative."
+    },
+    "responsiveBehavior": {
+      "at1120": "Executive schedule and main analytical spread stack.",
+      "at900": "Navigation becomes a modal slide-in drawer; chart pairs stack.",
+      "at680": "Story strip becomes one vertically ruled panel; ledgers and secondary grids stack.",
+      "at520": "Export, print, presentation, and reset move into overflow; exposed actions become at least 44px; gutters reduce to 12px.",
+      "contentPreservation": "All modes retain section order, chart metadata, caveats, tables, downloads, and analytical denominators."
+    },
+    "accessibility": {
+      "focus": "2px white outline with 2px offset plus a 5px crimson outer ring.",
+      "mobileNav": "Modal semantics, inert and aria-hidden background, scroll lock, focus trap, Escape/backdrop dismissal, and trigger-focus restoration.",
+      "caveatsDrawer": "Modal semantics, focus containment, Escape dismissal, and trigger-focus restoration.",
+      "charts": "Accessible summaries and captioned data alternatives remain adjacent to every chart.",
+      "targets": "Interactive actions are at least 44px at 520px and below.",
+      "motion": "prefers-reduced-motion disables smooth scrolling and collapses animation/transition durations.",
+      "print": "All sections print in source order with navigation and utility chrome removed."
+    },
+    "componentPatterns": [
+      "Joined executive schedule: one black memo plus four ruled charcoal KPI cells.",
+      "Responsive evidence strip: horizontal on desktop and vertically ruled on narrow screens.",
+      "Asymmetric command canvas: large analytical field plus action queue and quality tape.",
+      "Evidence chart card: heading, Data/Chart toggle, download, visual, accessible summary, caveat, and explanation.",
+      "Sortable ledger table: sticky header, tabular numerals, right-aligned quantities, alternating rows, horizontal containment.",
+      "Narrow-mobile overflow: one 44px trigger consolidates non-primary utilities."
+    ],
+    "productContract": {
+      "sections": 10,
+      "chartPlacements": 24,
+      "chartDefinitions": 21,
+      "sortableTables": 6,
+      "dataSource": "dashboard-data.json",
+      "preservedPaths": ["CSV export", "print all", "hash deep links", "presentation mode", "/full-analysis archive"]
+    }
   },
   "components": [
     {
       "name": "Primary Button",
       "kind": "button",
       "refersTo": "button-primary",
-      "description": "A luminous ocean-teal action for the page's strongest command.",
+      "description": "The strongest explicit action on the evidence field.",
       "html": "<button class=\"ds-button-primary\">Open action plan</button>",
-      "css": ".ds-button-primary { min-height: 40px; padding: 0 14px; border: 1px solid var(--ocean-teal, #70c9d2); border-radius: 6px; color: #071417; background: var(--ocean-teal, #70c9d2); font: 750 11px/1.2 Manrope, sans-serif; transition: background .18s cubic-bezier(.16,1,.3,1); } .ds-button-primary:hover { background: var(--ocean-teal-light, #9ae0e5); } .ds-button-primary:focus-visible { outline: 2px solid #f4fbf8; outline-offset: 2px; box-shadow: 0 0 0 5px var(--ocean-teal, #70c9d2); }"
+      "css": ".ds-button-primary { min-height: 38px; padding: 0 13px; border: 1px solid var(--blue, #e12636); border-radius: 8px; color: #fff; background: var(--blue, #e12636); font: 720 11px/1 Manrope, sans-serif; transition: background 180ms var(--ease, cubic-bezier(.16,1,.3,1)), transform 180ms var(--ease, cubic-bezier(.16,1,.3,1)); } .ds-button-primary:hover { background: var(--accent-pressed, #b70f1c); } .ds-button-primary:active { transform: translateY(1px); } .ds-button-primary:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px var(--blue, #e12636); }"
     },
     {
       "name": "Utility Button",
       "kind": "button",
       "refersTo": "button-utility",
-      "description": "Compact evidence controls with a 44px mobile target.",
+      "description": "A compact charcoal control for export, print, caveats, and mode changes.",
       "html": "<button class=\"ds-button-utility\">Export</button>",
-      "css": ".ds-button-utility { min-height: 32px; padding: 0 10px; border: 1px solid var(--line-strong, #3a5c62); border-radius: 6px; color: var(--body, #c0cfcc); background: #102329; font: 750 11px/1.2 Manrope, sans-serif; transition: border-color .18s cubic-bezier(.16,1,.3,1), color .18s cubic-bezier(.16,1,.3,1), background .18s cubic-bezier(.16,1,.3,1); } .ds-button-utility:hover { border-color: #5b9296; color: #9ae0e5; background: #17383d; } .ds-button-utility:focus-visible { outline: 2px solid #f4fbf8; outline-offset: 2px; box-shadow: 0 0 0 5px var(--ocean-teal, #70c9d2); } @media (max-width: 899px) { .ds-button-utility { min-width: 44px; min-height: 44px; } }"
-    },
-    {
-      "name": "Evidence Card",
-      "kind": "card",
-      "refersTo": "card",
-      "description": "A ruled paper module for charts and analytical evidence.",
-      "html": "<article class=\"ds-evidence-card\"><h3>Pipeline contribution</h3><p>Direct units, interpretation, caveat, and data alternative stay together.</p></article>",
-      "css": ".ds-evidence-card { padding: 14px; border: 1px solid var(--line-strong, #3a5c62); border-radius: 10px; color: var(--ink, #edf7f4); background: #102329; transition: border-color .18s cubic-bezier(.16,1,.3,1), box-shadow .18s cubic-bezier(.16,1,.3,1); } .ds-evidence-card h3 { margin: 0 0 8px; font: 650 17px/1.16 Newsreader, Georgia, serif; letter-spacing: -.012em; } .ds-evidence-card p { margin: 0; color: var(--body, #c0cfcc); font: 400 12px/1.55 Manrope, sans-serif; } .ds-evidence-card:hover { border-color: #6d9da0; box-shadow: 0 10px 28px rgba(0,0,0,.24); }"
-    },
-    {
-      "name": "Confidence Chip",
-      "kind": "chip",
-      "refersTo": "chip",
-      "description": "A textual confidence marker whose meaning survives without color.",
-      "html": "<span class=\"ds-confidence-chip\">Directional</span>",
-      "css": ".ds-confidence-chip { display: inline-flex; min-height: 23px; align-items: center; padding: 0 7px; border: 1px solid #875c45; border-radius: 5px; color: #f3bd98; background: #3a2a24; font: 850 9px/1 Manrope, sans-serif; letter-spacing: .02em; }"
+      "css": ".ds-button-utility { min-height: 34px; padding: 0 10px; border: 1px solid var(--line-strong, #433a3b); border-radius: 8px; color: var(--ink-soft, #ded8d9); background: var(--surface, #111113); font: 670 10px/1 Manrope, sans-serif; transition: color 180ms var(--ease, cubic-bezier(.16,1,.3,1)), background 180ms var(--ease, cubic-bezier(.16,1,.3,1)), border-color 180ms var(--ease, cubic-bezier(.16,1,.3,1)); } .ds-button-utility:hover { border-color: #815159; color: var(--blue-dark, #ff6672); background: var(--surface-tint, #261013); } .ds-button-utility:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px var(--blue, #e12636); } @media (max-width: 520px) { .ds-button-utility { min-width: 44px; min-height: 44px; } }"
     },
     {
       "name": "Navigation Item",
       "kind": "nav",
-      "description": "A deep-petrol rail destination with the signature copper trace.",
+      "description": "A binder-spine destination with a crimson registration mark for the current section.",
       "html": "<a class=\"ds-nav-item ds-nav-item-active\" href=\"#\">Essential View</a>",
-      "css": ".ds-nav-item { position: relative; display: flex; min-height: 36px; align-items: center; padding: 0 10px 0 14px; border: 1px solid transparent; border-radius: 6px; color: #c4d8d6; background: #061316; font: 520 12px/1.2 Manrope, sans-serif; text-decoration: none; } .ds-nav-item:hover { border-color: #3b6468; color: #f4fbf8; background: #18373d; } .ds-nav-item-active { border-color: #5a888b; color: #f4fbf8; background: #1d4950; } .ds-nav-item-active::before { content: \"\"; position: absolute; inset: 8px auto 8px 0; width: 2px; background: #efad79; } .ds-nav-item:focus-visible { outline: 2px solid #f4fbf8; outline-offset: 2px; box-shadow: 0 0 0 5px var(--ocean-teal, #70c9d2); }"
+      "css": ".ds-nav-item { position: relative; display: flex; min-height: 35px; align-items: center; padding: 0 11px 0 13px; border: 1px solid transparent; border-radius: 7px; color: #d2c9ca; background: var(--nav, #070708); font: 620 11px/1.2 Manrope, sans-serif; text-decoration: none; transition: color 180ms cubic-bezier(.16,1,.3,1), background 180ms cubic-bezier(.16,1,.3,1), border-color 180ms cubic-bezier(.16,1,.3,1); } .ds-nav-item:hover { border-color: rgba(255,255,255,.1); color: #fff; background: rgba(255,255,255,.055); } .ds-nav-item-active { border-color: rgba(225,38,54,.42); color: #fff; background: var(--nav-soft, #251013); } .ds-nav-item-active::before { content: \"\"; position: absolute; inset: 7px auto 7px 0; width: 2px; border-radius: 0 2px 2px 0; background: #ff6672; } .ds-nav-item:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px var(--blue, #e12636); }"
     },
     {
-      "name": "Data Table",
+      "name": "Validated Chip",
+      "kind": "chip",
+      "refersTo": "chip-status",
+      "description": "A textual validation marker whose meaning survives without color.",
+      "html": "<span class=\"ds-chip-valid\">✓ Validated snapshot</span>",
+      "css": ".ds-chip-valid { display: inline-flex; min-height: 22px; width: max-content; align-items: center; gap: 4px; padding: 0 7px; border: 1px solid #5a5253; border-radius: 5px; color: #f2eeee; background: var(--teal-soft, #242122); font: 720 9px/1 Manrope, sans-serif; white-space: nowrap; }"
+    },
+    {
+      "name": "Evidence Chart Card",
+      "kind": "card",
+      "refersTo": "card-evidence",
+      "description": "The canonical evidence frame keeps title, view control, summary, and caveat together.",
+      "html": "<article class=\"ds-chart-card\"><header><div><h3>Marketing contribution</h3><p>Recorded pipeline by evidence definition</p></div><button>Data</button></header><div class=\"ds-chart-field\"><span></span><span></span></div><p class=\"ds-summary\">Sourced and influenced credit use different populations.</p><p class=\"ds-caveat\">Measurement caveat · descriptive evidence, not causal lift.</p></article>",
+      "css": ".ds-chart-card { padding: 17px 18px 16px; border: 1px solid var(--line-strong, #433a3b); border-radius: 12px; color: var(--ink, #f7f4f4); background: var(--surface, #111113); box-shadow: 0 4px 14px rgba(0,0,0,.24); font-family: Manrope, sans-serif; transition: border-color 180ms cubic-bezier(.16,1,.3,1), box-shadow 180ms cubic-bezier(.16,1,.3,1), transform 180ms cubic-bezier(.16,1,.3,1); } .ds-chart-card:hover { border-color: #815159; box-shadow: 0 18px 42px rgba(0,0,0,.48); transform: translateY(-1px); } .ds-chart-card header { display: flex; min-height: 50px; justify-content: space-between; gap: 14px; padding-bottom: 11px; border-bottom: 1px solid var(--line, #2d2829); } .ds-chart-card h3 { margin: 0; font-size: 14px; line-height: 1.25; letter-spacing: -.018em; } .ds-chart-card header p { margin: 5px 0 0; color: var(--muted, #aaa1a2); font-size: 11px; } .ds-chart-card button { width: 56px; height: 31px; border: 1px solid var(--line-strong, #433a3b); border-radius: 7px; color: var(--ink-soft, #ded8d9); background: #171719; font: 670 10px/1 Manrope, sans-serif; } .ds-chart-card button:hover { border-color: var(--blue, #e12636); color: var(--blue-dark, #ff6672); background: var(--surface-tint, #261013); } .ds-chart-card button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px var(--blue, #e12636); } .ds-chart-field { display: grid; gap: 12px; padding: 26px 8px 22px; } .ds-chart-field span { display: block; width: 82%; height: 14px; border-radius: 0 4px 4px 0; background: var(--blue, #e12636); } .ds-chart-field span + span { width: 58%; background: var(--teal, #f2eeee); } .ds-summary { margin: 0; padding-top: 9px; border-top: 1px solid var(--line, #2d2829); color: var(--body, #c2babb); font-size: 11px; line-height: 1.55; } .ds-caveat { margin: 9px 0 0; padding: 8px 9px; border: 1px solid #67363c; border-radius: 7px; color: #e3a3a9; background: #29171a; font-size: 11px; line-height: 1.5; }"
+    },
+    {
+      "name": "Sortable Evidence Table",
       "kind": "custom",
-      "description": "A compact, tabular evidence surface with night-mineral row states.",
-      "html": "<table class=\"ds-table\"><thead><tr><th>Channel</th><th>Pipeline</th></tr></thead><tbody><tr><td>Email</td><td>$12.4M</td></tr><tr><td>Events</td><td>$8.1M</td></tr></tbody></table>",
-      "css": ".ds-table { width: 100%; border-collapse: collapse; color: #c0cfcc; background: #102329; font: 400 12px/1.4 Manrope, sans-serif; font-variant-numeric: tabular-nums; } .ds-table th, .ds-table td { padding: 9px 10px; border-bottom: 1px solid #28464c; text-align: left; } .ds-table th { color: #c8dbd8; background: #1b383d; font-size: 10px; } .ds-table tbody tr:nth-child(even) { background: #142a2f; } .ds-table tbody tr:hover { background: #1b3d42; }"
+      "description": "A compact ruled ledger with tabular numerals and sortable headers.",
+      "html": "<table class=\"ds-table\"><thead><tr><th><button>Channel ↕</button></th><th><button>Pipeline ↕</button></th></tr></thead><tbody><tr><td>Email</td><td>$12.4M</td></tr><tr><td>Events</td><td>$8.1M</td></tr></tbody></table>",
+      "css": ".ds-table { width: 100%; border-collapse: collapse; color: var(--body, #c2babb); background: var(--surface, #111113); font: 400 10.5px/1.4 Manrope, sans-serif; font-variant-numeric: tabular-nums; } .ds-table th, .ds-table td { padding: 9px 10px; border-bottom: 1px solid var(--line, #2d2829); text-align: left; white-space: nowrap; } .ds-table th { color: var(--ink-soft, #ded8d9); background: #1f1c1d; font-size: 9px; font-weight: 720; } .ds-table th:not(:first-child), .ds-table td:not(:first-child) { text-align: right; } .ds-table tbody tr:nth-child(even) { background: #151416; } .ds-table tbody tr:hover { background: var(--surface-tint, #261013); } .ds-table button { padding: 0; border: 0; color: inherit; background: transparent; font: inherit; font-weight: inherit; } .ds-table button:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px var(--blue, #e12636); }"
+    },
+    {
+      "name": "Executive Decision Schedule",
+      "kind": "custom",
+      "description": "The signature opening register joins a carbon-black decision memo to a ruled KPI schedule.",
+      "html": "<section class=\"ds-schedule\"><div class=\"ds-memo\"><h2>Protect win quality. Expand coverage through a measured holdout.</h2><p>Attribution identifies where to investigate.</p></div><div class=\"ds-kpis\"><div><span>Total pipeline</span><strong>$30.2M</strong></div><div><span>Won revenue</span><strong>$5.1M</strong></div><div><span>Marketing sourced</span><strong>$4.2M</strong></div><div><span>Influenced signal</span><strong>$6.3M</strong></div></div></section>",
+      "css": ".ds-schedule { display: grid; grid-template-columns: minmax(350px,1.08fr) minmax(620px,2.1fr); overflow: hidden; border: 1px solid var(--line-strong, #433a3b); border-radius: 13px; background: #111113; box-shadow: 0 12px 34px rgba(0,0,0,.32); font-family: Manrope, sans-serif; } .ds-memo { position: relative; padding: 22px 24px 20px; color: #fff; background: var(--nav, #070708); } .ds-memo::after { content: \"\"; position: absolute; right: 0; bottom: 0; width: 42%; height: 2px; background: var(--blue, #e12636); } .ds-memo h2 { max-width: 20ch; margin: 0; font-size: 25px; line-height: 1.12; letter-spacing: -.035em; } .ds-memo p { margin: 12px 0 0; color: #c7bfc0; font-size: 11.5px; line-height: 1.55; } .ds-kpis { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); } .ds-kpis div { position: relative; display: flex; padding: 19px 17px; flex-direction: column; justify-content: center; border-left: 1px solid var(--line, #2d2829); } .ds-kpis div::after { content: \"\"; position: absolute; inset: auto 17px 14px; height: 2px; background: #59232a; } .ds-kpis span { color: var(--muted, #aaa1a2); font-size: 9px; font-weight: 690; letter-spacing: .035em; text-transform: uppercase; } .ds-kpis strong { margin-top: 9px; color: var(--ink, #f7f4f4); font-size: 25px; font-weight: 740; line-height: 1; letter-spacing: -.04em; font-variant-numeric: tabular-nums; } @media (max-width: 1120px) { .ds-schedule { grid-template-columns: 1fr; } } @media (max-width: 520px) { .ds-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); } }"
     }
   ],
   "narrative": {
-    "northStar": "The Signal Atlas",
-    "overview": "The interface feels like an operator's evidence desk after hours: deep petrol framing, blue-black mineral surfaces, ruled modules, luminous ocean-teal signals, and warm copper or terracotta only where interpretation demands attention. It is dark-first for low ambient light, dense but not cramped, editorial but not theatrical, and designed to make analytical confidence visible. The page is a presentation layer over a validated schema-v2 data contract. Preserve the source metrics, caveats, required section order, chart/table parity, export paths, presentation and print modes, and the /full-analysis archive. Visual changes must not silently recalculate, omit, or reframe the evidence.",
+    "northStar": "The Executive Evidence Ledger",
+    "overview": "The interface behaves like a black-glass executive command room crossed with an auditor's decision ledger. A fixed near-black spine holds navigation, search, archive access, and validation status; charcoal evidence planes carry an asymmetric record of ruled schedules, evidence bands, charts, ledgers, and action notes. Warm-white type supplies clarity while crimson registration marks create urgency without overpowering the evidence. The page preserves ten ordered sections, 24 chart placements backed by 21 reusable chart definitions, six sortable tables, real dashboard-data.json, chart/data parity, export, print, deep links, presentation mode, and the full-analysis archive.",
     "keyCharacteristics": [
-      "Decision first; evidence, implication, and action remain traceable.",
-      "Petrol command rail, mineral canvas, night-paper modules, and fine rules.",
-      "Newsreader gives conclusions authority; Manrope keeps controls and data legible.",
-      "Color carries semantic meaning and is reinforced by labels, patterns, or copy."
+      "Near-black canvas with stepped charcoal evidence planes.",
+      "Asymmetric executive memo, ruled schedules, and compact evidence ledgers.",
+      "Self-hosted Manrope only, with tabular numerals throughout quantitative surfaces.",
+      "Crimson registration marks supported only by warm white, gray, oxblood, scarlet, and burgundy tones.",
+      "Dense evidence remains inspectable, accessible, printable, and traceable to source data."
     ],
     "rules": [
-      { "name": "The Accountable Color Rule", "body": "A semantic color keeps the same meaning across KPIs, charts, caveats, and actions; labels and patterns preserve that meaning without color.", "section": "colors" },
-      { "name": "The Two-Voice Rule", "body": "Newsreader speaks for interpretation; Manrope speaks for operation and evidence. Do not introduce a third display or UI family.", "section": "typography" },
-      { "name": "The Content-Preservation Rule", "body": "Responsive and presentation modes may reflow or focus the evidence, but must retain required sections, labels, denominators, accessible summaries, table/download alternatives, and the original analytical order.", "section": "layout" },
-      { "name": "The Ruled-First Rule", "body": "Prefer a one-pixel mineral border or tonal step before adding elevation.", "section": "elevation" }
+      { "name": "The Accountable Color Rule", "body": "Crimson means primary evidence; graphite means validated or neutral comparison; oxblood means limitation; dark crimson means material risk; burgundy means the fourth analytical series. Reinforce every meaning with text, iconography, pattern, or shape.", "section": "colors" },
+      { "name": "The Black Majority Rule", "body": "Black and charcoal occupy most of every screen. White establishes hierarchy; crimson is registration and semantics, never decoration.", "section": "colors" },
+      { "name": "The One-Voice Rule", "body": "Do not add a serif, display face, or chart-specific font. Use Manrope's variable weight and tight spacing to separate interpretation from metadata.", "section": "typography" },
+      { "name": "The Content-Preservation Rule", "body": "Responsive, presentation, and print modes may reflow or focus the evidence, but must retain the ten-section order, denominators, caveats, accessible summaries, Data/Chart alternatives, downloads, and sortable tables.", "section": "layout" },
+      { "name": "The Ruled-First Rule", "body": "Prefer a border, shared divider, or paper-tone change before adding shadow. Never build a floating-card wall.", "section": "elevation" }
     ],
     "dos": [
-      "**Do** lead with the operating decision, then show evidence, limitations, and the measurable action.",
-      "**Do** keep chart summaries, caveats, data tables, downloads, print output, and schema validation intact.",
-      "**Do** use rules and mineral tonal layers as the primary composition system.",
-      "**Do** retain 44px mobile controls and visible keyboard focus."
+      "Lead with the operating decision, then preserve the evidence → implication → action chain.",
+      "Use shared rules, asymmetric schedules, and ledgers to show relationships.",
+      "Keep all ten sections, 24 chart placements, six sortable tables, real data, deep links, export, print, presentation, and archive access intact.",
+      "Keep visible caveats, accessible chart summaries, explicit Data/Chart toggles, keyboard focus, and 44px narrow-mobile targets.",
+      "Honor reduced motion by collapsing durations, disabling smooth scroll, and preserving the final state."
     ],
     "donts": [
-      "**Don't** replace the signal atlas with a generic blue KPI wall, glassmorphism, gradients, or decorative 3D.",
-      "**Don't** use warm colors ornamentally or let color become the only carrier of meaning.",
-      "**Don't** hide analytical sections, change denominators, or overstate observational evidence as causal.",
-      "**Don't** preload the chart module or let chart code block the decision-first shell."
+      "Do not introduce white card islands or dilute the black-primary hierarchy; use charcoal elevation and rules for separation.",
+      "Do not replace the working-paper composition with a generic KPI-card grid, use any blue/green/purple accents, add glassmorphism, decorative gradients, pill-heavy controls, or ornamental 3D.",
+      "Do not use semantic colors decoratively or make color the only carrier of meaning.",
+      "Do not hide sections, alter denominators, detach charts from caveats/data, or overstate observational evidence as causal.",
+      "Do not let presentation, mobile, or print modes remove evidence or break the original analytical order."
     ]
   }
 }

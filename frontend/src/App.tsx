@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Archive, ArrowRight, ArrowUpDown, Check, ChevronDown, CircleAlert, Download, ExternalLink,
-  FileText, GitBranch, Info, Menu, Presentation, Printer, RotateCcw, Search, ShieldCheck,
+  FileText, GitBranch, Info, Menu, MoreHorizontal, Presentation, Printer, RotateCcw, Search, ShieldCheck,
   Sparkles, TrendingUp, X,
 } from "lucide-react";
 import { gsap } from "gsap";
@@ -264,6 +264,12 @@ const money = (value: number) => {
 const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
 const metric = (data: DashboardData, key: string) => data.context.metrics[key] ?? "N/A";
 const parseCount = (value: string) => Number(value.replaceAll(",", "")) || 0;
+const formatRefresh = (value?: string) => {
+  if (!value) return "Latest validated build";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Latest validated build";
+  return `Refreshed ${new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" }).format(parsed)}`;
+};
 
 function interpolate(text: string, data: DashboardData) {
   return text.replace(/\{([^}]+)\}/g, (_, key: string) => metric(data, key));
@@ -367,7 +373,7 @@ function ChartCard({ id, metadata, data, totalPipeline, coverageMix, presenting 
   const summaryId = `${id}-summary`;
   const tableId = `${id}-data`;
   return <article className="chart-card" data-chart-id={id} data-reveal aria-labelledby={`${id}-title`}>
-    <div className="chart-heading"><div><h3 id={`${id}-title`}>{title}</h3><p id={`${id}-subtitle`}>{subtitle}</p></div><div className="chart-actions"><button type="button" className="icon-button" title="View chart data" aria-label={`View data for ${title}`} aria-expanded={table} aria-controls={tableId} onClick={() => setTable((value) => !value)}><FileText size={15} /></button><button type="button" className="icon-button" title="Download chart data" aria-label={`Download data for ${title}`} onClick={() => downloadRows(`${id}.csv`, chartRows)}><Download size={15} /></button></div></div>
+    <div className="chart-heading"><div><h3 id={`${id}-title`}>{title}</h3><p id={`${id}-subtitle`}>{subtitle}</p></div><div className="chart-actions"><button type="button" className={`icon-button chart-view-toggle${table ? " is-active" : ""}`} title={table ? "Return to chart" : "View chart data"} aria-label={table ? `View chart for ${title}` : `View data for ${title}`} aria-pressed={table} aria-expanded={table} aria-controls={tableId} onClick={() => setTable((value) => !value)}><FileText size={15} /><span>{table ? "Chart" : "Data"}</span></button><button type="button" className="icon-button" title="Download chart data" aria-label={`Download data for ${title}`} onClick={() => downloadRows(`${id}.csv`, chartRows)}><Download size={15} /></button></div></div>
     <div className="chart-visual" role="img" aria-labelledby={`${id}-title ${id}-subtitle`} aria-describedby={summaryId}><Suspense fallback={<div className="chart-empty" role="status">Loading visual…</div>}><ChartRenderer id={id} data={data.datasets} totalPipeline={totalPipeline} coverageMix={coverageMix} /></Suspense></div>
     <p id={summaryId} className="chart-accessible-summary">{metadata?.accessible_summary}</p>
     {metadata?.caveat && <p className="chart-caveat chart-caveat-visible"><CircleAlert size={14} /><span>{metadata.caveat}</span></p>}
@@ -537,6 +543,8 @@ function App() {
   const caveatsTrigger = useRef<HTMLButtonElement>(null);
   const caveatsClose = useRef<HTMLButtonElement>(null);
   const caveatsWasOpen = useRef(false);
+  const utilityMenu = useRef<HTMLDivElement>(null);
+  const utilityTrigger = useRef<HTMLButtonElement>(null);
   const routeHasRendered = useRef(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState("");
@@ -545,6 +553,7 @@ function App() {
   const [presenting, setPresenting] = useState(() => localStorage.getItem("dashboardMode") === "presentation");
   const [search, setSearch] = useState("");
   const [caveatsOpen, setCaveatsOpen] = useState(false);
+  const [utilityOpen, setUtilityOpen] = useState(false);
   const [resetToken, setResetToken] = useState(0);
   const [printAll, setPrintAll] = useState(false);
 
@@ -636,6 +645,25 @@ function App() {
     return () => { window.removeEventListener("keydown", onKey); };
   }, [caveatsOpen]);
   useEffect(() => {
+    if (!utilityOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (!utilityMenu.current?.contains(event.target as Node)) setUtilityOpen(false);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setUtilityOpen(false);
+        utilityTrigger.current?.focus();
+      }
+    };
+    window.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", onPointerDown);
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [utilityOpen]);
+  useEffect(() => {
     document.body.style.overflow = menuOpen || caveatsOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [menuOpen, caveatsOpen]);
@@ -671,6 +699,7 @@ function App() {
   if (!data) return <main className="load-state" aria-live="polite"><span className="loader" /><p>Loading validated evidence…</p></main>;
 
   const metrics = data.context.metrics;
+  const refreshed = formatRefresh(data.meta.generated_at);
   // This map is intentionally derived after the loading guards. Keeping it as a
   // plain value avoids changing the hook order when the static contract loads.
   const metadata = new Map(data.chart_metadata.map((item) => [item.chart_id, item]));
@@ -704,9 +733,9 @@ function App() {
   };
 
   return <div ref={root} className="app-shell">
-    <aside id="dashboard-navigation" className={`sidebar ${menuOpen ? "is-open" : ""}`} role={menuOpen ? "dialog" : undefined} aria-label="Dashboard sections" aria-modal={menuOpen ? "true" : undefined}><div className="brand"><span>RC</span><div><strong>Revenue Command Center</strong><small>Marketing analytics · {data.meta.period}</small></div></div><button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button><div className="nav-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find evidence" aria-label="Search dashboard sections" /></div><nav className="section-nav">{filteredGroups.map((group) => <div className="nav-group" key={group.id}><div className="nav-group-label">{group.icon}<span>{group.label}</span></div>{group.children.map((item) => <a key={item.id} href={`#${item.id}`} className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={(event) => { event.preventDefault(); openSection(item.id); }}><span>{item.label}</span>{active === item.id && <AnimatedNavIndicator />}</a>)}</div>)}</nav>{search.trim() && !hasSearchResults && <p className="nav-empty" role="status">No sections match “{search}”.</p>}<a className="legacy-link" href="/full-analysis"><ExternalLink size={15} /><span><strong>Full analysis archive</strong><small>Original Plotly reference</small></span></a><div className="sidebar-note"><ShieldCheck size={16} /><span>Validated Parquet evidence<br />Schema v{data.schema_version}</span></div></aside>{menuOpen && <button type="button" className="nav-backdrop" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation" />}
-      <main id="main-content"><header className="topbar"><div className="topbar-left"><button ref={menuButton} className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="dashboard-navigation"><Menu size={18} /></button><div><h1>Revenue Command Center</h1><span className="top-context">Marketing Analytics / {activeGroup?.label ?? "Dashboard"}</span></div></div><div className="top-actions"><span className="data-meta">{metrics.data_year_range} · {metrics.total_opportunities} opportunities · 8 sources</span><span className="validated"><Check size={13} /> Evidence validated</span><button ref={caveatsTrigger} className="action-button" type="button" title="View data caveats" onClick={() => setCaveatsOpen(true)} aria-haspopup="dialog" aria-expanded={caveatsOpen}><Info size={15} /> Caveats</button><button className="action-button utility-export" type="button" title="Export all evidence" onClick={() => downloadEvidence(data)}><Download size={15} /> Export</button><button className="action-button utility-print" type="button" title="Print all dashboard sections" onClick={() => { setPrintAll(true); window.setTimeout(() => { window.print(); window.setTimeout(() => setPrintAll(false), 1500); }, 120); }}><Printer size={15} /> Print</button><button className={`mode-button ${presenting ? "active" : ""}`} type="button" title={presenting ? "Switch to analyst mode" : "Switch to presentation mode"} onClick={togglePresentation} aria-pressed={presenting}><Presentation size={15} /> {presenting ? "Analyst mode" : "Presentation mode"}</button><button className="icon-button utility-reset" type="button" onClick={() => { setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }} title="Reset dashboard" aria-label="Reset dashboard"><RotateCcw size={16} /></button></div></header>
-      <section className={`command-strip ${active === "s-essential" ? "" : "is-compact"}`} aria-label="Executive operating summary"><div className="command-decision"><h2>Protect win quality. Expand account coverage through a measured holdout.</h2><p>Attribution guides where to investigate; it does not justify blanket budget scaling.</p><span>Operating decision · measurement required</span></div><div className="command-kpis"><div><span>Total pipeline</span><strong>{metrics.total_pipeline}</strong><small>{metrics.total_opportunities} opportunities</small></div><div><span>Recorded won revenue</span><strong>{metrics.won_revenue}</strong><small>{metrics.closed_deal_win_rate} resolved win rate</small></div><div><span>Marketing sourced</span><strong>{metrics.marketing_sourced_pipeline}</strong><small>{metrics.marketing_sourced_share} of pipeline</small></div><div><span>Influenced signal</span><strong>{metrics.marketing_influenced_pipeline}</strong><small>{metrics.attribution_linked_won_share} of wins linked</small></div></div></section>
+    <aside id="dashboard-navigation" className={`sidebar ${menuOpen ? "is-open" : ""}`} role={menuOpen ? "dialog" : undefined} aria-label="Dashboard sections" aria-modal={menuOpen ? "true" : undefined}><div className="brand"><span>RC</span><div><strong>Revenue Command</strong><small>Decision analytics · {data.meta.period}</small></div></div><button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button><div className="nav-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find evidence" aria-label="Search dashboard sections" /></div><nav className="section-nav">{filteredGroups.map((group) => <div className="nav-group" key={group.id}><div className="nav-group-label">{group.icon}<span>{group.label}</span></div>{group.children.map((item) => <a key={item.id} href={`#${item.id}`} className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={(event) => { event.preventDefault(); openSection(item.id); }}><span>{item.label}</span>{active === item.id && <AnimatedNavIndicator />}</a>)}</div>)}</nav>{search.trim() && !hasSearchResults && <p className="nav-empty" role="status">No sections match “{search}”.</p>}<a className="legacy-link" href="/full-analysis"><ExternalLink size={15} /><span><strong>Full analysis archive</strong><small>Original Plotly reference</small></span></a><div className="sidebar-note"><ShieldCheck size={16} /><span>Validated Parquet evidence<br />Schema v{data.schema_version}</span></div></aside>{menuOpen && <button type="button" className="nav-backdrop" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation" />}
+      <main id="main-content"><header className="topbar"><div className="topbar-left"><button ref={menuButton} className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="dashboard-navigation"><Menu size={18} /></button><div><h1>Revenue Command<span className="wide-title"> Center</span></h1><span className="top-context">{activeGroup?.label ?? "Dashboard"} / {data.meta.period}</span></div></div><div className="top-actions"><span className="data-meta">{refreshed} · {metrics.total_opportunities} opportunities</span><span className="validated"><Check size={13} /> Validated snapshot</span><button ref={caveatsTrigger} className="action-button" type="button" title="View data caveats" onClick={() => setCaveatsOpen(true)} aria-haspopup="dialog" aria-expanded={caveatsOpen}><Info size={15} /> Caveats</button><button className="action-button utility-export" type="button" title="Export all evidence" onClick={() => downloadEvidence(data)}><Download size={15} /> Export</button><button className="action-button utility-print" type="button" title="Print all dashboard sections" onClick={() => { setPrintAll(true); window.setTimeout(() => { window.print(); window.setTimeout(() => setPrintAll(false), 1500); }, 120); }}><Printer size={15} /> Print</button><button className={`mode-button ${presenting ? "active" : ""}`} type="button" title={presenting ? "Switch to analyst mode" : "Switch to presentation mode"} onClick={togglePresentation} aria-pressed={presenting}><Presentation size={15} /> {presenting ? "Analyst mode" : "Presentation mode"}</button><button className="icon-button utility-reset" type="button" onClick={() => { setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }} title="Reset dashboard" aria-label="Reset dashboard"><RotateCcw size={16} /></button><div ref={utilityMenu} className="utility-menu-wrap"><button ref={utilityTrigger} className="icon-button utility-more" type="button" aria-label="More dashboard actions" aria-haspopup="menu" aria-expanded={utilityOpen} aria-controls="utility-menu" onClick={() => setUtilityOpen((value) => !value)}><MoreHorizontal size={18} /></button>{utilityOpen && <div id="utility-menu" className="utility-menu-popover" role="menu"><button type="button" role="menuitem" onClick={() => { downloadEvidence(data); setUtilityOpen(false); }}><Download size={16} /><span><strong>Export evidence</strong><small>Download the full validated dataset</small></span></button><button type="button" role="menuitem" onClick={() => { setUtilityOpen(false); setPrintAll(true); window.setTimeout(() => { window.print(); window.setTimeout(() => setPrintAll(false), 1500); }, 120); }}><Printer size={16} /><span><strong>Print dashboard</strong><small>Prepare every section for print</small></span></button><button type="button" role="menuitem" aria-pressed={presenting} onClick={() => { togglePresentation(); setUtilityOpen(false); }}><Presentation size={16} /><span><strong>{presenting ? "Analyst mode" : "Presentation mode"}</strong><small>{presenting ? "Restore the working layout" : "Expand the executive canvas"}</small></span></button><button type="button" role="menuitem" onClick={() => { setUtilityOpen(false); setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }}><RotateCcw size={16} /><span><strong>Reset dashboard</strong><small>Return to the essential view</small></span></button></div>}</div></div></header>
+      <section className={`command-strip ${active === "s-essential" ? "" : "is-compact"}`} aria-label="Executive operating summary"><div className="command-decision"><h2>Protect win quality. Expand account coverage through a measured holdout.</h2><p>Attribution identifies where to investigate. A controlled test determines what to scale.</p><span>Recommended operating decision · measurement required</span></div><div className="command-kpis"><div><span>Total pipeline</span><strong>{metrics.total_pipeline}</strong><small>{metrics.total_opportunities} opportunities</small></div><div><span>Recorded won revenue</span><strong>{metrics.won_revenue}</strong><small>{metrics.closed_deal_win_rate} resolved win rate</small></div><div><span>Marketing sourced</span><strong>{metrics.marketing_sourced_pipeline}</strong><small>{metrics.marketing_sourced_share} of pipeline</small></div><div><span>Influenced signal</span><strong>{metrics.marketing_influenced_pipeline}</strong><small>{metrics.attribution_linked_won_share} of wins linked</small></div></div></section>
       <StoryStrip data={data} />
       <div className="progress-rail" aria-label={`Section ${sectionOrder.indexOf(active) + 1} of ${sectionOrder.length}`}><span style={{ width: "100%", transform: `scaleX(${(sectionOrder.indexOf(active) + 1) / sectionOrder.length})`, transformOrigin: "left center" }} /></div>
       <div className={`section-viewport ${printAll ? "print-all" : ""}`}>{printAll ? sectionOrder.map((id) => <div className="print-section" key={id}>{renderSection(id)}</div>) : renderSection(active)}</div>

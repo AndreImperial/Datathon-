@@ -24,17 +24,17 @@ import type { DashboardDatasets, DataRow } from "../types";
 import { numberValue, textValue } from "../types";
 
 export const COLORS = {
-  ink: "#EDF7F4",
-  blue: "#70C9D2",
-  azure: "#9AE0E5",
-  teal: "#84CBAA",
-  amber: "#EFAD79",
-  red: "#ED9087",
-  violet: "#C4A8E0",
-  slate: "#78908E",
-  pale: "#102329",
-  grid: "#28464C",
-  muted: "#94AAA7",
+  ink: "#F7F4F4",
+  blue: "#E12636",
+  azure: "#FF7B84",
+  teal: "#F2EEEE",
+  amber: "#C4616A",
+  red: "#FF4F5D",
+  violet: "#9F5660",
+  slate: "#91888A",
+  pale: "#BFB7B8",
+  grid: "#332F30",
+  muted: "#AFA6A7",
 };
 
 const money = (value: number) => {
@@ -45,9 +45,9 @@ const money = (value: number) => {
 };
 const pct = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
 const short = (value: string, length = 26) => value.length > length ? `${value.slice(0, length - 1)}…` : value;
-const tooltipStyle = { background: "#071417", border: "1px solid #4F858A", borderRadius: 4, color: "#F4FBF8", fontSize: 12 };
+const tooltipStyle = { background: "#080809", border: "1px solid #49383A", borderRadius: 8, color: "#FFFFFF", fontSize: 12, boxShadow: "0 14px 34px rgba(0, 0, 0, .42)" };
 const axisTick = { fill: COLORS.muted, fontSize: 11 };
-const gridProps = { stroke: COLORS.grid, strokeDasharray: "3 4", vertical: false };
+const gridProps = { stroke: COLORS.grid, vertical: false };
 
 function EmptyChart({ message = "No chart data available for this scope." }: { message?: string }) {
   return <div className="chart-empty" role="status"><strong>Chart unavailable</strong><span>{message}</span></div>;
@@ -209,9 +209,9 @@ export function AttributionComparison({ data }: { data: DataRow[] }) {
   if (!rows.length) return <EmptyChart />;
   return <><ChartShell minHeight={Math.max(320, rows.length * 35)}><ResponsiveContainer width="100%" height={Math.max(320, rows.length * 35)}><ComposedChart data={rows} layout="vertical" margin={{ left: 10, right: 70, top: 10, bottom: 22 }}>
     <defs>
-      <pattern id="attr-stripe-teal" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="6" height="6" fill={COLORS.teal} /><rect width="2" height="6" fill="#ffffff" fillOpacity=".28" /></pattern>
-      <pattern id="attr-stripe-amber" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill={COLORS.amber} /><rect width="6" height="2" fill="#ffffff" fillOpacity=".28" /></pattern>
-      <pattern id="attr-dot-violet" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill={COLORS.violet} /><circle cx="2" cy="2" r="1.1" fill="#ffffff" fillOpacity=".45" /></pattern>
+      <pattern id="attr-stripe-teal" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="6" height="6" fill={COLORS.teal} /><rect width="2" height="6" fill="#ffffff" fillOpacity=".42" /></pattern>
+      <pattern id="attr-stripe-amber" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill={COLORS.amber} /><rect width="6" height="2" fill="#ffffff" fillOpacity=".42" /></pattern>
+      <pattern id="attr-dot-violet" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill={COLORS.violet} /><circle cx="2" cy="2" r="1.1" fill="#ffffff" fillOpacity=".58" /></pattern>
     </defs>
     <CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={money} tick={axisTick} /><YAxis type="category" dataKey="channel" width={120} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [money(value)]} />
     {models.map((model, index) => <Bar key={model} dataKey={model} fill={[COLORS.blue, "url(#attr-stripe-teal)", "url(#attr-stripe-amber)", "url(#attr-dot-violet)"][index]} barSize={10} radius={[0, 3, 3, 0]} isAnimationActive={false} />)}
@@ -257,7 +257,7 @@ export function Heatmap({ data, xKey, yKey, valueKey, valueFormatter = (value: n
   const [min, max] = domain;
   return <div className="heatmap" style={{ gridTemplateColumns: `minmax(120px, 1.3fr) repeat(${xs.length}, minmax(76px, 1fr))` }}>
     <div className="heatmap-corner" />{xs.map((x) => <div className="heatmap-x" key={x}>{short(x, 17)}</div>)}
-    {ys.map((y) => <div className="heatmap-row" key={y}><div className="heatmap-y">{short(y, 24)}</div>{xs.map((x) => { const row = data.find((item) => textValue(item, yKey) === y && textValue(item, xKey) === x); const value = row ? numberValue(row, valueKey) : 0; const ratio = max > min ? Math.max(0, Math.min(1, (value - min) / (max - min))) : 0; const low = lowSampleKey && row ? numberValue(row, lowSampleKey) < 30 : false; return <div className={`heatmap-cell${low ? " is-low" : ""}`} key={`${y}-${x}`} style={{ backgroundColor: `rgba(32,106,120,${0.08 + ratio * 0.82})`, color: ratio > 0.48 ? "#fff" : COLORS.ink }} title={`${y} · ${x}: ${valueFormatter(value)}${low ? " · Low n" : ""}`}>{row ? <><strong>{valueFormatter(value)}</strong>{low && <small>Low n</small>}</> : <span>—</span>}</div>; })}</div>)}
+    {ys.map((y) => <div className="heatmap-row" key={y}><div className="heatmap-y">{short(y, 24)}</div>{xs.map((x) => { const row = data.find((item) => textValue(item, yKey) === y && textValue(item, xKey) === x); const value = row ? numberValue(row, valueKey) : 0; const ratio = max > min ? Math.max(0, Math.min(1, (value - min) / (max - min))) : 0; const low = lowSampleKey && row ? numberValue(row, lowSampleKey) < 30 : false; return <div className={`heatmap-cell${low ? " is-low" : ""}`} key={`${y}-${x}`} style={{ backgroundColor: `rgba(225,38,54,${0.10 + ratio * 0.78})`, color: ratio > 0.34 ? "#fff" : COLORS.ink }} title={`${y} · ${x}: ${valueFormatter(value)}${low ? " · Low n" : ""}`}>{row ? <><strong>{valueFormatter(value)}</strong>{low && <small>Low n</small>}</> : <span>—</span>}</div>; })}</div>)}
   </div>;
 }
 
