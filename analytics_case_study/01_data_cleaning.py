@@ -33,6 +33,10 @@ def _read_xlsx(key: str) -> pd.DataFrame:
 def clean_opportunity_log() -> pd.DataFrame:
     print("\n[1/8] Opportunity Log")
     df = _read_xlsx("opportunities")
+    # Keep a stable source-order tiebreaker.  We select a complete latest row
+    # below rather than using groupby().last(), which can pull non-null fields
+    # from different historical snapshots into one synthetic record.
+    df["_source_row_index"] = np.arange(len(df), dtype="int64")
     df = replace_null_strings(df)
 
     date_cols = [c for c in df.columns if "date" in c.lower() or "Date" in c]
@@ -48,12 +52,23 @@ def clean_opportunity_log() -> pd.DataFrame:
         if c in df.columns:
             df[c] = safe_numeric(df[c])
 
-    # Deduplicate: keep the latest state per opportunity (highest _order)
+    # Deduplicate: choose one complete latest-state row per opportunity.
     if "_opportunity_id" in df.columns and "_order" in df.columns:
-        df = (df.sort_values("_order")
-                .groupby("_opportunity_id", as_index=False)
-                .last())
-        print(f"  Deduplicated to {len(df):,} unique opportunities")
+        status_date = "previous_change_status_change_date"
+        if status_date in df.columns:
+            df["_latest_status_date"] = safe_datetime(df[status_date])
+        else:
+            df["_latest_status_date"] = pd.NaT
+        df["_order_valid"] = df["_order"].notna()
+        df = df.sort_values(
+            ["_opportunity_id", "_order_valid", "_order", "_latest_status_date", "_source_row_index"],
+            ascending=[True, True, True, True, True],
+            na_position="first",
+            kind="stable",
+        )
+        df = df.drop_duplicates("_opportunity_id", keep="last").copy()
+        df = df.drop(columns=["_latest_status_date", "_order_valid"])
+        print(f"  Selected {len(df):,} latest whole-row opportunity snapshots")
 
     # Normalise boolean columns — covers both prefixed and unprefixed column names
     bool_map = {

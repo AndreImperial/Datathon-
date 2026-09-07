@@ -1,0 +1,57 @@
+import { useEffect, useMemo, useRef, useState } from "react";
+import { ChevronLeft, ChevronRight, Clock3, ExternalLink, Expand, Grid2X2, Play, RotateCcw, Square, X } from "lucide-react";
+import type { DashboardData, SlideDefinition } from "../types";
+
+type SharedState = { slideId: string; sequence: "main" | "appendix"; revision: number; timerStatus: "idle" | "running" | "paused"; elapsedBeforeStartMs: number; startedAtEpochMs: number | null };
+const sessionFromHash = () => location.hash.match(/#presenter\/([^/?]+)/)?.[1] || sessionStorage.getItem("deck-session") || crypto.randomUUID();
+const audienceSession = () => sessionStorage.getItem("deck-session") || crypto.randomUUID();
+const deckUrl = (session: string, path = "") => `${location.origin}${location.pathname}${path || "#present/main-01"}`.replace("#present/main-01", path ? path : "#present/main-01");
+
+function fmt(seconds: number) { const value = Math.max(0, Math.floor(seconds)); return `${Math.floor(value / 60).toString().padStart(2, "0")}:${(value % 60).toString().padStart(2, "0")}`; }
+function slideList(data: DashboardData, sequence: "main" | "appendix") { return data.presentation.slides.filter((slide) => slide.sequence === sequence).sort((a, b) => a.order - b.order); }
+
+function MiniBars({ data, nameKey, valueKey }: { data: Record<string, unknown>[]; nameKey: string; valueKey: string }) {
+  const valid = data.slice(0, 6).map((row) => ({ label: String(row[nameKey] ?? "Unknown"), value: Number(row[valueKey]) || 0 }));
+  const max = Math.max(1, ...valid.map((row) => Math.abs(row.value)));
+  const isRate = /rate|share|ctr/.test(valueKey);
+  const isAmount = /amount|pipeline|spend/.test(valueKey);
+  const display = (value: number) => isRate ? `${(value * 100).toFixed(1)}%` : isAmount ? `$${(value / 1_000_000).toFixed(1)}M` : value.toLocaleString(undefined, { maximumFractionDigits: 1 });
+  return <div className="slide-bars">{valid.map((row) => <div className="slide-bar" key={row.label}><span>{row.label.replaceAll("_", " ")}</span><i><b style={{ width: `${Math.max(3, Math.abs(row.value) / max * 100)}%` }} /></i><strong>{display(row.value)}</strong></div>)}</div>;
+}
+
+function SlideVisual({ data, slide }: { data: DashboardData; slide: SlideDefinition }) {
+  const ref = slide.chart_refs[0];
+  if (!ref) return <div className="slide-statement"><span>DECISION BRIEF</span><p>{slide.body}</p></div>;
+  const rows = ref === "recommendations" ? data.recommendations as unknown as Record<string, unknown>[] : data.datasets[ref] ?? [];
+  const settings: Record<string, [string, string]> = {
+    source_coverage: ["source", "usable_touchpoints"], channel_scorecard: ["channel", "recorded_won_amount"],
+    channel_trends: ["quarter", "win_rate"], conversion_decomposition: ["stratum", "contribution_pp"],
+    creative_bundles: ["bundle", "ctr"], email_content: ["content_title", "unique_clickers"],
+    web_content: ["page_group", "unique_recordings"], attribution_overlap: ["group", "opportunities"],
+    attribution_model_sensitivity: ["channel", "attributed_amount"], journey_outcomes: ["sequence", "resolved"],
+    audience_exclusions: ["stage", "domains"], audience_priority: ["segment_fit", "eligible_domains"],
+    experiment_scenarios: ["scenario", "required_total"], recommendations: ["decision", "confidence_status"],
+  };
+  const [nameKey, valueKey] = settings[ref] ?? ["stage", "opportunities"];
+  return <div className="slide-visual"><div className="slide-visual-label">{ref.replaceAll("_", " ")}</div><MiniBars data={rows as Record<string, unknown>[]} nameKey={nameKey} valueKey={valueKey} /></div>;
+}
+
+export function PresentationApp({ data, presenter = false }: { data: DashboardData; presenter?: boolean }) {
+  const session = useMemo(() => presenter ? sessionFromHash() : audienceSession(), [presenter]);
+  const main = useMemo(() => slideList(data, "main"), [data]);
+  const appendix = useMemo(() => slideList(data, "appendix"), [data]);
+  const [state, setState] = useState<SharedState>(() => ({ slideId: (location.hash.match(/#present\/(main|appendix)-(\d+)/)?.[1] ? location.hash.replace("#present/", "") : main[0]?.id) || "main-01", sequence: location.hash.includes("appendix") ? "appendix" : "main", revision: 0, timerStatus: "idle", elapsedBeforeStartMs: 0, startedAtEpochMs: null }));
+  const [elapsed, setElapsed] = useState(0); const [overview, setOverview] = useState(false); const channel = useRef<BroadcastChannel | null>(null);
+  const slides = state.sequence === "main" ? main : appendix;
+  const currentIndex = Math.max(0, slides.findIndex((item) => item.id === state.slideId));
+  const current = slides[currentIndex] || main[0];
+  const update = (next: Partial<SharedState>) => setState((previous) => ({ ...previous, ...next, revision: presenter ? previous.revision : previous.revision + 1 }));
+  const navigate = (index: number, sequence = state.sequence) => { const set = sequence === "main" ? main : appendix; const target = set[Math.max(0, Math.min(index, set.length - 1))]; if (target) update({ slideId: target.id, sequence }); };
+  useEffect(() => { sessionStorage.setItem("deck-session", session); const key = `datathon-deck-${session}`; channel.current = "BroadcastChannel" in window ? new BroadcastChannel(key) : null; const receive = (message: MessageEvent) => { const payload = message.data; if (!payload || payload.snapshotId !== data.meta.snapshot_id) return; if (presenter && payload.type === "state") setState(payload.state); if (!presenter && payload.type === "command") { if (payload.command === "next") navigate(currentIndex + 1); if (payload.command === "previous") navigate(currentIndex - 1); if (payload.command === "timer") update(payload.state); } }; channel.current?.addEventListener("message", receive); return () => channel.current?.close(); }, [session, data.meta.snapshot_id, presenter, currentIndex]);
+  useEffect(() => { if (!presenter) { history.replaceState(null, "", `#present/${state.slideId}`); sessionStorage.setItem("deck-audience-state", JSON.stringify(state)); channel.current?.postMessage({ type: "state", snapshotId: data.meta.snapshot_id, state }); } }, [state, presenter, data.meta.snapshot_id]);
+  useEffect(() => { const id = window.setInterval(() => { const value = state.timerStatus === "running" && state.startedAtEpochMs ? state.elapsedBeforeStartMs + Date.now() - state.startedAtEpochMs : state.elapsedBeforeStartMs; setElapsed(value); }, 250); return () => clearInterval(id); }, [state]);
+  useEffect(() => { const listener = (event: KeyboardEvent) => { if ((event.target as HTMLElement)?.matches("input,[contenteditable=true]")) return; if (event.key === "ArrowRight" || event.key === "PageDown" || event.key === " ") { event.preventDefault(); navigate(currentIndex + 1); } if (event.key === "ArrowLeft" || event.key === "PageUp") navigate(currentIndex - 1); if (event.key === "Home") navigate(0); if (event.key === "End") navigate(slides.length - 1); if (event.key.toLowerCase() === "o") setOverview(true); if (event.key.toLowerCase() === "f") document.documentElement.requestFullscreen?.().catch(() => undefined); if (event.key === "Escape") { if (overview) setOverview(false); else if (document.fullscreenElement) document.exitFullscreen(); else location.hash = "#s-summary"; } }; window.addEventListener("keydown", listener); return () => window.removeEventListener("keydown", listener); }, [currentIndex, slides.length, overview]);
+  const timer = (kind: "start" | "pause" | "reset") => { const now = Date.now(); const next = kind === "start" ? { timerStatus: "running" as const, startedAtEpochMs: now } : kind === "pause" ? { timerStatus: "paused" as const, elapsedBeforeStartMs: elapsed, startedAtEpochMs: null } : { timerStatus: "idle" as const, elapsedBeforeStartMs: 0, startedAtEpochMs: null }; if (presenter) channel.current?.postMessage({ type: "command", command: "timer", snapshotId: data.meta.snapshot_id, state: next }); else update(next); };
+  if (presenter) return <main className="presenter-console"><header><span className="signal" /> Presenter console <small>session {session.slice(0, 8)}</small></header><section className="presenter-current"><p>NOW · {state.sequence.toUpperCase()} {currentIndex + 1}</p><h1>{current?.title}</h1><div className="timer"><Clock3 /> {fmt(elapsed / 1000)} <small>/ {fmt(data.presentation.target_duration_seconds)}</small></div></section><section className="presenter-notes"><h2>Speaker notes</h2><p><b>Say:</b> {current?.speaker_notes.say}</p><p><b>Do not claim:</b> {current?.speaker_notes.do_not_claim}</p><p><b>Likely question:</b> {current?.speaker_notes.judge_question}</p><p><b>Answer:</b> {current?.speaker_notes.answer}</p></section><footer><button onClick={() => channel.current?.postMessage({ type: "command", command: "previous", snapshotId: data.meta.snapshot_id })}><ChevronLeft /> Back</button><button className="red" onClick={() => channel.current?.postMessage({ type: "command", command: "next", snapshotId: data.meta.snapshot_id })}>Next <ChevronRight /></button><button onClick={() => timer(state.timerStatus === "running" ? "pause" : "start")}>{state.timerStatus === "running" ? <Square /> : <Play />} {state.timerStatus === "running" ? "Pause" : "Start"}</button><button onClick={() => timer("reset")}><RotateCcw /> Reset</button></footer></main>;
+  return <main className="presentation-shell"><header className="presentation-header"><a href="#s-summary" className="wordmark">NORTH<span>STAR</span> / CMO BRIEF</a><span>{state.sequence === "main" ? `MAIN ${currentIndex + 1} / ${main.length}` : `APPENDIX ${currentIndex + 1} / ${appendix.length}`}</span><div><button aria-label="Overview" onClick={() => setOverview(true)}><Grid2X2 /></button><button aria-label="Fullscreen" onClick={() => document.documentElement.requestFullscreen?.().catch(() => undefined)}><Expand /></button><button onClick={() => { const win = window.open(deckUrl(session, `#presenter/${session}`), "datathon-presenter", "popup,width=920,height=760"); if (!win) alert("Popup blocked. Allow popups and try again."); }}><ExternalLink /> Presenter</button><a href="#s-summary" aria-label="Exit presentation"><X /></a></div></header><article className="slide-canvas" aria-label={`Slide ${current?.order}: ${current?.title}`}><div className="slide-kicker">{current?.scope}</div><h1>{current?.title}</h1><p className="slide-body">{current?.body}</p><SlideVisual data={data} slide={current} /><div className="slide-caveat">{current?.visible_caveat}</div><footer>{current?.source_footer}<span>{data.meta.snapshot_id}</span></footer></article><nav className="presentation-controls"><button disabled={currentIndex === 0} onClick={() => navigate(currentIndex - 1)}><ChevronLeft /> Previous</button>{state.sequence === "main" && currentIndex === main.length - 1 ? <button onClick={() => setOverview(true)}>Appendix <Grid2X2 /></button> : <button className="red" disabled={currentIndex === slides.length - 1} onClick={() => navigate(currentIndex + 1)}>Next <ChevronRight /></button>}<span>{fmt(elapsed / 1000)} / {fmt(data.presentation.target_duration_seconds)}</span></nav>{overview && <div className="slide-overview" role="dialog" aria-modal="true"><button className="close" onClick={() => setOverview(false)}><X /></button><h2>Slide overview</h2><div>{[...main, ...appendix].map((slide) => <button key={slide.id} onClick={() => { navigate(slide.order - 1, slide.sequence); setOverview(false); }}><small>{slide.sequence} {slide.order}</small>{slide.title}</button>)}</div></div>}</main>;
+}

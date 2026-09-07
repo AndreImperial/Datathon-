@@ -1,6 +1,6 @@
 # Marketing Analytics Datathon
 
-An end-to-end B2B marketing analytics case study that turns eight CRM and marketing exports into validated analysis marts, executive workbooks, a production React decision dashboard, and a 12-slide decision deck.
+An end-to-end B2B marketing analytics case study that turns eight CRM and marketing exports into validated marts, a schema-v3 React decision dashboard, and a 16-slide browser presentation with six methods appendix slides.
 
 ## Executive answer
 
@@ -11,15 +11,15 @@ The data supports targeted, measured growth—not blanket budget expansion.
 - Measure before scaling: only two paid channels have tracked spend; one has a single opportunity and neither has recorded won revenue.
 - Repair measurement: 65.3% of won opportunities have zero amount, and only 11.7% of won opportunities link to eligible pre-opportunity touches.
 
-These limitations are surfaced in the dashboard, deck, workbooks, and automated validation—not hidden in footnotes.
+The current brief separates historical CRM results from 2024-only marketing observation windows, keeps unknown business motion visible, treats creative labels as confounded bundles, and turns recommendations into controlled tests—not hidden assumptions.
 
 ## Deliverables
 
-- Dashboard: [`public/index.html`](public/index.html), the complete content-preserving interactive dashboard with improved navigation, responsive behavior, typography, hierarchy, and accessibility.
-- Executive deck: [`outputs/presentation/Marketing_Analytics_Executive_Deck.pptx`](outputs/presentation/Marketing_Analytics_Executive_Deck.pptx), 12 slides with source and methodology notes on every slide.
+- Dashboard: [`public/index.html`](public/index.html), an eight-section CMO decision system with direct links from the summary to evidence and CSV-backed tables.
+- Browser deck: [`public/index.html`](public/index.html#present/main-01), 16 main slides / 18 minutes plus six appendix slides, speaker notes, presenter window, and timer. The old PPTX remains a historical artifact only.
 - Analysis workbooks: `outputs/analysis/`, including attribution coverage, data quality, email event semantics, and budget-neutral measurement plans.
 - Reproducible marts: `data/cleaned/` and `data/integrated/`.
-- Automated audit: `analytics_case_study/06_validate_metrics.py`.
+- Automated audit: `analytics_case_study/06_validate_metrics.py` validates schema v3, dataset status, attribution partitioning, contract references, and slide count/timing.
 
 ## Repository structure
 

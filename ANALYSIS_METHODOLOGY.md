@@ -10,6 +10,10 @@ The answer separates three evidence levels:
 2. Directional association: touch-linked attribution, reached-account opportunity rates, creative engagement, and model scores.
 3. Causal evidence required: incremental lift and budget reallocation claims.
 
+## Current CMO evidence contract (v3)
+
+The published dashboard and browser deck share `frontend/public/dashboard-data.json`. The canonical opportunity population selects one complete latest history row per opportunity, excludes deleted snapshots from primary metrics, and reports source coverage beside attribution results. CRM history spans 2018–2024, while email, web, and campaign logs are shorter 2024 observation windows; a low linkage rate is therefore not interpreted as tracking failure alone. Creative format, message, tone, and CTA labels are reported as confounded creative bundles, not independent effects. The 16-slide main deck is fixed at 1,080 seconds and its six appendix slides document definitions, population reconciliation, methods, targeting uncertainty, and model limitations.
+
 ## Pipeline
 
 `run_pipeline.py` executes:
