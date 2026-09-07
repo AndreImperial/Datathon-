@@ -413,8 +413,8 @@ def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     payload = build_contract()
     text = json.dumps(payload, ensure_ascii=False, indent=2, default=_clean)
-    (FRONTEND_PUBLIC / "dashboard-data.json").write_text(text, encoding="utf-8")
-    (OUTPUT / "dashboard_data.json").write_text(text, encoding="utf-8")
+    (FRONTEND_PUBLIC / "dashboard-data-v3.json").write_text(text, encoding="utf-8")
+    (OUTPUT / "dashboard_data_v3.json").write_text(text, encoding="utf-8")
     print(f"CMO evidence contract written with snapshot {payload['meta']['snapshot_id']}")
 
 

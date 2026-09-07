@@ -6,7 +6,7 @@ import math
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTRACT = ROOT / "frontend" / "public" / "dashboard-data.json"
+CONTRACT = ROOT / "frontend" / "public" / "dashboard-data-v3.json"
 REQUIRED_DATASETS = {"population_reconciliation", "source_coverage", "channel_scorecard", "channel_trends", "content_metadata_coverage", "ad_rankings", "creative_bundles", "email_content", "web_content", "attribution_overlap", "attribution_model_sensitivity", "attribution_year_coverage", "journey_outcomes", "conversion_decomposition", "loss_reason_summary", "audience_exclusions", "audience_priority", "experiment_scenarios", "model_score_bands", "model_diagnostics"}
 
 def finite(value):

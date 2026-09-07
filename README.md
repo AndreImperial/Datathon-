@@ -1,6 +1,6 @@
 # Marketing Analytics Datathon
 
-An end-to-end B2B marketing analytics case study that turns eight CRM and marketing exports into validated marts, a schema-v3 React decision dashboard, and a 16-slide browser presentation with six methods appendix slides.
+An end-to-end B2B marketing analytics case study that turns eight CRM and marketing exports into validated marts, the preserved Revenue Command Center dashboard, and an additive 16-slide browser presentation with six methods appendix slides.
 
 ## Executive answer
 
@@ -15,8 +15,9 @@ The current brief separates historical CRM results from 2024-only marketing obse
 
 ## Deliverables
 
-- Dashboard: [`public/index.html`](public/index.html), an eight-section CMO decision system with direct links from the summary to evidence and CSV-backed tables.
-- Browser deck: [`public/index.html`](public/index.html#present/main-01), 16 main slides / 18 minutes plus six appendix slides, speaker notes, presenter window, and timer. The old PPTX remains a historical artifact only.
+- Dashboard: [`public/index.html`](public/index.html), the original Revenue Command Center shell with its evidence cards, chart renderer, caveat drawer, exports, print controls, and analyst presentation toggle.
+- Browser deck: [`public/index.html`](public/index.html#present/main-01), an additive 16-slide / 18-minute findings deck plus six appendix slides, speaker notes, presenter window, and timer. The old PPTX remains a historical artifact only.
+- New evidence contract: `public/dashboard-data-v3.json`; it is deliberately separate from the legacy dashboard payload so the incumbent visual experience remains stable.
 - Analysis workbooks: `outputs/analysis/`, including attribution coverage, data quality, email event semantics, and budget-neutral measurement plans.
 - Reproducible marts: `data/cleaned/` and `data/integrated/`.
 - Automated audit: `analytics_case_study/06_validate_metrics.py` validates schema v3, dataset status, attribution partitioning, contract references, and slide count/timing.

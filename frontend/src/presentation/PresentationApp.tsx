@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, Clock3, ExternalLink, Expand, Grid2X2, Play, RotateCcw, Square, X } from "lucide-react";
-import type { DashboardData, SlideDefinition } from "../types";
+import type { CaseSlide, CaseStudyData } from "../types";
 
 type SharedState = { slideId: string; sequence: "main" | "appendix"; revision: number; timerStatus: "idle" | "running" | "paused"; elapsedBeforeStartMs: number; startedAtEpochMs: number | null };
 const sessionFromHash = () => location.hash.match(/#presenter\/([^/?]+)/)?.[1] || sessionStorage.getItem("deck-session") || crypto.randomUUID();
@@ -8,7 +8,7 @@ const audienceSession = () => sessionStorage.getItem("deck-session") || crypto.r
 const deckUrl = (session: string, path = "") => `${location.origin}${location.pathname}${path || "#present/main-01"}`.replace("#present/main-01", path ? path : "#present/main-01");
 
 function fmt(seconds: number) { const value = Math.max(0, Math.floor(seconds)); return `${Math.floor(value / 60).toString().padStart(2, "0")}:${(value % 60).toString().padStart(2, "0")}`; }
-function slideList(data: DashboardData, sequence: "main" | "appendix") { return data.presentation.slides.filter((slide) => slide.sequence === sequence).sort((a, b) => a.order - b.order); }
+function slideList(data: CaseStudyData, sequence: "main" | "appendix") { return data.presentation.slides.filter((slide) => slide.sequence === sequence).sort((a, b) => a.order - b.order); }
 
 function MiniBars({ data, nameKey, valueKey }: { data: Record<string, unknown>[]; nameKey: string; valueKey: string }) {
   const valid = data.slice(0, 6).map((row) => ({ label: String(row[nameKey] ?? "Unknown"), value: Number(row[valueKey]) || 0 }));
@@ -19,7 +19,7 @@ function MiniBars({ data, nameKey, valueKey }: { data: Record<string, unknown>[]
   return <div className="slide-bars">{valid.map((row) => <div className="slide-bar" key={row.label}><span>{row.label.replaceAll("_", " ")}</span><i><b style={{ width: `${Math.max(3, Math.abs(row.value) / max * 100)}%` }} /></i><strong>{display(row.value)}</strong></div>)}</div>;
 }
 
-function SlideVisual({ data, slide }: { data: DashboardData; slide: SlideDefinition }) {
+function SlideVisual({ data, slide }: { data: CaseStudyData; slide: CaseSlide }) {
   const ref = slide.chart_refs[0];
   if (!ref) return <div className="slide-statement"><span>DECISION BRIEF</span><p>{slide.body}</p></div>;
   const rows = ref === "recommendations" ? data.recommendations as unknown as Record<string, unknown>[] : data.datasets[ref] ?? [];
@@ -36,7 +36,7 @@ function SlideVisual({ data, slide }: { data: DashboardData; slide: SlideDefinit
   return <div className="slide-visual"><div className="slide-visual-label">{ref.replaceAll("_", " ")}</div><MiniBars data={rows as Record<string, unknown>[]} nameKey={nameKey} valueKey={valueKey} /></div>;
 }
 
-export function PresentationApp({ data, presenter = false }: { data: DashboardData; presenter?: boolean }) {
+export function PresentationApp({ data, presenter = false }: { data: CaseStudyData; presenter?: boolean }) {
   const session = useMemo(() => presenter ? sessionFromHash() : audienceSession(), [presenter]);
   const main = useMemo(() => slideList(data, "main"), [data]);
   const appendix = useMemo(() => slideList(data, "appendix"), [data]);

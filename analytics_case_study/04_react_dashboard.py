@@ -12,9 +12,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> int:
-    # The v3 contract is generated directly from canonical marts and findings.
-    # Do not rehydrate the retired schema-v2 dashboard_context dependency.
-    exporter = ROOT / "analytics_case_study" / "03d_case_analysis.py"
+    # Preserve the legacy schema-v2 dashboard as the default visual surface.
+    # The additive schema-v3 case-study contract is generated in the prior step.
+    exporter = ROOT / "analytics_case_study" / "04_dashboard_data.py"
     export_result = subprocess.run([sys.executable, str(exporter)], cwd=ROOT)
     if export_result.returncode:
         return export_result.returncode
