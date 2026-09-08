@@ -347,7 +347,7 @@ footer { display: flex; align-items: center; justify-content: space-between; gap
   .topbar { padding-inline: 22px; }
   .data-meta { display: none; }
   .command-strip, .story-strip, .progress-rail, .section-viewport, footer { width: calc(100% - 44px); }
-  .command-strip { grid-template-columns: minmax(330px, .95fr) minmax(560px, 2.05fr); }
+  .command-strip, .command-strip.is-compact { grid-template-columns: minmax(300px, .95fr) minmax(520px, 2.05fr); }
   .command-kpis > div { padding-inline: 13px; }
   .command-canvas { grid-template-columns: minmax(0, 1.8fr) minmax(274px, .8fr); }
 }
