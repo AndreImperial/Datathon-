@@ -228,11 +228,11 @@ a { color: inherit; }
 .cohort-marker.provisional { border: 2px solid var(--amber); border-radius: 999px; background: var(--surface); }
 .facet-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .facet { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface-soft); }
-.heatmap { display: grid; gap: 4px; min-width: 0; overflow: auto; }
-.heatmap-row { display: grid; grid-template-columns: 112px repeat(var(--heatmap-columns, 3), minmax(76px, 1fr)); gap: 4px; }
+.heatmap { display: grid; gap: 4px; min-width: 0; overflow-x: auto; overflow-y: hidden; align-items: stretch; padding-bottom: 3px; }
+.heatmap-row { display: contents; }
 .heatmap-corner, .heatmap-x, .heatmap-y { display: flex; min-height: 30px; align-items: center; color: var(--muted); font-size: 9px; line-height: 1.25; }
-.heatmap-x { justify-content: center; text-align: center; }
-.heatmap-y { color: var(--body); font-weight: 650; }
+.heatmap-x { min-width: 0; justify-content: center; padding-inline: 4px; text-align: center; overflow-wrap: anywhere; }
+.heatmap-y { min-width: 0; padding-right: 8px; color: var(--body); font-weight: 650; overflow-wrap: anywhere; }
 .heatmap-cell { display: flex; min-height: 58px; align-items: center; justify-content: center; padding: 6px; border-radius: 4px; flex-direction: column; gap: 2px; font-size: 9px; font-variant-numeric: tabular-nums; text-align: center; }
 .heatmap-cell strong { font-size: 10px; }
 .heatmap-cell small { font-size: 8px; }

@@ -502,7 +502,7 @@ function ChannelSection({ data, metadata, presenting, totalPipeline, coverageMix
 }
 
 function SegmentSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
-  return <section id="s-segment" className="dashboard-section"><SectionIntro id="s-segment" data={data} /><ContextBox><strong>Decision use:</strong> CRM segment groups opportunities into Commercial, Mid, and Enterprise markets; profile fit is a separate current-account attribute. Use resolved opportunities for historical win rates, then require sufficient sample and an eligible audience before selecting a target cell.</ContextBox><ChartGrid className="segment-grid" ids={["c-seg-heatmap", "c-seg-winrate"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /></section>;
+  return <section id="s-segment" className="dashboard-section"><SectionIntro id="s-segment" data={data} /><ContextBox><strong>Decision use:</strong> CRM segment groups opportunities by the supplied market categories; profile fit is a separate current-account attribute. Use resolved opportunities for historical win rates, then require sufficient sample and an eligible audience before selecting a target cell.</ContextBox><ChartGrid className="segment-grid" ids={["c-seg-heatmap", "c-seg-winrate"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /></section>;
 }
 
 function CreativeSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
