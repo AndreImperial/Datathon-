@@ -29,6 +29,7 @@ export interface ChartMetadata {
   source_dataset: string;
   fields: string[];
   units?: string;
+  canonical_chart_id?: string;
   caveat: string;
   accessible_summary: string;
 }
