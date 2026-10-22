@@ -76,7 +76,7 @@ const chartPlacementIds = [
   "c-bar-channel", "c-donut-won", "c-monthly-trend", "c-attrib-comparison",
   "c-sourced-influenced", "c-attrib-waterfall", "c-spend-pipeline", "c-funnel",
   "c-seg-heatmap", "c-seg-winrate", "c-creative-ctr", "c-creative-attr",
-  "c-email-seniority", "c-budget-scenario", "c-feat-imp", "c-win-prob",
+  "c-email-seniority", "c-budget-scenario",
   "c-account-coverage", "c-deal-velocity", "c-journey", "c-targeting-matrix", "c-cohort",
 ];
 const tableIds = ["essential_action_plan", "attribution_models", "channel_roi_summary", "decision_confidence", "recommended_actions", "case_deliverable_coverage"];
@@ -118,9 +118,9 @@ const copy: Record<SectionId, { title: string; description: string; takeaway: st
     takeaway: "Budget decision: treat historical spend as context, not an approved mix; release more only when the test shows incremental qualified pipeline.",
   },
   "s-advanced": {
-    title: "Inspect model limits before operational use",
-    description: "Coverage, cohort, journey, and model diagnostics help focus review without replacing commercial judgment.",
-    takeaway: "Operating decision: use coverage gaps to design controlled tests; retain near-chance model scores as exploratory diagnostics.",
+    title: "Read coverage, velocity and cohorts before testing",
+    description: "Coverage, cohort, velocity, and journey diagnostics help focus review without replacing commercial judgment.",
+    takeaway: "Operating decision: use coverage gaps to design controlled tests. The calendar-only win-probability model was withdrawn after a near-chance holdout.",
   },
   "s-appendix": {
     title: "The evidence behind the decision",
@@ -220,16 +220,6 @@ const explain: Record<string, { title: string; body: ReactNode; insight: string 
     body: <>Each stacked bar is one operating plan. The segments show activated media, holdout reserve, and experiment pool; totals remain equal.<br /><br /><strong>How to use it:</strong> choose the measurement intensity the team can execute cleanly. Pre-register the target population, outcome window, and primary metric before launch.<br /><br /><strong>Important caveat:</strong> no pipeline forecast is shown because available paid-channel outcomes are too sparse for defensible extrapolation. Scale only if treatment creates incremental qualified opportunities or pipeline while maintaining closed-deal win-rate quality.</>,
     insight: "The data supports a measurement plan, not an optimization claim.",
   },
-  "c-feat-imp": {
-    title: "What this shows - Win Probability: Top Predictors",
-    body: <>The exploratory calendar baseline uses creation year and quarter only. Mutable latest-snapshot amount, channel and segment cannot be verified as scoring-time features and are excluded. Training outcomes resolve before the evaluation cutoff; test cases have complete 180-day horizons.<br /><br /><strong>Interpretation:</strong> read the current AUC, sample and feature policy in the diagnostic panel. Near-chance discrimination does not support sales prioritization; importance describes the restricted baseline, not causal channel value.</>,
-    insight: "Keep this model as a reproducible diagnostic. Improve historical feature capture and temporal validation before proposing operating priorities.",
-  },
-  "c-win-prob": {
-    title: "What this shows - Exploratory Active Score Distribution",
-    body: <>This histogram shows the current canonical active opportunities scored by the exploratory calendar baseline. The score is conditional on first recorded resolution within 180 days in the historical training sample. It is not an unconditional forecast that an active deal will close.<br /><br /><strong>Decision boundary:</strong> the restricted model has near-chance discrimination. Do not use these bands to assign sales follow-up priorities or operating thresholds.</>,
-    insight: "Incomplete historical event coverage, resolved-only selection and calendar-only features limit operating usefulness.",
-  },
   "c-account-coverage": {
     title: "What this shows - CRM Account Coverage",
     body: <>This shows CRM account domains reached by email, 6sense, both, or neither in the supplied marketing window. The rate panel shows historical opportunity prevalence — the share with any opportunity in the available CRM history.<br /><br /><strong>The critical finding:</strong> The unreached group has no observed email or 6sense touch in the supplied window. Higher prevalence in reached groups does not establish post-exposure conversion or incremental lift.<br /><br /><strong>What to do:</strong> Exclude customers and active pipeline, establish a prospective baseline, and test strong-fit eligible domains against a randomized holdout.</>,
@@ -322,7 +312,7 @@ function validatePayload(value: unknown): DashboardData {
   const payload = value as DashboardData;
   if (!payload || payload.schema_version !== 2) throw new Error("Dashboard data schema is not version 2.");
   if (!payload.context?.metrics || !payload.meta || !payload.datasets || !payload.chart_data || !Array.isArray(payload.chart_metadata) || !payload.tables || !payload.manifest) throw new Error("Dashboard data is missing its evidence contract.");
-  const required = ["channel_pipeline", "cohorts", "coverage", "attribution", "attribution_coverage", "attribution_sensitivity", "quality", "feature_importance", "model_stats", "model_calibration", "budget_scenarios", "targeting", "monthly_pipeline", "funnel_metrics", "segment_industry", "segment_win_rate", "creative_ctr", "creative_tone", "email_seniority", "deal_velocity", "journey_sequences", "win_probability", "account_coverage_detail", "attribution_touchpoint_quality", "qa_performance"];
+  const required = ["channel_pipeline", "cohorts", "coverage", "attribution", "attribution_coverage", "attribution_sensitivity", "quality", "budget_scenarios", "targeting", "monthly_pipeline", "funnel_metrics", "segment_industry", "segment_win_rate", "creative_ctr", "creative_tone", "email_seniority", "deal_velocity", "journey_sequences", "account_coverage_detail", "attribution_touchpoint_quality", "qa_performance"];
   const datasets = payload.datasets as unknown as Record<string, unknown>;
   const missing = required.filter((key) => !Array.isArray(datasets[key]));
   if (missing.length) throw new Error(`Dashboard data is missing datasets: ${missing.join(", ")}`);
@@ -339,7 +329,7 @@ function validatePayload(value: unknown): DashboardData {
   if (missingChartData.length) throw new Error(`Dashboard chart data is missing placements: ${missingChartData.join(", ")}`);
   const emptyChartData = chartPlacementIds.filter((id) => !(chartData[id] as unknown[]).length && !payload.dataset_status?.[payload.chart_metadata.find((item) => item.chart_id === id)?.source_dataset ?? ""]);
   if (emptyChartData.length) throw new Error(`Dashboard chart data contains empty placements: ${emptyChartData.join(", ")}`);
-  if (payload.manifest.chart_placement_count !== chartPlacementIds.length || payload.manifest.distinct_chart_count !== 21 || payload.manifest.section_ids.length !== REQUIRED_SECTION_IDS.length || payload.manifest.table_count !== tableIds.length) throw new Error("Dashboard preservation manifest is incomplete.");
+  if (payload.manifest.chart_placement_count !== chartPlacementIds.length || payload.manifest.distinct_chart_count !== new Set(payload.manifest.distinct_chart_definitions ?? []).size || payload.manifest.distinct_chart_count !== 19 || payload.manifest.section_ids.length !== REQUIRED_SECTION_IDS.length || payload.manifest.table_count !== tableIds.length) throw new Error("Dashboard preservation manifest is incomplete.");
   const incompleteTables = tableIds.filter((id) => {
     const table = payload.tables[id as keyof typeof payload.tables];
     return !table?.columns?.length || !Array.isArray(table.rows) || !Array.isArray(table.source_datasets) || typeof table.sortable !== "boolean" || table.rows.some((row) => table.columns.some((column) => !(column in row)));
@@ -402,16 +392,6 @@ function AttributionSensitivityPanel({ data }: { data: DashboardData }) {
     <div className="method-panel-head"><div><h3 id="lookback-sensitivity-title">Attribution lookback sensitivity</h3></div><span className="panel-note">Primary view: 365 days · Robustness check</span></div>
     <p className="method-panel-copy">Shorter windows link fewer CRM opportunities and won deals. The ranking is therefore a scope-sensitive planning signal, not a stable incrementality estimate.</p>
     <div className="method-metrics">{rows.map((row) => <div className={`method-metric${numberValue(row, "lookback_days") === 365 ? " is-primary" : ""}`} key={String(row.lookback_days)}><span>{numberValue(row, "lookback_days")} days</span><strong>{numberValue(row, "linked_opportunities").toLocaleString()}</strong><small>linked opps · {pct(numberValue(row, "linked_share_of_won_opportunities"))} of won deals</small></div>)}</div>
-  </section>;
-}
-
-function CalibrationPanel({ data }: { data: DashboardData }) {
-  const rows = data.datasets.model_calibration;
-  if (!rows.length) return null;
-  return <section className="method-panel calibration-panel" aria-labelledby="calibration-title">
-    <div className="method-panel-head"><div><h3 id="calibration-title">Predicted vs observed win rate</h3></div><span className="panel-note">Retrospective held-out cohort · Exploratory diagnostic</span></div>
-    <p className="method-panel-copy">Compare predicted and observed rates within each held-out score band, alongside its sample size and absolute gap. These retrospective diagnostics do not establish calibration for future scoring or an operating cutoff.</p>
-    <div className="calibration-rows" role="table" aria-label="Model calibration by test score band"><div className="calibration-head" role="row"><span role="columnheader">Score band</span><span role="columnheader">n</span><span role="columnheader">Predicted</span><span role="columnheader">Observed</span><span role="columnheader">Gap</span></div>{rows.map((row) => <div className="calibration-row" role="row" key={textValue(row, "score_band")}><span role="cell">{textValue(row, "score_band")}</span><span role="cell">{numberValue(row, "n").toLocaleString()}</span><span role="cell">{pct(numberValue(row, "predicted_win_rate"))}</span><span role="cell">{pct(numberValue(row, "observed_win_rate"))}</span><span role="cell" className={numberValue(row, "abs_gap") > 0.1 ? "gap-high" : ""}>{`${(numberValue(row, "abs_gap") * 100).toFixed(1)} pp`}</span></div>)}</div>
   </section>;
 }
 
@@ -512,10 +492,7 @@ function BudgetSection({ data, metadata, presenting, totalPipeline, coverageMix,
 }
 
 function AdvancedSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
-  const diagnostics = data.datasets.model_stats[0];
-  const limitation = diagnostics ? textValue(diagnostics, "model_limitation", "As-of validity and future predictive performance remain unverified.") : "Model diagnostics unavailable.";
-  const featurePolicy = diagnostics ? textValue(diagnostics, "feature_policy", "Feature policy unavailable.") : "Feature policy unavailable.";
-  return <section id="s-advanced" className="dashboard-section"><SectionIntro id="s-advanced" data={data} /><ContextBox><strong>Decision use:</strong> the exploratory retrospective model describes scores among {metric(data, "active_scored_opportunities")} active opportunities; it does not promise an individual close probability. Its retrospective AUC is {metric(data, "model_auc")} using {metric(data, "model_validation")}. As-of features and outcomes known before the training cutoff must be verified before these scores support an operating threshold.<br /><br /><strong>Feature policy:</strong> {featurePolicy}<br /><strong>Model limitations:</strong> {limitation}</ContextBox><EvidenceGrid items={[{ label: "Observed gap", title: "Reached tiers show higher observed rates", body: <>Unreached accounts show a {metric(data, "not_reached_opportunity_rate")} historical opportunity prevalence, while email-only accounts show {metric(data, "email_only_opportunity_rate")} and both-channel accounts show {metric(data, "both_channels_opportunity_rate")}. CRM outcomes can precede the reach window; selection and sales activity can explain the association.</>, tone: "high" }, { label: "Quality diagnosis", title: "Growth is not automatically healthy", body: <>Among cohorts at least 80% resolved, closed-deal win rate moved from {metric(data, "cohort_start_win_rate")} in {metric(data, "cohort_start_quarter")} to {metric(data, "cohort_end_win_rate")} in {metric(data, "cohort_end_quarter")}.</>, tone: "medium" }, { label: "Next test", title: "Validate causality", body: <>Run a holdout or phased rollout to measure incremental lift from email-first outreach; test a 6sense overlay separately.</>, tone: "directional" }]} /><CalibrationPanel data={data} /><DataTable id="calibration-details" provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: "model_calibration", scope: "Held-out validation cohort", methodology: data.meta.methodology }} label="Calibration bins, observed ranges and 95% uncertainty" rows={data.datasets.model_calibration} /><DataTable id="velocity-eligibility" provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: "deal_velocity_exclusions", scope: "Canonical won outcomes", methodology: data.meta.methodology }} label="Canonical won duration eligibility by channel and motion" rows={data.datasets.deal_velocity_exclusions ?? []} /><ChartGrid ids={["c-feat-imp", "c-win-prob", "c-account-coverage", "c-deal-velocity", "c-journey", "c-targeting-matrix", "c-cohort"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /></section>;
+  return <section id="s-advanced" className="dashboard-section"><SectionIntro id="s-advanced" data={data} /><ContextBox><strong>Decision use:</strong> coverage, cohort, velocity and journey views describe observed patterns, not causal effects. A calendar-only win-probability baseline was withdrawn: its time-based holdout was near chance and predicted no wins, so no deal scores are shown.</ContextBox><EvidenceGrid items={[{ label: "Observed gap", title: "Reached tiers show higher observed rates", body: <>Unreached accounts show a {metric(data, "not_reached_opportunity_rate")} historical opportunity prevalence, while email-only accounts show {metric(data, "email_only_opportunity_rate")} and both-channel accounts show {metric(data, "both_channels_opportunity_rate")}. CRM outcomes can precede the reach window; selection and sales activity can explain the association.</>, tone: "high" }, { label: "Quality diagnosis", title: "Growth is not automatically healthy", body: <>Among cohorts at least 80% resolved, closed-deal win rate moved from {metric(data, "cohort_start_win_rate")} in {metric(data, "cohort_start_quarter")} to {metric(data, "cohort_end_win_rate")} in {metric(data, "cohort_end_quarter")}.</>, tone: "medium" }, { label: "Next test", title: "Validate causality", body: <>Run a holdout or phased rollout to measure incremental lift from email-first outreach; test a 6sense overlay separately.</>, tone: "directional" }]} /><DataTable id="velocity-eligibility" provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: "deal_velocity_exclusions", scope: "Canonical won outcomes", methodology: data.meta.methodology }} label="Canonical won duration eligibility by channel and motion" rows={data.datasets.deal_velocity_exclusions ?? []} /><ChartGrid ids={["c-account-coverage", "c-deal-velocity", "c-journey", "c-targeting-matrix", "c-cohort"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /></section>;
 }
 
 function AppendixSection({ data, onOpen }: { data: DashboardData; onOpen: (id: SectionId) => void }) {
@@ -524,7 +501,7 @@ function AppendixSection({ data, onOpen }: { data: DashboardData; onOpen: (id: S
     { id: "s-segment", label: "Targeting", title: "Segment & ICP", body: "Segment, industry, and ICP evidence for account prioritization." },
     { id: "s-creative", label: "Engagement", title: "Creative & Email", body: "Creative CTR and email engagement detail for messaging decisions." },
     { id: "s-budget", label: "Planning", title: "Budget Scenarios", body: "Tracked-spend scenarios for sizing controlled budget tests." },
-    { id: "s-advanced", label: "Modeling", title: "Advanced Analytics", body: "Win probability, deal velocity, journey, and targeting matrix detail." },
+    { id: "s-advanced", label: "Diagnostics", title: "Advanced Analytics", body: "Account coverage, deal velocity, journey, and targeting matrix detail." },
   ];
   return <section id="s-appendix" className="dashboard-section"><SectionIntro id="s-appendix" data={data} /><div className="appendix-grid">{cards.map((card) => <article className="appendix-card" key={card.id}><span className="priority-tag">{card.label}</span><h3>{card.title}</h3><p>{card.body}</p><button type="button" className="button button-small" onClick={() => onOpen(card.id)}>Open evidence <ArrowRight size={14} /></button></article>)}</div><EvidenceTable title="Case Deliverable Coverage" columns={data.tables.case_deliverable_coverage.columns} rows={contractRows(data.tables.case_deliverable_coverage)} /></section>;
 }

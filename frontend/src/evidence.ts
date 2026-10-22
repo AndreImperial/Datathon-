@@ -19,6 +19,7 @@ export function fieldUnit(key: string): string {
   if (/^abs_gap$|^gap$|_pp$/.test(field)) return "percentage points";
   if (/(_rate|_share|_coverage|_pct|_probability|_ci_low|_ci_high)$/.test(field) || ["win_rate", "rate", "share", "ctr", "precision", "recall", "accuracy", "mean_score", "score_min", "score_max", "absolute_lift", "wilson_low", "observed_win_rate", "predicted_win_rate", "lower_bound", "upper_bound", "pct_of_total", "importance", "auc_gap"].includes(field)) return "fraction";
   if (/(rows|count|opportunities|records|domains)$/.test(field) || field.startsWith("eligible_") || ["auc", "brier", "brier_score"].includes(field)) return "source value";
+  if (/_mrr$|^mrr$/.test(field)) return "recorded dollars per month (currency unverified)";
   if (/_amount$|_pipeline$|_revenue$|_spend$|^amount$|^pipeline$|^revenue$|^spend$|^cost_per_|^avg_deal|\(\$\)/.test(field) || ["cpc", "cpm", "attributed_amount"].includes(field)) return "recorded dollars (currency unverified)";
   if (/days/.test(field)) return "days";
   return "source value";

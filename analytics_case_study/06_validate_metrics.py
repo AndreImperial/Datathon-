@@ -13,14 +13,14 @@ from artifact_safety import load_contract, manifest_assets_exist
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = ROOT / "frontend" / "public" / "dashboard-data-v3.json"
-REQUIRED_DATASETS = {"population_reconciliation", "source_coverage", "channel_scorecard", "channel_trends", "content_metadata_coverage", "ad_rankings", "creative_bundles", "email_content", "web_content", "attribution_overlap", "attribution_model_sensitivity", "attribution_year_coverage", "journey_outcomes", "conversion_decomposition", "loss_reason_summary", "audience_exclusions", "audience_priority", "experiment_scenarios", "model_score_bands", "model_diagnostics"}
+REQUIRED_DATASETS = {"population_reconciliation", "source_coverage", "channel_scorecard", "channel_trends", "content_metadata_coverage", "ad_rankings", "creative_bundles", "email_content", "web_content", "attribution_overlap", "attribution_model_sensitivity", "attribution_year_coverage", "journey_outcomes", "conversion_decomposition", "loss_reason_summary", "audience_exclusions", "audience_priority", "experiment_scenarios", "source_group_scorecard"}
 APPENDIX_TITLES = {
     "appendix-01": "Population and source coverage",
     "appendix-02": "Metric definitions and unavailable denominators",
     "appendix-03": "Attribution models, windows, and shared-domain sensitivity",
     "appendix-04": "Conversion decomposition and loss reasons",
     "appendix-05": "Targeting eligibility and sample uncertainty",
-    "appendix-06": "Model diagnostics and limitations",
+    "appendix-06": "Recorded value: amount and MRR",
 }
 APPENDIX_SIGNALS = {
     "appendix-01": [("canonical", "non-deleted"), ("crm history", "2018"), ("marketing logs", "2024"), ("domain",), ("timestamp",)],
@@ -28,7 +28,7 @@ APPENDIX_SIGNALS = {
     "appendix-03": [("first touch",), ("last touch",), ("linear",), ("time decay",), ("30/90/180/365", "30, 90, 180, and 365"), ("shared-domain", "shared domain", "normalized domain")],
     "appendix-04": [("2022 h1",), ("2024 h1",), ("mix",), ("within",), ("loss reason",), ("mapping", "unavailable")],
     "appendix-05": [("customer",), ("active opportunity",), ("icp",), ("50/50", "equal allocation"), ("power",), ("feasib", "uncertainty")],
-    "appendix-06": [("auc",), ("brier",), ("time-based", "holdout"), ("calibration",), ("false positive",), ("false negative",)],
+    "appendix-06": [("zero-amount", "zero or blank"), ("mrr",), ("open pipeline",), ("closed-lost",), ("withdrawn",)],
 }
 GENERIC_APPENDIX_TEXT = {
     "supporting methodology, definitions, and limitations for judge questions.",
@@ -120,17 +120,12 @@ def main() -> int:
             assert row["mix_effect_pp"] is None and row["within_effect_pp"] is None, "Absent-period effects must not invent a rate"
         total = sum(row.get(key) or 0 for key in ["mix_effect_pp", "within_effect_pp", "entry_exit_effect_pp"])
         assert math.isclose(total, row["total_effect_pp"], abs_tol=1e-8)
-    diagnostics = data["datasets"]["model_diagnostics"]
-    if diagnostics:
-        model = diagnostics[0]
-        assert model["canonical_active_rows"] == population - summary["resolved"]
-        assert model["canonical_resolved_rows"] == summary["resolved"]
-        assert model["active_scored_rows"] in {0, model["canonical_active_rows"]}
-        assert sum(row["active_opportunities"] for row in data["datasets"]["model_score_bands"]) == model["active_scored_rows"]
-        if model["active_scored_rows"]:
-            assert pd.Timestamp(model["train_latest_resolution"]) <= pd.Timestamp(model["validation_cutoff"]), "Future training outcomes"
-            assert pd.Timestamp(model["test_earliest_creation"]) > pd.Timestamp(model["validation_cutoff"])
-            assert pd.Timestamp(model["test_latest_horizon_end"]) <= pd.Timestamp(model["observation_end"])
+    assert not {"model_diagnostics", "model_score_bands"} & set(data["datasets"]), "Withdrawn win-probability model must not be published"
+    groups = [row for row in data["datasets"]["source_group_scorecard"] if row["scope"] == "All history"]
+    all_motion = [row for row in data["datasets"]["channel_scorecard"] if row["scope"] == "All history" and row["business_motion"] == "Acquisition"]
+    assert sum(row["opportunities"] for row in groups) == sum(row["opportunities"] for row in all_motion), "Source groups must reconcile the acquisition population"
+    assert summary["zero_amount_wins"] <= summary["won"], "Zero-amount wins cannot exceed wins"
+    assert str(summary["eligible_domains"]) in json.dumps(data["presentation"]) or f"{summary['eligible_domains']:,}" in json.dumps(data["presentation"], ensure_ascii=False), "Deck must quote the computed eligible audience"
     legacy_path = CONTRACT.with_name("dashboard-data.json")
     if legacy_path.exists():
         legacy = load_contract(legacy_path, 2)

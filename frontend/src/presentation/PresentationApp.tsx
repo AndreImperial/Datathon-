@@ -81,25 +81,28 @@ function SlideVisual({ data, slide }: { data: CaseStudyData; slide: CaseSlide })
 
   const channel = rows("channel_scorecard");
 
+  const groups = rows("source_group_scorecard");
+
   switch (slide.id) {
 
     case "main-04": {
 
-      const motions = ["Acquisition", "Renewal", "Unknown"].map(motion => {
+      const sum = (selected: Row[], key: string) => selected.reduce((total, row) => total + (numeric(row[key]) ?? 0), 0);
+      const motions = ["Acquisition", "Existing customer"].map(motion => {
 
         const selected = channel.filter(row => row.scope === "All history" && row.business_motion === motion);
 
-        return { motion, opportunities: selected.length ? selected.reduce((sum, row) => sum + (numeric(row.opportunities) ?? 0), 0) : null, recorded_won_amount: selected.length ? selected.reduce((sum, row) => sum + (numeric(row.recorded_won_amount) ?? 0), 0) : null };
+        return { motion, opportunities: selected.length ? sum(selected, "opportunities") : null, won: selected.length ? sum(selected, "won") : null, recorded_won_amount: selected.length ? sum(selected, "recorded_won_amount") : null, zero_amount_win_mrr: selected.length ? sum(selected, "zero_amount_win_mrr") : null };
 
       });
 
-      return panel("All history · explicit business motions", <EvidenceTable rows={motions} fields={["motion", "opportunities", "recorded_won_amount"]} />);
+      return panel("All history · motion from account history", <><EvidenceTable rows={motions} fields={["motion", "opportunities", "won", "recorded_won_amount", "zero_amount_win_mrr"]} /><EvidenceTable rows={rows("motion_classification_coverage")} fields={["created_year", "acquisition_opportunities", "existing_customer_opportunities", "crm_type_coverage"]} /></>);
 
     }
 
-    case "main-05": return panel("Acquisition · all history · ranked recorded won amount", <Bars rows={channel.filter(row => row.scope === "All history" && row.business_motion === "Acquisition").sort((a,b) => (numeric(b.recorded_won_amount) ?? -Infinity) - (numeric(a.recorded_won_amount) ?? -Infinity))} name={row => label(row.channel)} value="recorded_won_amount" format={dollars} detail={row => `Won ${label(row.won)} / resolved ${label(row.resolved)} · won amount coverage ${numeric(row.won_positive_amount_coverage) === null ? "unavailable" : percent(Number(row.won_positive_amount_coverage))}`} />);
+    case "main-05": return panel("Acquisition · 2018–2024 · ranked recorded won amount", <Bars rows={groups.filter(row => row.scope === "All history" && row.ranked_channel === true).sort((a,b) => (numeric(b.recorded_won_amount) ?? -Infinity) - (numeric(a.recorded_won_amount) ?? -Infinity))} name={row => label(row.source_group)} value="recorded_won_amount" format={dollars} detail={row => `Won ${label(row.won)} / resolved ${label(row.resolved)} · win rate ${numeric(row.win_rate) === null ? "unavailable" : percent(Number(row.win_rate))} · MRR on zero-amount wins ${dollars(numeric(row.zero_amount_win_mrr) ?? 0)}/mo`} />);
 
-    case "main-06": return panel("Channel comparison · known acquisition motion", <><EvidenceTable rows={rows("motion_classification_coverage")} fields={Array.from(new Set(rows("motion_classification_coverage").flatMap(row => Object.keys(row))))} /><p>2024 acquisition comparison is unavailable: motion classification is missing. An absent classified group is not a measured zero.</p><EvidenceTable rows={channel.filter(row => ["2023", "2024"].includes(String(row.scope)) && row.business_motion === "Acquisition")} fields={["scope", "channel", "resolved", "won", "win_rate", "win_rate_ci_low", "win_rate_ci_high", "recorded_won_amount"]} /></>);
+    case "main-06": return panel("Acquisition · 2023–24 · resolved win rate by source", <Bars rows={groups.filter(row => row.scope === "2023–2024" && row.ranked_channel === true).sort((a,b) => (numeric(b.win_rate) ?? -Infinity) - (numeric(a.win_rate) ?? -Infinity))} name={row => label(row.source_group)} value="win_rate" format={percent} detail={row => `Won ${label(row.won)} / resolved ${label(row.resolved)} of ${label(row.opportunities)} · 95% interval ${numeric(row.win_rate_ci_low) === null ? "unavailable" : `${percent(Number(row.win_rate_ci_low))}–${percent(Number(row.win_rate_ci_high))}`} · ${label(row.evidence_status)}`} />);
 
     case "main-07": return panel("Signed percentage-point contributions · common support and entry / exit", <DecompositionEvidence rows={rows("conversion_decomposition")} />);
 

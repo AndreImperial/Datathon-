@@ -288,12 +288,6 @@ export function BudgetChart({ data }: { data: DataRow[] }) {
   return <><ChartShell minHeight={320}><ResponsiveContainer width="100%" height={320}><ComposedChart data={rows} margin={{ left: 12, right: 24, top: 18, bottom: 42 }}><CartesianGrid {...gridProps} /><XAxis dataKey="scenario" tick={axisTick} angle={-12} textAnchor="end" height={55} /><YAxis tickFormatter={money} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [formatField("recorded_amount", value), name]} /><Bar dataKey="activated" stackId="budget" fill={COLORS.blue} name="Activated media" isAnimationActive={false} /><Bar dataKey="holdout" stackId="budget" fill={COLORS.amber} name="Holdout reserve" isAnimationActive={false} /><Bar dataKey="experiment" stackId="budget" fill={COLORS.teal} name="Experiment pool" isAnimationActive={false} /></ComposedChart></ResponsiveContainer></ChartShell><div className="chart-legend" aria-label="Budget allocation legend"><span><i style={{ background: COLORS.blue }} />Activated media</span><span><i style={{ background: COLORS.amber }} />Holdout reserve</span><span><i style={{ background: COLORS.teal }} />Experiment pool</span></div></>;
 }
 
-export function ProbabilityHistogram({ data }: { data: DataRow[] }) {
-  if (!data.length) return <EmptyChart />;
-  const bins = data.map((row) => ({ bucket: textValue(row, "score_band"), count: numberValue(row, "active_opportunities") }));
-  return <ChartShell minHeight={290}><ResponsiveContainer width="100%" height={290}><ComposedChart data={bins} margin={{ left: 10, right: 20, top: 18, bottom: 42 }}><CartesianGrid {...gridProps} /><XAxis dataKey="bucket" tick={{ ...axisTick, fontSize: 10 }} angle={-28} textAnchor="end" height={54} /><YAxis tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [value.toLocaleString(), "Active deals"]} /><Bar dataKey="count" fill={COLORS.blue} radius={[4, 4, 0, 0]} isAnimationActive={false} /></ComposedChart></ResponsiveContainer></ChartShell>;
-}
-
 export function VelocityChart({ data }: { data: DataRow[] }) {
   const rows = data.filter((row) => numberValue(row, "deal_count") >= 5).map((row) => { const median = numberValue(row, "median_days"); const count = numberValue(row, "deal_count"); return { channel: textValue(row, "channel_category"), median, error: [Math.max(0, median - numberValue(row, "p25", median)), Math.max(0, numberValue(row, "p75", median) - median)], count, display: `n=${count.toLocaleString()}` }; }).sort((a, b) => a.median - b.median);
   if (!rows.length) return <EmptyChart message="No channel has at least five won deals." />;
@@ -322,8 +316,6 @@ export function ChartRenderer({ id, data, totalPipeline, coverageMix }: { id: st
     case "c-creative-attr": return <SimpleRankedChart data={data.creative_tone} labelKey="_copytone" valueKey="ctr" color={COLORS.blue} formatter={(value) => `${(value * 100).toFixed(2)}%`} suffixKey="impressions" />;
     case "c-email-seniority": return <SimpleRankedChart data={data.email_seniority} labelKey="_seniority" valueKey="click_event_share" color={COLORS.amber} formatter={(value) => `${(value * 100).toFixed(1)}%`} suffixKey="engaged_people" />;
     case "c-budget-scenario": return <BudgetChart data={data.budget_scenarios} />;
-    case "c-feat-imp": return <SimpleRankedChart data={data.feature_importance} labelKey="feature" valueKey="importance" formatter={(value) => value.toFixed(3)} />;
-    case "c-win-prob": return <ProbabilityHistogram data={data.win_probability} />;
     case "c-deal-velocity": return <VelocityChart data={data.deal_velocity} />;
     case "c-journey": return <SimpleRankedChart data={data.journey_sequences} labelKey="sequence_2ch" valueKey="deals" formatter={(value) => value.toLocaleString()} suffixKey="pipeline" />;
     case "c-targeting-matrix": return <TargetingHeatmap data={data.targeting} />;

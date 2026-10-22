@@ -41,9 +41,6 @@ export interface DashboardDatasets {
   attribution_coverage: DataRow[];
   attribution_sensitivity: DataRow[];
   quality: DataRow[];
-  feature_importance: DataRow[];
-  model_stats: DataRow[];
-  model_calibration: DataRow[];
   budget_scenarios: DataRow[];
   targeting: DataRow[];
   monthly_pipeline: DataRow[];
@@ -56,7 +53,6 @@ export interface DashboardDatasets {
   deal_velocity: DataRow[];
   deal_velocity_exclusions?: DataRow[];
   journey_sequences: DataRow[];
-  win_probability: DataRow[];
   account_coverage_detail: DataRow[];
   attribution_touchpoint_quality: DataRow[];
   qa_performance: DataRow[];

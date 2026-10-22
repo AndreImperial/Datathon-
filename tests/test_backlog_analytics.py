@@ -3,7 +3,7 @@ from pathlib import Path
 import unittest
 import pandas as pd
 from analytics_case_study.utils.cleaning_helpers import normalize_domain, email_person_identity
-from analytics_case_study.utils.diagnostics import calibration_table, score_bins, duration_diagnostics
+from analytics_case_study.utils.diagnostics import duration_diagnostics
 
 def module(name):
     spec = importlib.util.spec_from_file_location(name, Path(__file__).parents[1]/'analytics_case_study'/f'{name}.py')
@@ -21,15 +21,6 @@ class BacklogAnalyticsTests(unittest.TestCase):
         result = email_person_identity(pd.DataFrame({'_prospectID':['p1',None,None], '_email':['A@EXAMPLE.COM',' B@example.com ','not-an-email']}))
         self.assertEqual(result.iloc[:2].tolist(), ['p1','b@example.com'])
         self.assertTrue(pd.isna(result.iloc[2]))
-
-    def test_exact_score_boundaries_and_tie_invariance(self):
-        self.assertEqual(score_bins(pd.Series([0,.25,.5,.75,1])).astype(str).tolist(), ['[0%,25%]','[0%,25%]','(25%,50%]','(50%,75%]','(75%,100%]'])
-        first = calibration_table([.42,.42,.42,.42],[1,0,1,0])
-        other = calibration_table([.42,.42,.42,.42],[0,1,0,1])
-        pd.testing.assert_frame_equal(first,other)
-        self.assertEqual(len(first),1)
-        self.assertEqual(first.iloc[0].n,4)
-        self.assertLess(first.iloc[0].observed_ci_low,.5)
 
     def test_velocity_reconciles_same_day_negative_upper_bound_missing(self):
         eligible, summary = duration_diagnostics(pd.DataFrame({'days_to_close':[0,1,-1,731,None], 'channel_category':['email']*5,'_type':['new business - mrr']*5}))

@@ -38,7 +38,25 @@ class CaseRepairTests(unittest.TestCase):
         self.assertEqual(len(slides), 6)
         self.assertTrue(all(len(s['body'].split()) >= 18 and s['chart_refs'] for s in slides))
         self.assertIn('sent', slides[1]['body'])
-        self.assertIn('time-based', slides[-1]['body'])
+        self.assertIn('MRR', slides[-1]['body'])
+        self.assertIn('withdrawn', slides[-1]['body'])
+
+    def test_source_groups_follow_marketing_flag_then_lead_source(self):
+        opps = pd.DataFrame({'_leadsource': ['Referral: Client', 'Channel Referral: 6sense', 'Existing Client', 'Sales Proactive - A', 'Inbound: Dom', 'CCO'],
+            'is_marketing_sourced': [False, True, False, False, False, False]})
+        self.assertEqual(case.source_group(opps).tolist(), ['Referral', 'Marketing-sourced', 'Existing client', 'Sales proactive', 'Inbound', 'Other'])
+
+    def test_existing_client_is_reported_but_not_ranked_as_acquisition_channel(self):
+        rows = []
+        for group, wins in [('Referral', 3), ('Marketing-sourced', 1), ('Existing client', 9)]:
+            for i in range(10):
+                rows.append({'source_group': group, 'business_motion': 'Acquisition', 'created_year': 2024, 'resolved': True, 'won': i < wins, 'amount': 100.0 if i < wins else 0.0, 'mrr': 0.0})
+        result = case.source_group_scorecard(pd.DataFrame(rows))
+        recent = result[result['scope'].eq('2023–2024')].set_index('source_group')
+        self.assertTrue(pd.isna(recent.loc['Existing client', 'win_rate_rank']))
+        self.assertEqual(recent.loc['Referral', 'win_rate_rank'], 1)
+        self.assertEqual(recent.loc['Marketing-sourced', 'win_rate_rank'], 2)
+        self.assertEqual(recent['opportunities'].sum(), 30)
 
 
 if __name__ == '__main__':

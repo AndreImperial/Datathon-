@@ -14,7 +14,7 @@ The material below is a historical record of the earlier decision-readiness pass
 - Attribution reports linked-opportunity and linked-win coverage, with model and lookback-window sensitivity; blank-UTM web sessions are excluded from marketing touch credit.
 - Raw activity is normalized to one account-channel presence per ISO week before attribution.
 - Email reporting uses engagement-event composition and documents the missing delivered denominator.
-- Paid-channel budget output is budget-neutral measurement design, without a revenue forecast. Experiment power scenarios show feasibility across detectable effects; the default 5% baseline / +2pp target requires 4,426 domains and is infeasible with 2,032 eligible domains.
+- Paid-channel budget output is budget-neutral measurement design, without a revenue forecast. Experiment power scenarios show feasibility across detectable effects; the default 5% baseline / +2pp target requires 4,426 domains and is infeasible with 2,034 eligible domains.
 - Targeting cells include empirical-Bayes adjustment, confidence intervals, and evidence tiers.
 - The model uses an as-of cutoff, complete 180-day horizons, train-only preprocessing and creation-calendar features. Near-chance results and resolved-only selection limit the active scores to exploratory diagnostics.
 

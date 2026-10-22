@@ -203,7 +203,7 @@ def _tables(payload: dict, context: dict) -> dict:
         {"Priority": "P1", "Action": "Coverage: test email-first reach with a randomized holdout after customer and active-pipeline exclusions.", "Why": f"Email-only accounts show a {metrics.get('email_only_opportunity_rate', 'N/A')} historical opportunity prevalence and both-channel accounts show {metrics.get('both_channels_opportunity_rate', 'N/A')}, compared with {metrics.get('not_reached_opportunity_rate', 'N/A')} for unreached accounts.", "Measure Success With": "Future opportunity creation after assigned exposure, qualified pipeline and randomized treatment-minus-holdout lift; current prevalence is not the baseline."},
         {"Priority": "P1", "Action": "Pipeline quality: tighten ICP and qualification criteria.", "Why": f"Quarterly pipeline is rising while closed-deal win rate moved from {metrics.get('cohort_start_win_rate', 'N/A')} to {metrics.get('cohort_end_win_rate', 'N/A')}.", "Measure Success With": "Win rate, stage conversion, disqualification reasons."},
         {"Priority": "P2", "Action": "Attribution reporting: report sourced and influenced side by side.", "Why": f"Sourced pipeline is {metrics.get('sourced_pipeline', 'N/A')}, while influenced pipeline is {metrics.get('marketing_influenced_pipeline', 'N/A')}.", "Measure Success With": "Sourced pipeline, influenced pipeline, influenced won revenue."},
-        {"Priority": "P2", "Action": "Model validation: evaluate retrospective scores before sales use.", "Why": f"The exploratory calendar-only resolved-within-180-days baseline scored {metrics.get('active_scored_opportunities', 'N/A')} active deals using creation-calendar fields; scores are retrospective research evidence.", "Measure Success With": "Future-cohort calibration and precision/recall before operational use."},
+        {"Priority": "P1", "Action": "Marketing conversion: fix lead-to-opportunity qualification before adding marketing-sourced volume.", "Why": "Marketing-sourced acquisition has the lowest resolved win rate of any lead-source group in 2023–24; see the decision brief, slide main-06.", "Measure Success With": "Marketing-sourced resolved win rate and won amount per opportunity, by quarter, against referral."},
         {"Priority": "P3", "Action": "Creative: test engagement patterns within matched platform/audience conditions.", "Why": "CTR is descriptive and audience/delivery/creative attributes are confounded; no causal creative effect is identified.", "Measure Success With": "Qualified-opportunity outcomes, delivery coverage and cost guardrails; CTR is a supporting diagnostic."},
     ]
     deliverable_rows = [
@@ -286,8 +286,6 @@ def _chart_metadata() -> list[dict]:
         ("c-creative-attr", "s-creative", "6sense CTR by Recorded Copy Tone", "CTR and impressions", "creative_tone", ["_copytone", "ctr", "impressions", "ads"], "rate; impressions", "Unknown dominates delivery; labeled comparisons have limited volume.", "c-creative-attr"),
         ("c-email-seniority", "s-creative", "Click-Event Share Within the Email Engagement Log by Seniority", "Click events / recorded engagement events", "email_seniority", ["_seniority", "click_event_share", "engaged_people", "engagement_events"], "event share; people", "Delivered-email counts are unavailable.", "c-email-seniority"),
         ("c-budget-scenario", "s-budget", "Budget-Neutral Measurement Plans", "Tracked budget ($)", "budget_scenarios", ["Scenario", "Channel", "Active Spend ($)", "Holdout Reserve ($)", "Experiment Pool ($)", "Total Budget ($)"], "$", "No pipeline forecast is shown because paid-channel outcomes are sparse.", "c-budget-scenario"),
-        ("c-feat-imp", "s-advanced", "Exploratory Calendar Model: Feature Importance", "Importance score", "feature_importance", ["feature", "importance"], "importance", "Calendar-only resolved-within-180-days target; exploratory retrospective evidence.", "c-feat-imp"),
-        ("c-win-prob", "s-advanced", "Active Opportunity Score Distribution", "Win probability distribution", "win_probability", ["score_band", "active_opportunities"], "probability interval; count", "Active scored opportunities only; no operating cutoff is implied.", "c-win-prob"),
         ("c-account-coverage", "s-advanced", "CRM Account Coverage and Historical Opportunity Prevalence", "CRM account domains and historical opportunity prevalence", "coverage", ["coverage_tier", "accounts", "opp_rate", "opp_rate_ci_low", "opp_rate_ci_high"], "accounts; rate", "Association only because coverage groups are not randomized; the source population is all CRM account domains, not an approved target list.", "c-essential-coverage"),
         ("c-deal-velocity", "s-advanced", "Deal Velocity - Median Days to Close with IQR", "Days to close", "deal_velocity", ["channel_category", "median_days", "p25", "p75", "deal_count"], "days; deals", "Channels with at least five won deals.", "c-deal-velocity"),
         ("c-journey", "s-advanced", "Winning Touchpoint Journey Sequences", "Won deals and pipeline", "journey_sequences", ["sequence_2ch", "deals", "pipeline"], "deals; recorded amount", "Sequence counts are descriptive of linked journeys.", "c-journey"),
@@ -312,8 +310,6 @@ def _chart_metadata() -> list[dict]:
         "c-creative-attr": "Unknown copy tone remains visible as a large delivery class; labeled tone comparisons have less volume.",
         "c-email-seniority": "Click-event share is measured within recorded engagement events because delivered-email counts are unavailable.",
         "c-budget-scenario": "All three budget plans keep the same total budget while reallocating activated, holdout, and experiment spend.",
-        "c-feat-imp": "Feature importance ranks creation-calendar predictors for the exploratory resolved-within-180-days target.",
-        "c-win-prob": "Active scores are exploratory retrospective estimates for the resolved-within-180-days target; no operating probability is established.",
         "c-account-coverage": "Account coverage repeats the CRM-domain population with separate volume and observed-rate panels; groups are observational.",
         "c-deal-velocity": "Median days to close is compared with an interquartile range for channels with at least five won deals.",
         "c-journey": "The most frequent winning touchpoint sequences are shown with deal counts and recorded pipeline.",
@@ -391,23 +387,12 @@ def _chart_data(datasets: dict[str, list[dict]]) -> dict[str, list[dict]]:
         "c-creative-attr": datasets.get("creative_tone", []),
         "c-email-seniority": datasets.get("email_seniority", []),
         "c-budget-scenario": datasets.get("budget_scenarios", []),
-        "c-feat-imp": sorted(datasets.get("feature_importance", []), key=lambda row: float(row.get("importance", 0) or 0)),
-        "c-win-prob": datasets.get("win_probability", []),
         "c-account-coverage": coverage,
         "c-deal-velocity": sorted([row for row in datasets.get("deal_velocity", []) if float(row.get("deal_count", 0) or 0) >= 5], key=lambda row: float(row.get("median_days", 0) or 0)),
         "c-journey": journey,
         "c-targeting-matrix": datasets.get("targeting", []),
         "c-cohort": cohorts,
     }
-
-
-def _score_histogram() -> list[dict]:
-    frame = pd.read_parquet(DATA_DIR / "win_probability.parquet")
-    scores = pd.to_numeric(frame.get("win_probability", pd.Series(dtype=float)), errors="coerce").dropna()
-    if scores.empty:
-        return []
-    counts, edges = np.histogram(scores, bins=np.linspace(0, 1, 11))
-    return [{"score_band": f"[{edges[i]:.0%}, {edges[i+1]:.0%}{']' if i == 9 else ')'}", "lower_bound": float(edges[i]), "upper_bound": float(edges[i+1]), "active_opportunities": int(count)} for i, count in enumerate(counts)]
 
 
 def _aggregate_journeys() -> list[dict]:
@@ -463,9 +448,6 @@ def main() -> None:
         "attribution_coverage": _records("attribution_coverage"),
         "attribution_sensitivity": _records("attribution_sensitivity"),
         "quality": _records("data_quality_summary"),
-        "feature_importance": _records("feature_importance", ["feature", "importance"]),
-        "model_stats": _records("model_stats"),
-        "model_calibration": _records("model_calibration"),
         "budget_scenarios": _records("budget_scenarios"),
         "targeting": _records(
             "targeting_matrix",
@@ -484,7 +466,6 @@ def main() -> None:
         "deal_velocity": _records("deal_velocity"),
         "deal_velocity_exclusions": _records("deal_velocity_exclusions"),
         "journey_sequences": _aggregate_journeys(),
-        "win_probability": _score_histogram(),
         "account_coverage_detail": _records("account_coverage_summary"),
         "attribution_touchpoint_quality": _records("attribution_touchpoint_quality"),
         "qa_performance": _records("qa_performance"),
@@ -506,21 +487,17 @@ def main() -> None:
         "table_ids": list(payload["tables"].keys()),
         "table_count": len(payload["tables"]),
         "required_audit_phrases": [
-            "Email Event Mix", "Budget-Neutral Measurement Plans", "as-of resolved-within-180-days holdout",
+            "Email Event Mix", "Budget-Neutral Measurement Plans",
         ],
         "legacy_reference": "outputs/dashboard/Marketing_Analytics_Dashboard.html",
     }
 
-    payload["dataset_status"] = {name: {"status": "available" if rows else "unavailable", "reason": "Aggregate analytical output" if rows else "No eligible analytical output; see model diagnostics or source coverage."} for name, rows in datasets.items()}
+    payload["dataset_status"] = {name: {"status": "available" if rows else "unavailable", "reason": "Aggregate analytical output" if rows else "No eligible analytical output; see source coverage."} for name, rows in datasets.items()}
     v3_path = PUBLIC_DIR / "dashboard-data-v3.json"
     if v3_path.exists():
         v3 = json.loads(v3_path.read_text(encoding="utf-8"))
         payload["meta"]["snapshot_id"] = v3.get("meta", {}).get("snapshot_id")
         payload["meta"]["run_metadata"] = v3.get("meta", {}).get("run_metadata", {})
-    model_reason = next((row.get("validation") or row.get("model_limitation") for row in datasets.get("model_stats", []) if row.get("validation") or row.get("model_limitation")), "No eligible scores; inspect model diagnostics and source outcome history.")
-    for name in ("win_probability", "feature_importance", "model_calibration"):
-        if not datasets.get(name):
-            payload["dataset_status"][name]["reason"] = model_reason
     payload["meta"]["privacy_scope"] = "Public aggregate evidence only; private source records are excluded."
     assert_public_fields(payload)
     serialized = json.dumps(payload, ensure_ascii=False, indent=2)

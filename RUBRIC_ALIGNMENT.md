@@ -18,10 +18,10 @@ Evaluator takeaway: the work is reproducible and inspectable, not a one-off spre
 
 Evidence:
 
-- The current v3 snapshot is `0996033d77dd2d46`: 3,245 canonical opportunities, $24.9M recorded pipeline, and $5.4M recorded won amount.
+- The current v3 snapshot ID is recorded in `public/dashboard-data-v3.json` → `meta.snapshot_id`: 3,245 canonical opportunities, $24.9M recorded amount across all deals ($7.0M open pipeline), and $5.4M recorded won amount, with $3.4M of monthly recurring revenue on zero-amount wins shown beside it.
 - Win rates use resolved outcomes; Wilson intervals and resolved-share maturity gates accompany rate comparisons.
 - Linkage, source populations, zero amounts, email denominators, spend, and creative metadata limits remain visible in the dashboard and appendix.
-- Delivered attribution-window sensitivity, experiment power scenarios, and model calibration diagnostics are included in the current evidence package.
+- Delivered attribution-window sensitivity and experiment power scenarios are included in the current evidence package. A near-chance win-probability model was withdrawn rather than shown.
 
 Evaluator takeaway: limitations shape interpretation and appear alongside the decision evidence.
 
@@ -48,7 +48,7 @@ Evidence:
 - Sourced and linked-influenced attribution are separated and scoped; sensitivity by attribution window and the attribution methods appendix make model choices inspectable.
 - Cohort analysis excludes active outcomes from win-rate denominators; conversion decomposition separates mix shifts from within-group changes.
 - Account coverage and targeting expose observational limits, uncertainty, and sample feasibility.
-- The predictive baseline uses a time-based holdout, as-of cutoff and creation-calendar-only feature policy, and calibration diagnostics.
+- Acquisition is defined from account history, so 2023–24 deals are classified even though the CRM type field is blank; a calendar-only predictive baseline was withdrawn after its time-based holdout reached AUC 0.52 with no predicted wins.
 
 Evaluator takeaway: methods match the questions and avoid unsupported precision.
 
@@ -57,9 +57,10 @@ Evaluator takeaway: methods match the questions and avoid unsupported precision.
 Recommended pivot:
 
 - Maintain observed channel performance while conversion quality and recorded-value completeness remain decision constraints.
-- Test account coverage among 2,032 eligible ICP domains and compare matched creative bundles.
+- Fix marketing-sourced conversion before adding volume: in 2023–24 it wins 10.2% of resolved new-logo deals against 26.8% for referral.
+- Test account coverage among 2,034 eligible ICP domains and compare matched creative bundles.
 - Report source credit, linked influence, and linkage coverage together; use attribution to form hypotheses rather than claim causality.
-- The 5% baseline / +2 percentage-point experiment requires 4,426 domains, exceeding the available 2,032; use the power scenarios to set a feasible detectable effect or accumulation plan.
+- The 5% baseline / +2 percentage-point experiment requires 4,426 domains, exceeding the available 2,034; use the power scenarios to set a feasible detectable effect or accumulation plan.
 
 Evaluator takeaway: recommendations are executable, budget-aware, and include measurement gates.
 
@@ -85,7 +86,7 @@ Evaluator takeaway: the work provides both a guided presentation and an inspecta
 |---|---|---|---|
 | Recorded value is meaningful but incomplete | 3,245 canonical opportunities; $24.9M pipeline; $5.4M won amount. Amount coverage and outcome definitions constrain revenue interpretation. | Executive Summary; Channel Performance; Appendix | `main-05` Channel effectiveness; `main-04` Business motion; `appendix-01` Population and source coverage; `appendix-02` Metric definitions |
 | Channel and content observations guide tests, not causal claims | 684 opportunities are linked to eligible touches; attribution ranks vary by model/window. Only five ads have complete creative metadata. | Attribution Analysis; Channel Performance; Creative & Email; Appendix | `main-08` Advertising content; `main-10` Source and touch overlap; `main-11` Attribution and journeys; `appendix-03` Attribution methods |
-| Eligible accounts support a coverage experiment | 2,032 eligible ICP domains remain; reached-group comparisons are observational. | Segment & ICP; Advanced Analytics; Budget Measurement | `main-12` Target audience; `main-14` Controlled experiment; `appendix-05` Targeting and sample uncertainty |
-| The default experiment target is infeasible at the current audience size | A 5% baseline and +2pp lift require 4,426 domains versus 2,032 eligible. Delivered power scenarios support alternate planning. | Budget Measurement; Segment & ICP; Appendix | `main-14` Controlled experiment; `main-15` Budget implications; `appendix-05` Targeting and sample uncertainty |
-| Conversion and predictive results need method context | Mix and within-group conversion shifts are descriptive; calibration and other model diagnostics are available for inspection. | Advanced Analytics; Channel Performance; Appendix | `main-07` Conversion drivers; `appendix-04` Conversion decomposition; `appendix-06` Model diagnostics |
+| Eligible accounts support a coverage experiment | 2,034 eligible ICP domains remain; reached-group comparisons are observational. | Segment & ICP; Advanced Analytics; Budget Measurement | `main-12` Target audience; `main-14` Controlled experiment; `appendix-05` Targeting and sample uncertainty |
+| The default experiment target is infeasible at the current audience size | A 5% baseline and +2pp lift require 4,426 domains versus 2,034 eligible. Delivered power scenarios support alternate planning. | Budget Measurement; Segment & ICP; Appendix | `main-14` Controlled experiment; `main-15` Budget implications; `appendix-05` Targeting and sample uncertainty |
+| Conversion results need method context; recorded value is incomplete | Mix and within-group conversion shifts are descriptive. Zero-amount wins carry $3.4M of MRR, shown beside amount; the win-probability model was withdrawn. | Advanced Analytics; Channel Performance; Appendix | `main-07` Conversion drivers; `appendix-04` Conversion decomposition; `appendix-06` Recorded value: amount and MRR |
 | CMO action is to fund learning before expansion | Maintain measurable activity, test channel/content and account coverage, and scale against incremental qualified pipeline evidence. | Conclusion & Action Plan; Budget Measurement | `main-02` Marketing strategy; `main-13` Channel and content actions; `main-16` CMO decisions |

@@ -4,10 +4,10 @@ from pathlib import Path
 
 DENIED_FIELDS = {"_opportunity_id", "opportunity_id", "opp_id", "accountid", "_account_id", "_account_name", "account_name", "_current_stage", "current_stage", "_amount", "email", "contact_email", "contact_name", "phone", "domain", "account_id"}
 
-V2_DATASETS = {'creative_tone', 'cohorts', 'win_probability', 'model_stats', 'journey_sequences', 'monthly_pipeline', 'deal_velocity', 'channel_pipeline', 'segment_industry', 'budget_scenarios', 'email_seniority', 'account_coverage_detail', 'coverage', 'qa_performance', 'feature_importance', 'attribution', 'segment_win_rate', 'quality', 'funnel_metrics', 'attribution_touchpoint_quality', 'model_calibration', 'creative_ctr', 'attribution_sensitivity', 'targeting', 'attribution_coverage'}
-V2_CHARTS = {'c-spend-pipeline', 'c-attrib-waterfall', 'c-cohort', 'c-account-coverage', 'c-seg-heatmap', 'c-monthly-trend', 'c-journey', 'c-email-seniority', 'c-feat-imp', 'c-bar-channel', 'c-win-prob', 'c-creative-attr', 'c-creative-ctr', 'c-essential-contribution', 'c-funnel', 'c-targeting-matrix', 'c-sourced-influenced', 'c-attrib-comparison', 'c-essential-coverage', 'c-deal-velocity', 'c-budget-scenario', 'c-seg-winrate', 'c-donut-won', 'c-essential-cohort'}
+V2_DATASETS = {'creative_tone', 'cohorts', 'journey_sequences', 'monthly_pipeline', 'deal_velocity', 'channel_pipeline', 'segment_industry', 'budget_scenarios', 'email_seniority', 'account_coverage_detail', 'coverage', 'qa_performance', 'attribution', 'segment_win_rate', 'quality', 'funnel_metrics', 'attribution_touchpoint_quality', 'creative_ctr', 'attribution_sensitivity', 'targeting', 'attribution_coverage'}
+V2_CHARTS = {'c-spend-pipeline', 'c-attrib-waterfall', 'c-cohort', 'c-account-coverage', 'c-seg-heatmap', 'c-monthly-trend', 'c-journey', 'c-email-seniority', 'c-bar-channel', 'c-creative-attr', 'c-creative-ctr', 'c-essential-contribution', 'c-funnel', 'c-targeting-matrix', 'c-sourced-influenced', 'c-attrib-comparison', 'c-essential-coverage', 'c-deal-velocity', 'c-budget-scenario', 'c-seg-winrate', 'c-donut-won', 'c-essential-cohort'}
 V2_TABLES = {'essential_action_plan', 'case_deliverable_coverage', 'decision_confidence', 'attribution_models', 'recommended_actions', 'channel_roi_summary'}
-V3_DATASETS = {'model_diagnostics', 'journey_outcomes', 'attribution_model_sensitivity', 'email_content', 'population_reconciliation', 'model_score_bands', 'experiment_scenarios', 'channel_trends', 'conversion_decomposition', 'loss_reason_summary', 'channel_scorecard', 'summary', 'audience_priority', 'attribution_year_coverage', 'ad_rankings', 'audience_exclusions', 'content_metadata_coverage', 'web_content', 'source_coverage', 'attribution_overlap', 'creative_bundles'}
+V3_DATASETS = {'source_group_scorecard', 'journey_outcomes', 'attribution_model_sensitivity', 'email_content', 'population_reconciliation', 'experiment_scenarios', 'channel_trends', 'conversion_decomposition', 'loss_reason_summary', 'channel_scorecard', 'summary', 'audience_priority', 'attribution_year_coverage', 'ad_rankings', 'audience_exclusions', 'content_metadata_coverage', 'web_content', 'source_coverage', 'attribution_overlap', 'creative_bundles'}
 
 def assert_public_fields(value, path="root"):
     if isinstance(value, dict):
@@ -50,9 +50,9 @@ def load_contract(path, version=None):
             if not V2_CHARTS <= set(data["chart_data"]) or not all(isinstance(data["chart_data"][name], list) for name in V2_CHARTS):
                 raise ValueError("Required named chart placements missing")
             metadata = data.get("chart_metadata", [])
-            if not isinstance(metadata, list) or len(metadata) != 24 or any(not isinstance(item, dict) for item in metadata) or {item.get("chart_id") for item in metadata} != V2_CHARTS or any(not item.get("source_dataset") or not item.get("fields") for item in metadata):
+            if not isinstance(metadata, list) or len(metadata) != 22 or any(not isinstance(item, dict) for item in metadata) or {item.get("chart_id") for item in metadata} != V2_CHARTS or any(not item.get("source_dataset") or not item.get("fields") for item in metadata):
                 raise ValueError("Missing chart bindings")
-            if not V2_TABLES <= set(data.get("tables", {})) or data.get("manifest", {}).get("chart_placement_count") != 24:
+            if not V2_TABLES <= set(data.get("tables", {})) or data.get("manifest", {}).get("chart_placement_count") != 22:
                 raise ValueError("Missing evidence tables/manifest")
             if not data["context"]["metrics"].get("total_opportunities"):
                 raise ValueError("Missing population metric")

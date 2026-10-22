@@ -5,9 +5,9 @@
     "period": "2018–2024",
     "generated_from": "validated Parquet outputs",
     "methodology": "365-day primary attribution with 30/90/180/365-day sensitivity; resolved-outcome win rates; cohort maturity controls",
-    "generated_at": "2026-10-03T01:33:11.596034+00:00",
+    "generated_at": "2026-10-22T15:19:12.704375+00:00",
     "source_freshness": "Source dates are historical; generated_at is build time, not evidence of source freshness. No production refresh policy is approved.",
-    "snapshot_id": "386ea2031409f547",
+    "snapshot_id": "9c524ee116f41b8a",
     "run_metadata": {
       "python": "3.11.9",
       "dependencies": {
@@ -18,7 +18,7 @@
         "plotly": "6.7.0",
         "openpyxl": "3.1.5"
       },
-      "started_at": "2026-10-03T01:30:50.155259+00:00",
+      "started_at": "2026-10-22T15:17:12.260335+00:00",
       "source_files": [
         {
           "source_id": "Datathon_db_6sense_campaign_accounts.xlsx",
@@ -106,9 +106,6 @@
       "cohort_start_quarter": "2022Q1",
       "cohort_end_quarter": "2024Q2",
       "latest_mature_marketing_sourced_share": "23%",
-      "model_auc": "0.516",
-      "model_validation": "as-of cutoff; train horizon and recorded resolution <= cutoff; test creation > cutoff and 180-day horizon <= latest recorded event; preprocessing fit on train only",
-      "active_scored_opportunities": "411",
       "domain_match_rate": "96.5%",
       "missing_create_dates": "0",
       "unknown_channel_pct": "34.0%",
@@ -141,8 +138,7 @@
       "Spend ROI only covers channels with reliable tracked spend.",
       "Low-volume channels and segments can be unstable.",
       "Web traffic is partially anonymous unless matched to account domains.",
-      "Calendar-only scores are exploratory retrospective evidence; operating probabilities are unvalidated.",
-      "Calibration must be assessed from the current holdout diagnostics; no score band establishes an operating probability or validated ranking.",
+      "A calendar-only win-probability baseline was withdrawn after a near-chance holdout; no deal scores are published.",
       "The email file is an engagement-event log; send-based open and click rates cannot be calculated.",
       "A large share of won opportunities has zero amount, so won revenue and revenue ROI are understated."
     ],
@@ -1216,64 +1212,6 @@
         "rate": 0.9645608628659477,
         "severity": "medium",
         "interpretation": "Domain coverage limits account-level attribution matching."
-      }
-    ],
-    "feature_importance": [
-      {
-        "feature": "create_year",
-        "importance": 0.863918765539113
-      },
-      {
-        "feature": "create_quarter",
-        "importance": 0.1360812344608871
-      }
-    ],
-    "model_stats": [
-      {
-        "auc": 0.5163636363636364,
-        "accuracy": 0.7674418604651163,
-        "precision": 0.0,
-        "recall": 0.0,
-        "brier_score": 0.2170327636033189,
-        "true_negative": 330,
-        "false_positive": 0,
-        "false_negative": 100,
-        "true_positive": 0,
-        "train_rows": 1144,
-        "test_rows": 430,
-        "train_win_rate": 0.5725524475524476,
-        "test_win_rate": 0.23255813953488372,
-        "active_scored_rows": 411,
-        "canonical_resolved_rows": 2834,
-        "canonical_active_rows": 411,
-        "validation": "as-of cutoff; train horizon and recorded resolution <= cutoff; test creation > cutoff and 180-day horizon <= latest recorded event; preprocessing fit on train only",
-        "feature_policy": "creation year/quarter only; mutable latest amount, channel, segment and account fields excluded",
-        "model_limitation": "Exploratory calendar baseline conditional on first recorded resolution within 180 days; incomplete event coverage and resolved-only selection prevent unconditional active-deal win forecasting.",
-        "validation_cutoff": "2024-01-22 00:00:00+00:00",
-        "observation_end": "2024-12-24 19:33:40+00:00",
-        "outcome_horizon_days": 180,
-        "mature_creation_rows": 2624,
-        "horizon_resolved_rows": 1863,
-        "ambiguous_outcome_rows": 0,
-        "train_latest_resolution": "2023-12-20 16:41:38+00:00",
-        "test_earliest_creation": "2024-01-23 00:00:00+00:00",
-        "test_latest_horizon_end": "2024-12-24 00:00:00+00:00",
-        "calibration_mean_abs_gap": 0.196394831367994,
-        "calibration_max_abs_gap": 0.196394831367994
-      }
-    ],
-    "model_calibration": [
-      {
-        "score_band": "(25%,50%]",
-        "n": 430,
-        "wins": 100.0,
-        "predicted_win_rate": 0.4289529709028777,
-        "observed_win_rate": 0.23255813953488372,
-        "score_min": 0.4284564457706168,
-        "score_max": 0.42959818805335565,
-        "observed_ci_low": 0.19510199082110383,
-        "observed_ci_high": 0.27475060053942957,
-        "abs_gap": 0.196394831367994
       }
     ],
     "budget_scenarios": [
@@ -4045,68 +3983,6 @@
         "sequence_2ch": "6sense_display -> email_mqa",
         "deals": 7,
         "pipeline": 106630.32
-      }
-    ],
-    "win_probability": [
-      {
-        "score_band": "[0%, 10%)",
-        "lower_bound": 0.0,
-        "upper_bound": 0.1,
-        "active_opportunities": 0
-      },
-      {
-        "score_band": "[10%, 20%)",
-        "lower_bound": 0.1,
-        "upper_bound": 0.2,
-        "active_opportunities": 0
-      },
-      {
-        "score_band": "[20%, 30%)",
-        "lower_bound": 0.2,
-        "upper_bound": 0.30000000000000004,
-        "active_opportunities": 266
-      },
-      {
-        "score_band": "[30%, 40%)",
-        "lower_bound": 0.30000000000000004,
-        "upper_bound": 0.4,
-        "active_opportunities": 85
-      },
-      {
-        "score_band": "[40%, 50%)",
-        "lower_bound": 0.4,
-        "upper_bound": 0.5,
-        "active_opportunities": 9
-      },
-      {
-        "score_band": "[50%, 60%)",
-        "lower_bound": 0.5,
-        "upper_bound": 0.6000000000000001,
-        "active_opportunities": 25
-      },
-      {
-        "score_band": "[60%, 70%)",
-        "lower_bound": 0.6000000000000001,
-        "upper_bound": 0.7000000000000001,
-        "active_opportunities": 22
-      },
-      {
-        "score_band": "[70%, 80%)",
-        "lower_bound": 0.7000000000000001,
-        "upper_bound": 0.8,
-        "active_opportunities": 4
-      },
-      {
-        "score_band": "[80%, 90%)",
-        "lower_bound": 0.8,
-        "upper_bound": 0.9,
-        "active_opportunities": 0
-      },
-      {
-        "score_band": "[90%, 100%]",
-        "lower_bound": 0.9,
-        "upper_bound": 1.0,
-        "active_opportunities": 0
       }
     ],
     "account_coverage_detail": [
@@ -7482,78 +7358,6 @@
         "Evidence Status": "Insufficient outcome evidence"
       }
     ],
-    "c-feat-imp": [
-      {
-        "feature": "create_quarter",
-        "importance": 0.1360812344608871
-      },
-      {
-        "feature": "create_year",
-        "importance": 0.863918765539113
-      }
-    ],
-    "c-win-prob": [
-      {
-        "score_band": "[0%, 10%)",
-        "lower_bound": 0.0,
-        "upper_bound": 0.1,
-        "active_opportunities": 0
-      },
-      {
-        "score_band": "[10%, 20%)",
-        "lower_bound": 0.1,
-        "upper_bound": 0.2,
-        "active_opportunities": 0
-      },
-      {
-        "score_band": "[20%, 30%)",
-        "lower_bound": 0.2,
-        "upper_bound": 0.30000000000000004,
-        "active_opportunities": 266
-      },
-      {
-        "score_band": "[30%, 40%)",
-        "lower_bound": 0.30000000000000004,
-        "upper_bound": 0.4,
-        "active_opportunities": 85
-      },
-      {
-        "score_band": "[40%, 50%)",
-        "lower_bound": 0.4,
-        "upper_bound": 0.5,
-        "active_opportunities": 9
-      },
-      {
-        "score_band": "[50%, 60%)",
-        "lower_bound": 0.5,
-        "upper_bound": 0.6000000000000001,
-        "active_opportunities": 25
-      },
-      {
-        "score_band": "[60%, 70%)",
-        "lower_bound": 0.6000000000000001,
-        "upper_bound": 0.7000000000000001,
-        "active_opportunities": 22
-      },
-      {
-        "score_band": "[70%, 80%)",
-        "lower_bound": 0.7000000000000001,
-        "upper_bound": 0.8,
-        "active_opportunities": 4
-      },
-      {
-        "score_band": "[80%, 90%)",
-        "lower_bound": 0.8,
-        "upper_bound": 0.9,
-        "active_opportunities": 0
-      },
-      {
-        "score_band": "[90%, 100%]",
-        "lower_bound": 0.9,
-        "upper_bound": 1.0,
-        "active_opportunities": 0
-      }
-    ],
     "c-account-coverage": [
       {
         "coverage_tier": "6sense Only",
@@ -8353,36 +8157,6 @@
       "accessible_summary": "All three budget plans keep the same total budget while reallocating activated, holdout, and experiment spend."
     },
     {
-      "chart_id": "c-feat-imp",
-      "section_id": "s-advanced",
-      "title": "Exploratory Calendar Model: Feature Importance",
-      "subtitle": "Importance score",
-      "source_dataset": "feature_importance",
-      "fields": [
-        "feature",
-        "importance"
-      ],
-      "units": "importance",
-      "canonical_chart_id": "c-feat-imp",
-      "caveat": "Calendar-only resolved-within-180-days target; exploratory retrospective evidence.",
-      "accessible_summary": "Feature importance ranks creation-calendar predictors for the exploratory resolved-within-180-days target."
-    },
-    {
-      "chart_id": "c-win-prob",
-      "section_id": "s-advanced",
-      "title": "Active Opportunity Score Distribution",
-      "subtitle": "Win probability distribution",
-      "source_dataset": "win_probability",
-      "fields": [
-        "score_band",
-        "active_opportunities"
-      ],
-      "units": "probability interval; count",
-      "canonical_chart_id": "c-win-prob",
-      "caveat": "Active scored opportunities only; no operating cutoff is implied.",
-      "accessible_summary": "Active scores are exploratory retrospective estimates for the resolved-within-180-days target; no operating probability is established."
-    },
-    {
       "chart_id": "c-account-coverage",
       "section_id": "s-advanced",
       "title": "CRM Account Coverage and Historical Opportunity Prevalence",
@@ -8843,10 +8617,10 @@
           "Measure Success With": "Sourced pipeline, influenced pipeline, influenced won revenue."
         },
         {
-          "Priority": "P2",
-          "Action": "Model validation: evaluate retrospective scores before sales use.",
-          "Why": "The exploratory calendar-only resolved-within-180-days baseline scored 411 active deals using creation-calendar fields; scores are retrospective research evidence.",
-          "Measure Success With": "Future-cohort calibration and precision/recall before operational use."
+          "Priority": "P1",
+          "Action": "Marketing conversion: fix lead-to-opportunity qualification before adding marketing-sourced volume.",
+          "Why": "Marketing-sourced acquisition has the lowest resolved win rate of any lead-source group in 2023–24; see the decision brief, slide main-06.",
+          "Measure Success With": "Marketing-sourced resolved win rate and won amount per opportunity, by quarter, against referral."
         },
         {
           "Priority": "P3",
@@ -8957,15 +8731,13 @@
       "c-creative-attr",
       "c-email-seniority",
       "c-budget-scenario",
-      "c-feat-imp",
-      "c-win-prob",
       "c-account-coverage",
       "c-deal-velocity",
       "c-journey",
       "c-targeting-matrix",
       "c-cohort"
     ],
-    "chart_placement_count": 24,
+    "chart_placement_count": 22,
     "distinct_chart_definitions": [
       "c-essential-contribution",
       "c-essential-coverage",
@@ -8983,13 +8755,11 @@
       "c-creative-attr",
       "c-email-seniority",
       "c-budget-scenario",
-      "c-feat-imp",
-      "c-win-prob",
       "c-deal-velocity",
       "c-journey",
       "c-targeting-matrix"
     ],
-    "distinct_chart_count": 21,
+    "distinct_chart_count": 19,
     "table_ids": [
       "essential_action_plan",
       "attribution_models",
@@ -9001,8 +8771,7 @@
     "table_count": 6,
     "required_audit_phrases": [
       "Email Event Mix",
-      "Budget-Neutral Measurement Plans",
-      "as-of resolved-within-180-days holdout"
+      "Budget-Neutral Measurement Plans"
     ],
     "legacy_reference": "outputs/dashboard/Marketing_Analytics_Dashboard.html"
   },
@@ -9032,18 +8801,6 @@
       "reason": "Aggregate analytical output"
     },
     "quality": {
-      "status": "available",
-      "reason": "Aggregate analytical output"
-    },
-    "feature_importance": {
-      "status": "available",
-      "reason": "Aggregate analytical output"
-    },
-    "model_stats": {
-      "status": "available",
-      "reason": "Aggregate analytical output"
-    },
-    "model_calibration": {
       "status": "available",
       "reason": "Aggregate analytical output"
     },
@@ -9092,10 +8849,6 @@
       "reason": "Aggregate analytical output"
     },
     "journey_sequences": {
-      "status": "available",
-      "reason": "Aggregate analytical output"
-    },
-    "win_probability": {
       "status": "available",
       "reason": "Aggregate analytical output"
     },

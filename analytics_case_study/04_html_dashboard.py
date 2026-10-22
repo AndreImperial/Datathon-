@@ -48,15 +48,12 @@ funnel_metrics    = _load_int("funnel_metrics")
 creative_perf     = _load_int("creative_performance")
 master_account    = _load_int("master_account")
 attribution       = _load_int("attribution_results")
-win_prob          = _load_int("win_probability")
 account_coverage  = _load_int("account_coverage")
 deal_velocity     = _load_int("deal_velocity")
 journey_seq       = _load_int("journey_sequences")
 qa_perf           = _load_int("qa_performance")
 targeting_matrix  = _load_int("targeting_matrix")
 cohort            = _load_int("cohort_analysis")
-feat_imp          = _load_int("feature_importance")
-model_stats       = _load_int("model_stats")
 data_quality      = _load_int("data_quality_summary")
 attribution_scope = _load_int("attribution_coverage")
 coverage_summary  = _load_int("account_coverage_summary")
@@ -80,7 +77,6 @@ stage_col       = next((c for c in opps.columns if "current_stage" in c.lower())
 resolved_deals  = int(resolved_stage_mask(opps[stage_col]).sum()) if stage_col else total_deals
 win_rate        = won_deals / resolved_deals if resolved_deals else 0
 mktg_pct        = mktg_pipeline / total_pipeline if total_pipeline else 0
-open_deals      = len(win_prob)
 create_col      = next((c for c in opps.columns if "createdate" in c.lower()), None)
 create_dates    = pd.to_datetime(opps[create_col], errors="coerce", utc=True) if create_col else pd.Series(dtype="datetime64[ns, UTC]")
 data_year_range = (
@@ -93,16 +89,6 @@ def fmt(v, m="$"):
     if v >= 1e6:  return f"{m}{v/1e6:.1f}M"
     if v >= 1e3:  return f"{m}{v/1e3:.0f}K"
     return f"{m}{v:.0f}"
-
-def model_auc_text():
-    if not model_stats.empty and "auc" in model_stats.columns and pd.notna(model_stats.loc[0, "auc"]):
-        return f"{float(model_stats.loc[0, 'auc']):.3f}"
-    return "N/A"
-
-def model_validation_text():
-    if not model_stats.empty and "validation" in model_stats.columns and pd.notna(model_stats.loc[0, "validation"]):
-        return str(model_stats.loc[0, "validation"])
-    return "cross-validated"
 
 def sourced_pipeline_val():
     if attribution.empty:
@@ -753,20 +739,6 @@ def budget_scenario_chart():
 # Advanced Analytics Charts
 # -----------------------------------------------------------------------------
 
-def feature_importance_chart():
-    if feat_imp.empty: return go.Figure()
-    df = feat_imp.head(12).sort_values("importance")
-    fig = go.Figure(go.Bar(
-        y=df["feature"], x=df["importance"], orientation="h",
-        marker_color=COLORS[0],
-        text=[f"{v:.3f}" for v in df["importance"]], textposition="outside",
-        hovertemplate="<b>%{y}</b><br>Importance: %{x:.4f}<extra></extra>",
-    ))
-    fig.update_layout(title="Exploratory Calendar Model: Feature Importance",
-                      xaxis_title="Importance Score", **LAYOUT)
-    return fig
-
-
 def account_coverage_chart():
     if account_coverage.empty: return go.Figure()
     if not coverage_summary.empty:
@@ -873,28 +845,6 @@ def targeting_matrix_chart():
     ))
     fig.update_layout(title="Win Rate by Segment and 6sense Profile Fit<br><sup>Every cell shows deal count; cells below n=30 are exploratory</sup>",
                       **LAYOUT)
-    return fig
-
-
-
-
-def win_prob_chart():
-    if win_prob.empty: return go.Figure()
-    df = win_prob.copy()
-    if "win_probability" not in df.columns: return go.Figure()
-    # Histogram of win probabilities
-    counts, edges = np.histogram(pd.to_numeric(df["win_probability"], errors="coerce").dropna(), bins=np.linspace(0, 1, 11))
-    fig = go.Figure(go.Bar(
-        x=(edges[:-1] + edges[1:]) / 2, y=counts, width=.09,
-        marker_color=COLORS[0], opacity=0.8,
-        hovertemplate="Win Prob: %{x:.0%}<br>Count: %{y}<extra></extra>",
-    ))
-    fig.update_layout(
-        title="Active Opportunity Score Distribution",
-        xaxis=dict(title="Win Probability", tickformat=".0%"),
-        yaxis_title="Number of Deals",
-        **LAYOUT,
-    )
     return fig
 
 
@@ -1072,9 +1022,6 @@ def build_dashboard_context():
             "cohort_start_quarter": cohort_vals["cohort_start_quarter"],
             "cohort_end_quarter": cohort_vals["cohort_end_quarter"],
             "latest_mature_marketing_sourced_share": cohort_vals["mktg_end_pct"],
-            "model_auc": model_auc_text(),
-            "model_validation": model_validation_text(),
-            "active_scored_opportunities": f"{open_deals:,}",
             "domain_match_rate": quality_vals["domain_match_rate"],
             "missing_create_dates": quality_vals["missing_create_dates"],
             "unknown_channel_pct": quality_vals["unknown_channel_pct"],
@@ -1102,8 +1049,7 @@ def build_dashboard_context():
             "Spend ROI only covers channels with reliable tracked spend.",
             "Low-volume channels and segments can be unstable.",
             "Web traffic is partially anonymous unless matched to account domains.",
-            "Calendar-only scores are exploratory retrospective evidence; operating probabilities are unvalidated.",
-            "Calibration must be assessed from the current holdout diagnostics; no score band establishes an operating probability or validated ranking.",
+            "A calendar-only win-probability baseline was withdrawn after a near-chance holdout; no deal scores are published.",
             "The email file is an engagement-event log; send-based open and click rates cannot be calculated.",
             "A large share of won opportunities has zero amount, so won revenue and revenue ROI are understated.",
         ],
@@ -2258,10 +2204,10 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- Advanced Analytics -->
   <div id="s-advanced" class="section">
     <h2 class="section-title">Advanced Analytics</h2>
-    <div class="section-desc">ML win probability model, account coverage gap, deal velocity, journey sequences, and targeting matrix - datathon-level depth.</div>
-    <div class="section-takeaway"><strong>Advanced takeaway:</strong> The predictive model and coverage analysis point to the same action: focus sales and marketing on high-fit accounts that are not yet fully activated. <span class="evidence-badge">AUC {model_auc}</span><span class="evidence-badge orange">{unreached_pct} unreached</span></div>
+    <div class="section-desc">Account coverage gap, deal velocity, journey sequences, and targeting matrix. A calendar-only win-probability baseline was withdrawn after a near-chance holdout (AUC about 0.52, no predicted wins).</div>
+    <div class="section-takeaway"><strong>Advanced takeaway:</strong> Coverage and targeting evidence point to the same action: focus sales and marketing on high-fit accounts that are not yet fully activated. <span class="evidence-badge orange">{unreached_pct} unreached</span></div>
     <div class="context-box">
-      <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section adds coverage evidence and exploratory model diagnostics; model-based priorities are not established. The exploratory calendar-only resolved-within-180-days baseline (Random Forest, AUC = {model_auc}, {model_validation}) scores {open_deals} active opportunities. The coverage analysis reveals that {unreached_pct} of CRM account domains have no tracked email or 6sense touchpoint.
+      <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section adds coverage, velocity and targeting evidence; none of it establishes causal priority.
     </div>
     <div class="evidence-grid">
       <div class="evidence-card">
@@ -2275,29 +2221,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       <div class="evidence-card">
         <h3><span class="confidence-pill directional">Next test</span> Validate causality</h3>
         <p>Run a holdout or phased rollout so the team can measure incremental lift from email-first outreach and a tested 6sense overlay.</p>
-      </div>
-    </div>
-
-    <div class="chart-grid cols-2">
-      <div class="chart-card">
-        <div id="c-feat-imp"></div>
-        <div class="chart-explain">
-          <div class="ex-title">What this shows - Win Probability: Top Predictors</div>
-          An exploratory Random Forest baseline uses creation-calendar features to model won outcomes among deals resolved within 180 days. Feature importance describes calendar patterns in that retrospective target. <strong>AUC = {model_auc}</strong> using {model_validation} (1.0 = perfect, 0.5 = random).
-          <br><br>
-          <strong>Leakage policy:</strong> The model uses creation year and quarter only. Channel, segment, amount, account intent, contact counts and current stage lack proven historical availability and are excluded.
-          <div class="ex-insight">Key insight: Treat calendar-only scores as retrospective research evidence. Validate future-cohort calibration before using scores in sales decisions.</div>
-        </div>
-      </div>
-      <div class="chart-card">
-        <div id="c-win-prob"></div>
-        <div class="chart-explain">
-          <div class="ex-title">What this shows - Active Opportunity Score Distribution</div>
-          This histogram shows {open_deals} active opportunities scored by the baseline model. Each bar is the number of active opportunities in that probability range. These estimates do not establish operational win probabilities or follow-up priorities.
-          <br><br>
-          <strong>How to use it:</strong> Use this distribution to assess the research baseline; operational prioritization remains unvalidated. Do not set an operating cutoff until calibration and precision/recall are validated at the proposed threshold.
-          <div class="ex-insight">Key insight: Keep scores in research review; validate future-cohort calibration and operating precision/recall before any sales ranking or threshold.</div>
-        </div>
       </div>
     </div>
 
@@ -2434,7 +2357,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <ul class="finding-list">
           <li>Relationship-led channels remain the strongest won-revenue base.</li>
           <li>Touchpoint attribution shows different channels appearing at different journey stages.</li>
-          <li>The calendar-only resolved-within-180-days model is exploratory retrospective evidence: AUC is {model_auc} using {model_validation}.</li>
         </ul>
       </div>
       <div class="conclusion-card">
@@ -2547,12 +2469,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
               <td>Sourced pipeline, influenced pipeline, influenced won revenue.</td>
             </tr>
             <tr>
-              <td><span class="priority-tag p2">P2</span></td>
-              <td><strong>Model validation:</strong> evaluate retrospective scores before sales use.</td>
-              <td>The exploratory calendar-only resolved-within-180-days baseline scored {open_deals} active deals using creation-calendar fields; no operating probability is established.</td>
-              <td>Future-cohort calibration and precision/recall before operational use.</td>
-            </tr>
-            <tr>
               <td><span class="priority-tag p3">P3</span></td>
               <td><strong>Creative:</strong> test engagement patterns with matched audiences; require qualified outcomes before scale decisions.</td>
               <td>CTR is descriptive and audience/delivery/creative attributes are confounded; no causal creative effect is identified.</td>
@@ -2602,7 +2518,6 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <li><strong>Web traffic is partially anonymous.</strong> Only sessions with a matched company domain can be connected to account-level journeys.</li>
     <li><strong>Low-volume categories are unstable.</strong> Channels or segments with very few won deals should be read as signals to investigate, not budget mandates.</li>
     <li><strong>Spend ROI is tracked-spend only.</strong> Channels without reliable spend data are excluded from ROI scenario math.</li>
-    <li><strong>Model scores are exploratory.</strong> The calendar-only resolved-within-180-days target is retrospective research evidence; validate future-cohort calibration before sales use.</li>
   </ul>
 </aside>
 
@@ -2845,8 +2760,6 @@ const CHARTS = {{
   "c-creative-attr":     {creative_attr},
   "c-email-seniority":   {email_seniority},
   "c-budget-scenario":   {budget_scenario},
-  "c-feat-imp":          {feat_imp_chart},
-  "c-win-prob":          {win_prob_chart},
   "c-account-coverage":  {account_coverage_chart},
   "c-deal-velocity":     {deal_velocity_chart},
   "c-journey":           {journey_chart},
@@ -2874,8 +2787,6 @@ const CHART_META = {{
   "c-creative-attr": ["Question: which creative attributes correlate with engagement?", "Population: grouped creative metadata.", "Caution: this is correlation, not message causality."],
   "c-email-seniority": ["Question: which seniority contributes click events?", "Population: recorded email engagement events; no delivered-message denominator is available.", "Caution: this is event composition, not a send-based click rate."],
   "c-budget-scenario": ["Question: how much tracked budget should be reserved for measurement?", "Population: two tracked-spend channels; one has a single opportunity and neither has recorded won revenue.", "Decision use: choose a budget-neutral holdout plan, not a revenue forecast."],
-  "c-feat-imp": ["Question: what signals drive the win model?", "Population: closed opportunities used for training.", "Caution: importance is predictive, not causal."],
-  "c-win-prob": ["Question: how are active opportunities distributed by predicted probability?", "Population: active scored opportunities only; evaluation used a time-based holdout of resolved deals.", "Decision use: validate future-cohort calibration; scores currently provide retrospective research evidence."],
   "c-account-coverage": ["Question: where is the account coverage gap?", "Population: CRM account domains; volume and opportunity rate use separate panels.", "Caution: reached-account rates are observational and may reflect selection or sales activity."],
   "c-deal-velocity": ["Question: how long do won deals take by channel?", "Population: closed-won opportunities with valid close dates and at least five wins per channel.", "Caution: medians describe historical cases, not guaranteed sales-cycle timing."],
   "c-journey": ["Question: what touchpoint sequences appear before wins?", "Population: won deals with linked pre-opportunity touchpoints.", "Caution: sequences are descriptive."],
@@ -3261,8 +3172,6 @@ def main():
         "email_seniority":        fig_json(email_seniority()),
         "budget_scenario":        fig_json(budget_scenario_chart()),
         # Advanced Analytics
-        "feat_imp_chart":         fig_json(feature_importance_chart()),
-        "win_prob_chart":         fig_json(win_prob_chart()),
         "account_coverage_chart": fig_json(account_coverage_chart()),
         "deal_velocity_chart":    fig_json(deal_velocity_chart()),
         "journey_chart":          fig_json(journey_chart()),
@@ -3281,9 +3190,6 @@ def main():
         mktg_pct=f"{mktg_pct:.1%}",
         influenced_pipeline=influenced_pipeline_val(),
         generated_at=datetime.now().strftime("%b %d, %Y %I:%M %p"),
-        model_auc=model_auc_text(),
-        model_validation=model_validation_text(),
-        open_deals=f"{open_deals:,}",
         data_year_range=data_year_range,
         sourced_pipeline=sourced_pipeline_val(),
         top_sourced_channels=top_sourced_channels_text(),
