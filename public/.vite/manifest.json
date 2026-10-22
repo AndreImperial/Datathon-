@@ -35,24 +35,24 @@
     "file": "assets/motion-BauMSZyy.js",
     "name": "motion"
   },
-  "_recharts-cn2MYFzP.js": {
-    "file": "assets/recharts-cn2MYFzP.js",
+  "_recharts-DBNkYbS9.js": {
+    "file": "assets/recharts-DBNkYbS9.js",
     "name": "recharts"
   },
   "index.html": {
-    "file": "assets/index-CTcNyI15.js",
+    "file": "assets/index-LoT8G0Uf.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "imports": [
-      "_recharts-cn2MYFzP.js",
+      "_recharts-DBNkYbS9.js",
       "_motion-BauMSZyy.js"
     ],
     "dynamicImports": [
       "src/components/Charts.tsx"
     ],
     "css": [
-      "assets/index-BOBW4WFw.css"
+      "assets/index-BGGcwWE9.css"
     ],
     "assets": [
       "assets/manrope-cyrillic-wght-normal-Dvxsihut.woff2",
@@ -66,13 +66,13 @@
     ]
   },
   "src/components/Charts.tsx": {
-    "file": "assets/Charts-BsL8DQVk.js",
+    "file": "assets/Charts-BKRmE9Ue.js",
     "name": "Charts",
     "src": "src/components/Charts.tsx",
     "isDynamicEntry": true,
     "imports": [
       "index.html",
-      "_recharts-cn2MYFzP.js",
+      "_recharts-DBNkYbS9.js",
       "_motion-BauMSZyy.js"
     ]
   }
