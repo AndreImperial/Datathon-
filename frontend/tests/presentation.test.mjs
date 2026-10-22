@@ -56,3 +56,17 @@ test('attribution lookback changes the whole-window population without repeating
   assert.match(document.querySelector('.slide-canvas').textContent,/Whole-window linked population: 423 opportunities/);
   assert.ok(!document.querySelector('.slide-table').textContent.includes('linked opportunities'));
 }));
+test('main slides lead with a data-derived action title and keep the topic as the kicker',async()=>mounted('#present/main-06',async()=>{
+  const s=data.datasets.summary[0];
+  const h1=document.querySelector('h1').textContent;
+  assert.ok(h1.includes(`${(s.marketing_recent_win_rate*100).toFixed(1)}%`) && h1.includes(`${(s.recent_best_win_rate*100).toFixed(1)}%`), h1);
+  assert.match(document.querySelector('.slide-kicker').textContent,/Recent conversion by source/);
+  assert.ok(document.querySelector('.slide-bar.is-accent').textContent.includes('Marketing'));
+}));
+test('overview groups slides by section with every slide reachable',async()=>mounted('#present/main-05',async()=>{
+  await act(async()=>button('Overview').click());
+  const groups=[...document.querySelectorAll('.overview-groups h3')].map(x=>x.textContent);
+  assert.deepEqual(groups,['Context','Channels','Content','Attribution','Audience','Decision','Appendix']);
+  assert.equal(document.querySelectorAll('.overview-groups button').length,22);
+  assert.ok(document.querySelector('.overview-groups button[aria-current]').textContent.includes('Channel effectiveness'));
+}));
