@@ -35,32 +35,24 @@
     "file": "assets/motion-BauMSZyy.js",
     "name": "motion"
   },
-  "_recharts-CB_07E35.js": {
-    "file": "assets/recharts-CB_07E35.js",
+  "_recharts-cn2MYFzP.js": {
+    "file": "assets/recharts-cn2MYFzP.js",
     "name": "recharts"
   },
-  "_tremor-OSbuuNc7.js": {
-    "file": "assets/tremor-OSbuuNc7.js",
-    "name": "tremor",
-    "imports": [
-      "_recharts-CB_07E35.js"
-    ]
-  },
   "index.html": {
-    "file": "assets/index-BFzV6wde.js",
+    "file": "assets/index-CTcNyI15.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "imports": [
-      "_tremor-OSbuuNc7.js",
-      "_recharts-CB_07E35.js",
+      "_recharts-cn2MYFzP.js",
       "_motion-BauMSZyy.js"
     ],
     "dynamicImports": [
       "src/components/Charts.tsx"
     ],
     "css": [
-      "assets/index-B3rNnK_A.css"
+      "assets/index-BOBW4WFw.css"
     ],
     "assets": [
       "assets/manrope-cyrillic-wght-normal-Dvxsihut.woff2",
@@ -74,14 +66,13 @@
     ]
   },
   "src/components/Charts.tsx": {
-    "file": "assets/Charts-B7cAv5SK.js",
+    "file": "assets/Charts-BsL8DQVk.js",
     "name": "Charts",
     "src": "src/components/Charts.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "_tremor-OSbuuNc7.js",
       "index.html",
-      "_recharts-CB_07E35.js",
+      "_recharts-cn2MYFzP.js",
       "_motion-BauMSZyy.js"
     ]
   }

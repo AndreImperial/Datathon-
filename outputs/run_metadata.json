@@ -8,7 +8,7 @@
     "plotly": "6.7.0",
     "openpyxl": "3.1.5"
   },
-  "started_at": "2026-10-22T15:17:12.260335+00:00",
+  "started_at": "2026-10-22T16:15:50.269595+00:00",
   "source_files": [
     {
       "source_id": "Datathon_db_6sense_campaign_accounts.xlsx",
@@ -57,5 +57,5 @@
     "schema_status": "matches historical supplied baseline",
     "source_date_policy": "pending owner-approved expected dates and cadence; build time is not freshness"
   },
-  "completed_at": "2026-10-22T15:19:28.081160+00:00"
+  "completed_at": "2026-10-22T16:18:22.827045+00:00"
 }
