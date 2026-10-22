@@ -1,15 +1,11 @@
 /*
  * Tailwind CSS v4 (CSS-first config; replaces tailwind.config.js + postcss.config.js).
- * Sources mirror the former v3 `content` globs, including Tremor's compiled classes.
+ * Sources mirror the former v3 `content` globs.
  */
 @import "tailwindcss" source(none);
 
 @source "../index.html";
 @source "./**/*.{js,ts,jsx,tsx}";
-@source "../../node_modules/@tremor/**/*.{js,ts,jsx,tsx}";
-
-/* Former v3 safelist: chart colour classes Tremor builds at runtime. */
-@source inline("{fill,stroke}-{blue,teal,cyan,emerald,slate,amber,gray}-500 bg-teal-500");
 
 /* Keep v3 hover semantics (v4 otherwise gates hover: behind @media (hover: hover)). */
 @custom-variant hover (&:hover);
