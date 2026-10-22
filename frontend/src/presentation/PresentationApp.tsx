@@ -7,7 +7,7 @@ import "./deck.css";
 
 import { applyCommand, elapsedAt, initialState, slideFromHash, storageRead, storageWrite, validCommand, validState, type DeckCommand, type SharedState } from "./deckState";
 import { readableSources, SECTIONS, sectionFor } from "./labels";
-import { EvidenceDrawer, evidenceFor, SlideVisual } from "./slides";
+import { actionTitle, EvidenceDrawer, evidenceFor, SlideVisual } from "./slides";
 
 /** First section of the dashboard (App.tsx); used by the exit link and Escape. */
 const DASHBOARD_HASH = "#s-essential";
@@ -50,6 +50,10 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
   const main = useMemo(() => slideList(data, "main"), [data]);
   const appendix = useMemo(() => slideList(data, "appendix"), [data]);
   const identities = useMemo(() => [...main, ...appendix], [main, appendix]);
+  /** Takeaway headline per slide (main slides); the authored title becomes the kicker topic. */
+  const headlines = useMemo(() => new Map(identities.map(slide => [slide.id, actionTitle(data, slide)])), [data, identities]);
+  /** Main-deck sections in order with their slide counts, for the segmented progress bar. */
+  const sectionRuns = useMemo(() => SECTIONS.map(name => ({ name, slides: main.filter(slide => sectionFor("main", slide.order) === name) })).filter(run => run.slides.length), [main]);
   const session = useMemo(() => (presenter ? /^#presenter\/([a-zA-Z0-9-]+)$/.exec(location.hash)?.[1] : undefined) || readSession() || newSession(), [presenter]);
   const storageKey = `deck-state-${session}-${data.meta.snapshot_id}`;
   const [storageAvailable, setStorageAvailable] = useState(true);
@@ -167,10 +171,20 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
   if (presenter) {
     const limits = current && (current.id === "main-13" || current.id === "main-16") ? data.recommendations.map(item => `${item.decision}: ${item.evidence_limitations.join(" ")} Owner: ${item.owner_role}. Next step: ${item.immediate_next_step}`) : [];
     const upcoming = slides[currentIndex + 1];
+    // Pace: where the timer should be when this main slide starts, assuming an even split of the target.
+    const target = data.presentation.target_duration_seconds;
+    const expected = state.sequence === "main" ? target * currentIndex / main.length : null;
+    const drift = expected === null || elapsed === 0 ? null : elapsed / 1000 - expected;
+    const pace = drift === null ? null : Math.abs(drift) < 30 ? { tone: "ok", label: "On pace" } : drift > 0 ? { tone: "behind", label: `${fmt(drift)} behind` } : { tone: "ahead", label: `${fmt(-drift)} ahead` };
+    const label = (slide: typeof current) => slide ? `${sectionFor(slide.sequence, slide.order)} · ${slide.sequence === "main" ? `${slide.order} / ${main.length}` : `A${slide.order}`}` : "";
     return <main className="presenter-console deck" tabIndex={0} aria-label="Presenter keyboard controls">
-      <header><span className="signal" data-status={connection} /> Presenter console <small role="status">{connection === "unavailable" ? "Cross-window control unavailable; use the audience window's keyboard controls." : `Audience ${connection}`} · session {session.slice(0,8)}</small></header>
+      <header><span className="signal" data-status={connection} /> Presenter console <small role="status">{connection === "unavailable" ? "Cross-window control unavailable; use the audience window's keyboard controls." : `Audience ${connection}`} · session {session.slice(0,8)}</small><kbd className="presenter-keys" aria-label="Keyboard: right arrow, Space or Page Down for next; left arrow or Page Up for back; Home and End jump; F fullscreen">→ Space next · ← back · Home / End · F fullscreen</kbd></header>
       {limitation}
-      <section className="presenter-current"><p>{section.toUpperCase()} · {state.sequence.toUpperCase()} {currentIndex + 1} / {slides.length}</p><h1>{current?.title}</h1><div className="timer"><Clock3 /> {fmt(elapsed / 1000)} <small>/ {fmt(data.presentation.target_duration_seconds)}</small></div>{upcoming && <p className="presenter-next">Next: {upcoming.title}</p>}</section>
+      <div className="presenter-top">
+        <section className="presenter-current" aria-label="Current slide"><p>Now · {label(current)}</p><h1>{current ? headlines.get(current.id) : ""}</h1>{current && headlines.get(current.id) !== current.title && <p className="presenter-topic">{current.title}</p>}</section>
+        <section className="presenter-clock" aria-label="Timer"><div className="timer"><Clock3 /> {fmt(elapsed / 1000)} <small>/ {fmt(target)}</small></div>{pace ? <p className={`presenter-pace ${pace.tone}`}>{pace.label} <small>· slide {currentIndex + 1} due at {fmt(expected ?? 0)}</small></p> : <p className="presenter-pace">Timer not started</p>}<div className="presenter-progress" aria-hidden="true"><b style={{ width: `${Math.min(100, elapsed / 1000 / target * 100)}%` }} /><i style={{ left: `${expected === null ? 0 : expected / target * 100}%` }} /></div></section>
+        <section className="presenter-upnext" aria-label="Next slide"><p>Next · {upcoming ? label(upcoming) : state.sequence === "main" ? "Appendix" : "End"}</p><h2>{upcoming ? headlines.get(upcoming.id) : state.sequence === "main" ? "End of main deck · open the appendix from the overview" : "Last appendix slide"}</h2></section>
+      </div>
       <section className="presenter-notes"><h2>Speaker notes</h2><p><b>Say:</b> {current?.speaker_notes.say}</p><p><b>Do not claim:</b> {current?.speaker_notes.do_not_claim}</p><p><b>Likely question:</b> {current?.speaker_notes.judge_question}</p><p><b>Answer:</b> {current?.speaker_notes.answer}</p>{limits.length > 0 && <><h3>Evidence limits and owners</h3><ul>{limits.map(item => <li key={item}>{item}</li>)}</ul></>}<p className="presenter-sources"><b>Sources:</b> {(current?.speaker_notes.sources.length ? current.speaker_notes.sources : current?.source_footer.split(";").map(s => s.trim()) ?? []).join("; ")} · scope: {current?.scope}</p></section>
       <footer><button disabled={connection !== "connected" || currentIndex === 0} onClick={() => command({kind:"previous"})}><ChevronLeft /> Back</button><button disabled={connection !== "connected" || currentIndex === slides.length - 1} className="red" onClick={() => command({kind:"next"})}>Next <ChevronRight /></button>{timerButtons}</footer>
     </main>;
@@ -191,25 +205,28 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
       <div className="deck-stage" style={stageStyle}>
         <article ref={canvas} key={current?.id} className={`slide-canvas deck-slide ${isAppendix ? "layout-split" : "layout-stack"} slide-${current?.id}`} style={canvasStyle} aria-label={`Slide ${current?.order}: ${current?.title}`}>
           <div className="deck-slide-head">
-            <div className="slide-kicker"><span>{section}</span>{state.sequence === "main" ? `${String(currentIndex + 1).padStart(2, "0")} / ${main.length}` : `A${currentIndex + 1}`}</div>
-            <h1>{current?.title}</h1>
+            <div className="slide-kicker"><span>{section}</span>{current && headlines.get(current.id) !== current.title && <em>{current.title}</em>}<b>{state.sequence === "main" ? `${String(currentIndex + 1).padStart(2, "0")} / ${main.length}` : `A${currentIndex + 1}`}</b></div>
+            <h1>{current ? headlines.get(current.id) : ""}</h1>
             <p className="slide-body">{current?.body}</p>
           </div>
           <div className="deck-visual"><div className="deck-visual-inner">{current && <SlideVisual data={data} slide={current} />}</div></div>
           <footer className="deck-slide-foot">
             <p className="slide-caveat">{current?.visible_caveat}</p>
-            <div className="deck-source"><span>Source: {sources.join(" · ")}</span><span>{data.meta.snapshot_id}</span>{current && <EvidenceDrawer sets={evidenceFor(data, current)} slideTitle={current.title} />}</div>
+            <div className="deck-source"><span>Source: {sources.join(" · ")}</span><span title="Data snapshot">Snapshot {data.meta.snapshot_id.slice(0, 7)}</span>{current && <EvidenceDrawer sets={evidenceFor(data, current)} slideTitle={current.title} />}</div>
           </footer>
         </article>
       </div>
     </div>
     <nav className="presentation-controls" aria-label="Slide navigation">
       <button disabled={currentIndex === 0} onClick={() => command({kind:"previous"})}><ChevronLeft /> Previous</button>
-      <div className="deck-progress" aria-hidden="true"><b style={{ width: `${(currentIndex + 1) / slides.length * 100}%` }} /></div>
+      <div className="deck-progress" aria-hidden="true">{(state.sequence === "main" ? sectionRuns : [{ name: "Appendix", slides: appendix }]).map(run => {
+        const done = run.slides.filter(slide => slides.indexOf(slide) <= currentIndex).length;
+        return <span key={run.name} className={run.slides.some(slide => slide.id === current?.id) ? "is-current" : undefined} style={{ flexGrow: run.slides.length }}><b style={{ width: `${done / run.slides.length * 100}%` }} /><small>{run.name}</small></span>;
+      })}</div>
       <span className="deck-elapsed" aria-label="Elapsed presentation time">{fmt(elapsed / 1000)} / {fmt(data.presentation.target_duration_seconds)}</span>
       {state.sequence === "main" && currentIndex === main.length - 1 ? <button onClick={openOverview}>Appendix <Grid2X2 /></button> : <button className="red" disabled={currentIndex === slides.length - 1} onClick={() => command({kind:"next"})}>Next <ChevronRight /></button>}
     </nav>
   </div>
-  {overview && <div className="slide-overview" role="dialog" aria-modal="true" aria-labelledby="overview-title" onKeyDown={event => { if (event.key === "Tab") { const elements = event.currentTarget.querySelectorAll<HTMLButtonElement>("button"); const first = elements[0]; const last = elements[elements.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } } }}><button autoFocus aria-label="Close slide overview" className="close" onClick={() => setOverview(false)}><X /></button><h2 id="overview-title">Slide overview</h2><div>{identities.map(slide => <button key={slide.id} aria-current={slide.id === current?.id ? "true" : undefined} onClick={() => { command({kind:"go",slideId:slide.id}); setOverview(false); }}><small>{sectionFor(slide.sequence, slide.order)} · {slide.sequence === "main" ? slide.order : `A${slide.order}`}</small>{slide.title}</button>)}</div></div>}
+  {overview && <div className="slide-overview" role="dialog" aria-modal="true" aria-labelledby="overview-title" onKeyDown={event => { if (event.key === "Tab") { const elements = event.currentTarget.querySelectorAll<HTMLButtonElement>("button"); const first = elements[0]; const last = elements[elements.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } } }}><button autoFocus aria-label="Close slide overview" className="close" onClick={() => setOverview(false)}><X /></button><h2 id="overview-title">Slide overview</h2><p className="overview-hint">{main.length} main slides · {appendix.length} appendix · Esc to close</p><div className="overview-groups">{[...sectionRuns, { name: "Appendix" as const, slides: appendix }].map(run => <section key={run.name} aria-label={run.name}><h3>{run.name}</h3><div>{run.slides.map(slide => <button key={slide.id} aria-current={slide.id === current?.id ? "true" : undefined} onClick={() => { command({kind:"go",slideId:slide.id}); setOverview(false); }}><small>{slide.sequence === "main" ? `${String(slide.order).padStart(2, "0")} · ${slide.title}` : `A${slide.order}`}</small><span>{headlines.get(slide.id)}</span></button>)}</div></section>)}</div></div>}
   </main>;
 }

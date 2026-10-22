@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
 import { TableProperties, X } from "lucide-react";
 
@@ -31,14 +31,19 @@ function KpiTiles({ items, className = "" }: { items: Kpi[]; className?: string 
   return <dl className={`deck-kpis ${className}`.trim()}>{items.map(item => <div key={item.label} className={`deck-kpi ${item.tone ?? ""}`.trim()}><dt>{item.label}</dt><dd>{item.value}</dd>{item.note && <dd className="deck-kpi-note">{item.note}</dd>}</div>)}</dl>;
 }
 
-export function Bars({ rows, name, value, format = count, detail, label }: { rows: Row[]; name: (row: Row) => string; value: string; format?: (n: number) => string; detail?: (row: Row) => string; label: string }) {
+/** How a bar is emphasized: the bar that makes the slide's point is "accent"; a comparison bar is "reference"; the rest stay muted. */
+type Emphasis = "accent" | "reference" | undefined;
+
+export function Bars({ rows, name, value, format = count, detail, label, emphasis }: { rows: Row[]; name: (row: Row) => string; value: string; format?: (n: number) => string; detail?: (row: Row) => string; label: string; emphasis?: (row: Row, index: number) => Emphasis }) {
   const observedMax = Math.max(0, ...rows.map(row => Math.abs(numeric(row[value]) ?? 0)));
   const max = observedMax > 0 ? observedMax : 1;
   if (!rows.length) return <p className="deck-empty">Evidence unavailable for this scope.</p>;
+  const tone = emphasis ?? ((_row: Row, index: number): Emphasis => index === 0 ? "accent" : undefined);
   return <ul className="slide-bars" aria-label={label}>{rows.map((row, index) => {
     const n = numeric(row[value]);
     const title = name(row);
-    return <li className="slide-bar" key={`${title}-${index}`}>
+    const emphasized = tone(row, index);
+    return <li className={`slide-bar ${emphasized ? `is-${emphasized}` : ""}`.trim()} key={`${title}-${index}`}>
       <span className="slide-bar-name" title={title}>{title}</span>
       <i className={n !== null && n < 0 ? "negative" : ""} aria-hidden="true"><b style={{ width: `${n === null ? 0 : Math.abs(n) / max * 100}%` }} /></i>
       <strong>{n === null ? "Unavailable" : format(n)}</strong>
@@ -48,11 +53,11 @@ export function Bars({ rows, name, value, format = count, detail, label }: { row
 }
 
 type Column = { key: string; label: string; format?: (value: unknown, row: Row) => string; numeric?: boolean };
-function CompactTable({ rows, columns, limit, caption }: { rows: Row[]; columns: Column[]; limit?: number; caption: string }) {
+function CompactTable({ rows, columns, limit, caption, highlight }: { rows: Row[]; columns: Column[]; limit?: number; caption: string; highlight?: (row: Row) => boolean }) {
   const shown = limit ? rows.slice(0, limit) : rows;
   if (!rows.length) return <p className="deck-empty">No rows are available for this evidence.</p>;
   const truncated = Boolean(limit && rows.length > (limit ?? 0));
-  return <table className="deck-table"><caption className={truncated ? "" : "sr-only"}>{truncated ? <><span className="sr-only">{caption}: </span>Top {shown.length} of {count(rows.length)} · all rows under View evidence</> : caption}</caption><thead><tr>{columns.map(column => <th scope="col" key={column.key} className={column.numeric ? "num" : ""}>{column.label}</th>)}</tr></thead><tbody>{shown.map((row, index) => <tr key={index}>{columns.map(column => <td key={column.key} className={column.numeric ? "num" : ""}>{column.format ? column.format(row[column.key], row) : formatField(column.key, row[column.key])}</td>)}</tr>)}</tbody></table>;
+  return <table className="deck-table"><caption className={truncated ? "" : "sr-only"}>{truncated ? <><span className="sr-only">{caption}: </span>Top {shown.length} of {count(rows.length)} · all rows under View evidence</> : caption}</caption><thead><tr>{columns.map(column => <th scope="col" key={column.key} className={column.numeric ? "num" : ""}>{column.label}</th>)}</tr></thead><tbody>{shown.map((row, index) => <tr key={index} className={highlight?.(row) ? "is-highlight" : undefined}>{columns.map(column => <td key={column.key} className={column.numeric ? "num" : ""}>{column.format ? column.format(row[column.key], row) : formatField(column.key, row[column.key])}</td>)}</tr>)}</tbody></table>;
 }
 
 function EvidenceTable({ rows, fields, title }: { rows: Row[]; fields: string[]; title: string }) {
@@ -339,6 +344,169 @@ function AttributionPanel({ rows }: { rows: Row[] }) {
   </>;
 }
 
+const bundleName = (row: Row | undefined) => row ? ["_copyassettype", "_copymessaging", "_copytone"].map(key => text(row[key])).join(" / ") : "Unavailable";
+const ratioLabel = (value: number) => `${value.toFixed(1)}×`;
+
+/** main-08: the one comparison the labeled subset supports, with its sample size kept beside it. */
+function CreativeBundles({ rows }: { rows: Row[] }) {
+  const sorted = [...rows].sort(byDesc("ctr"));
+  const [top, next] = sorted;
+  const a = numeric(top?.ctr), b = numeric(next?.ctr);
+  const ratio = a !== null && b !== null && b > 0 ? a / b : null;
+  return <div className="deck-lead">
+    <p className="deck-callout"><strong>{ratio === null ? "Unavailable" : ratioLabel(ratio)}</strong> the click-through rate of {bundleName(top)} vs {bundleName(next)} <span>{count(sum(rows, "ads"))} labeled ads · {count(sum(rows, "impressions"))} impressions · observational, not causal</span></p>
+    <Panel title="Labeled creative bundles · observational CTR"><Bars label="CTR by creative bundle" rows={sorted} name={bundleName} value="ctr" format={n => `${(n * 100).toFixed(3)}%`} detail={row => `${displayName(row._platform)} · ${text(row._ctacopysofthard)} · ${text(row.ads)} ads · ${orNA(numeric(row.impressions), count)} impressions · ${orNA(numeric(row.clicks), count)} clicks`} /></Panel>
+  </div>;
+}
+
+/** main-09 right column: the contact-flag share leads; the page-group table is supporting context. */
+function WebContact({ rows }: { rows: Row[] }) {
+  const flagged = sum(rows, "recordings_with_observed_contact_activity");
+  const recordings = sum(rows, "unique_recordings");
+  const groups = rows.filter(row => (numeric(row.recordings_with_observed_contact_activity) ?? 0) > 0).map(row => text(row.page_group));
+  return <>
+    <p className="deck-callout deck-callout-sm"><strong>{count(flagged)}</strong> recordings carry an observed contact flag <span>{recordings ? `${percent(flagged / recordings)} of ${count(recordings)} recordings` : "No recordings"}{groups.length ? ` · all on ${groups.join(", ")} pages` : ""}</span></p>
+    <CompactTable caption="Page groups" rows={[...rows].sort(byDesc("unique_recordings"))} highlight={row => (numeric(row.recordings_with_observed_contact_activity) ?? 0) > 0} columns={[{ key: "page_group", label: "Page group" }, { key: "unique_recordings", label: "Recordings", numeric: true }, { key: "unique_visitors", label: "Visitors", numeric: true }, { key: "recordings_with_observed_contact_activity", label: "Contact flag", numeric: true }]} />
+  </>;
+}
+
+/** main-10: the four exclusive groups as the 2×2 they are (marketing-sourced × 365-day touch link). */
+function OverlapMatrix({ rows }: { rows: Row[] }) {
+  const find = (pattern: RegExp) => rows.find(row => pattern.test(String(row.overlap_group)));
+  const both = find(/^both/i), sourced = find(/sourced only/i), linked = find(/linked only/i), neither = find(/neither/i);
+  if (!both || !sourced || !linked || !neither) return <Bars label="Opportunities by overlap group" rows={rows} name={row => text(row.overlap_group)} value="opportunities" />;
+  const total = sum(rows, "opportunities");
+  const largest = [both, sourced, linked, neither].reduce((best, row) => (numeric(row.opportunities) ?? 0) > (numeric(best.opportunities) ?? 0) ? row : best);
+  const cell = (row: Row) => {
+    const n = numeric(row.opportunities) ?? 0;
+    const share = total ? n / total : 0;
+    return <td className={row === largest ? "is-accent" : undefined} style={{ "--share": share } as CSSProperties}>
+      <strong>{count(n)}</strong>
+      <em>{percent(share)} of opportunities</em>
+      <small>{orNA(numeric(row.won_opportunities), count)} won · {orNA(numeric(row.recorded_pipeline), money)} recorded pipeline</small>
+    </td>;
+  };
+  return <table className="deck-matrix">
+    <caption className="sr-only">Opportunities by marketing source and 365-day touch link; groups are exclusive and sum to {count(total)}</caption>
+    <thead><tr><td /><th scope="col">Linked to a prior touch</th><th scope="col">No linked touch</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Marketing-sourced</th>{cell(both)}{cell(sourced)}</tr>
+      <tr><th scope="row">Not marketing-sourced</th>{cell(linked)}{cell(neither)}</tr>
+    </tbody>
+  </table>;
+}
+
+/* ---------- action titles ---------- */
+
+function decompositionLead(rows: Row[]) {
+  const dimension = rows[0]?.dimension;
+  const selected = rows.filter(row => row.dimension === dimension);
+  if (!selected.length) return null;
+  const total = sum(selected, "total_effect_pp");
+  const lead = [...selected].sort((a, b) => Math.abs(numeric(b.total_effect_pp) ?? 0) - Math.abs(numeric(a.total_effect_pp) ?? 0))[0];
+  return { total, lead: displayName(lead?.group) };
+}
+
+/**
+ * Takeaway headline for a main slide, computed from the snapshot so numbers never drift from the evidence.
+ * The authored topic title (`slide.title`) moves to the kicker. Returns the topic title when inputs are missing.
+ */
+export function actionTitle(data: CaseStudyData, slide: CaseSlide): string {
+  if (slide.sequence !== "main") return slide.title;
+  const rows = (key: string): Row[] => data.datasets[key] ?? [];
+  const s = summaryRow(data);
+  const groups = rows("source_group_scorecard");
+  try {
+    switch (slide.id) {
+      case "main-01": {
+        const ranked = rankedRecent(data).length;
+        const rank = num(s, "marketing_recent_rank");
+        if (!s.top_channel || rank === null) break;
+        return `${displayName(s.top_channel)} wins new logos best; marketing-sourced converts ${ranked && rank === ranked ? "lowest" : `rank ${rank} of ${ranked}`}`;
+      }
+      case "main-02": return s.recent_best_rate_source ? `Protect ${displayName(s.recent_best_rate_source)}, fix marketing conversion, record value, then test` : slide.title;
+      case "main-03": {
+        const crm = rows("motion_classification_coverage").map(row => numeric(row.created_year)).filter((n): n is number => n !== null);
+        const logs = rows("source_coverage").map(row => dateMs(row.min_timestamp)).filter(Number.isFinite).map(ms => new Date(ms).getUTCFullYear());
+        if (!crm.length || !logs.length) break;
+        const logYears = Array.from(new Set(logs));
+        return `CRM history spans ${Math.min(...crm)}–${Math.max(...crm)}; activity logs cover only ${logYears.length === 1 ? logYears[0] : `${Math.min(...logYears)}–${Math.max(...logYears)}`}`;
+      }
+      case "main-04": {
+        const [acq, existing] = motionTotals(data);
+        const total = (acq.won ?? 0) + (existing.won ?? 0);
+        if (!total || existing.won === null) break;
+        return `Existing customers produce ${percent(existing.won / total)} of all wins`;
+      }
+      case "main-05": {
+        const sorted = groups.filter(row => row.scope === "All history" && row.ranked_channel === true).sort(byDesc("recorded_won_amount"));
+        const a = numeric(sorted[0]?.recorded_won_amount), b = numeric(sorted[1]?.recorded_won_amount);
+        if (a === null || b === null || b <= 0) break;
+        return `${displayName(sorted[0].source_group)} leads new-logo won amount: ${money(a)}, ${ratioLabel(a / b)} the next source`;
+      }
+      case "main-06": {
+        const best = num(s, "recent_best_win_rate"), mkt = num(s, "marketing_recent_win_rate");
+        if (best === null || mkt === null) break;
+        return `Marketing-sourced deals convert at ${percent(mkt)} vs ${displayName(s.recent_best_rate_source)}’s ${percent(best)}`;
+      }
+      case "main-07": {
+        const lead = decompositionLead(rows("conversion_decomposition"));
+        const [periodA, periodB] = periodLabels(slide);
+        if (!lead) break;
+        return `Win rate ${lead.total < 0 ? "fell" : "rose"} ${Math.abs(lead.total).toFixed(1)} pp since ${periodA}, led by ${lead.lead}`;
+      }
+      case "main-08": {
+        const sorted = [...rows("creative_bundles")].sort(byDesc("ctr"));
+        const a = numeric(sorted[0]?.ctr), b = numeric(sorted[1]?.ctr);
+        if (a === null || b === null || b <= 0) break;
+        return `${bundleName(sorted[0])} ads drew ${ratioLabel(a / b)} the CTR, on just ${count(sum(sorted, "ads"))} labeled ads`;
+      }
+      case "main-09": {
+        const flagged = sum(rows("web_content"), "recordings_with_observed_contact_activity");
+        return `${count(flagged)} contact-page visits flagged; engagement is not acquisition`;
+      }
+      case "main-10": {
+        const overlap = rows("attribution_overlap");
+        const neither = overlap.find(row => /neither/i.test(String(row.overlap_group)));
+        const total = sum(overlap, "opportunities");
+        if (!neither || !total) break;
+        return `${percent((numeric(neither.opportunities) ?? 0) / total, 0)} of opportunities have neither a marketing source nor a linked touch`;
+      }
+      case "main-11": {
+        const sens = rows("attribution_model_sensitivity");
+        const linear = sens.filter(row => row.model === "Linear" && row.lookback_days === 365).sort(byDesc("attributed_amount"))[0];
+        if (!linear) break;
+        const leaders = new Set(sens.filter(row => row.rank === 1).map(row => String(row.channel)));
+        return `${displayName(linear.channel)} leads linked credit at ${percent(numeric(linear.share_of_linked_amount) ?? 0, 0)}${leaders.size > 1 ? ", but the leader shifts by model and window" : " under every model and window"}`;
+      }
+      case "main-12": {
+        const eligible = num(s, "eligible_domains");
+        const top = rows("audience_priority").filter(row => row.shortlist_eligible === true).sort(byDesc("win_rate"))[0];
+        if (eligible === null || !top) break;
+        return `${count(eligible)} eligible domains; ${text(top.segment_fit)} cells won ${orNA(numeric(top.win_rate), percent)} historically`;
+      }
+      case "main-13": return `${data.recommendations.length} actions, each with a success measure and a stop rule`;
+      case "main-14": {
+        const scenarios = rows("experiment_scenarios");
+        const feasible = scenarios.filter(row => row.feasible === true).length;
+        const audience = numeric(scenarios[0]?.eligible_audience);
+        if (!scenarios.length || audience === null) break;
+        return `${feasible === 0 ? "None" : feasible === 1 ? "Only 1" : `${feasible}`} of ${scenarios.length} sample-size scenarios fit${feasible === 1 ? "s" : ""} the ${count(audience)} eligible domains`;
+      }
+      case "main-15": {
+        const feasible = rows("experiment_scenarios").filter(row => row.feasible === true).map(row => numeric(row.required_per_arm)).filter((n): n is number => n !== null);
+        return feasible.length ? `Budget = ${count(Math.min(...feasible))} treatment accounts × a unit cost not yet supplied` : "No feasible test yet, so no planning budget can be set";
+      }
+      case "main-16": {
+        const observed = data.recommendations.filter(item => item.confidence_status === "Observed").length;
+        const tests = data.recommendations.length - observed;
+        return `Act now on ${observed} observed decisions; test ${tests} before scaling spend`;
+      }
+    }
+  } catch { /* fall back to the authored title */ }
+  return slide.title;
+}
+
 /* ---------- appendix renderers ---------- */
 
 function summaryTiles(row: Row, keys: [string, string, (n: number) => string][]): Kpi[] {
@@ -417,18 +585,18 @@ export function SlideVisual({ data, slide }: { data: CaseStudyData; slide: CaseS
     case "main-02": return <StrategyTiles data={data} />;
     case "main-03": return <Panel title="Observation window by source">{<CoverageTimeline data={data} />}</Panel>;
     case "main-04": return <BusinessMotion data={data} />;
-    case "main-05": return <Panel title="Acquisition · 2018–2024 · recorded won amount by source"><Bars label="Recorded won amount by source group" rows={groups.filter(row => row.scope === "All history" && row.ranked_channel === true).sort(byDesc("recorded_won_amount"))} name={row => displayName(row.source_group)} value="recorded_won_amount" format={money} detail={row => `Won ${text(row.won)} of ${text(row.resolved)} resolved · win rate ${orNA(numeric(row.win_rate), percent)} · MRR on zero-amount wins ${orNA(numeric(row.zero_amount_win_mrr), money)}`} /></Panel>;
-    case "main-06": return <Panel title="Acquisition · 2023–24 · resolved win rate by source"><Bars label="Resolved win rate by source group" rows={groups.filter(row => row.scope === "2023–2024" && row.ranked_channel === true).sort(byDesc("win_rate"))} name={row => displayName(row.source_group)} value="win_rate" format={percent} detail={row => `Won ${text(row.won)} of ${text(row.resolved)} resolved (${text(row.opportunities)} opps) · 95% interval ${numeric(row.win_rate_ci_low) === null ? "unavailable" : `${percent(Number(row.win_rate_ci_low))}–${percent(Number(row.win_rate_ci_high))}`}`} /></Panel>;
+    case "main-05": return <Panel title="Acquisition · 2018–2024 · recorded won amount by source"><Bars label="Recorded won amount by source group" rows={groups.filter(row => row.scope === "All history" && row.ranked_channel === true).sort(byDesc("recorded_won_amount"))} name={row => displayName(row.source_group)} value="recorded_won_amount" format={money} detail={row => `${orNA(numeric(row.win_rate), percent)} win rate · won ${text(row.won)} of ${text(row.resolved)} resolved · ${orNA(numeric(row.zero_amount_win_mrr), money)} MRR on zero-amount wins, not added`} /></Panel>;
+    case "main-06": return <Panel title="Acquisition · 2023–24 · resolved win rate by source"><Bars label="Resolved win rate by source group" rows={groups.filter(row => row.scope === "2023–2024" && row.ranked_channel === true).sort(byDesc("win_rate"))} emphasis={(row, index) => /marketing/i.test(displayName(row.source_group)) ? "accent" : index === 0 ? "reference" : undefined} name={row => displayName(row.source_group)} value="win_rate" format={percent} detail={row => `Won ${text(row.won)} of ${text(row.resolved)} resolved (${text(row.opportunities)} opps) · 95% interval ${numeric(row.win_rate_ci_low) === null ? "unavailable" : `${percent(Number(row.win_rate_ci_low))}–${percent(Number(row.win_rate_ci_high))}`}`} /></Panel>;
     case "main-07": return <Decomposition rows={rows("conversion_decomposition")} slide={slide} />;
-    case "main-08": return <Panel title="Labeled creative bundles · observational CTR"><Bars label="CTR by creative bundle" rows={[...rows("creative_bundles")].sort(byDesc("ctr"))} name={row => ["_copyassettype", "_copymessaging", "_copytone"].map(key => text(row[key])).join(" / ")} value="ctr" format={n => `${(n * 100).toFixed(3)}%`} detail={row => `${displayName(row._platform)} · ${text(row._ctacopysofthard)} · ${text(row.ads)} ads · ${orNA(numeric(row.impressions), count)} impressions · ${orNA(numeric(row.clicks), count)} clicks`} /></Panel>;
+    case "main-08": return <CreativeBundles rows={rows("creative_bundles")} />;
     case "main-09": return <div className="deck-two">
       <Panel title="Email · top 5 titles by unique clickers"><Bars label="Unique clickers by email title" rows={[...rows("email_content")].sort(byDesc("unique_clickers")).slice(0, 5)} name={row => text(row.content_title)} value="unique_clickers" detail={row => `${orNA(numeric(row.unique_engaged_people), count)} engaged people · no delivery denominator`} /></Panel>
-      <Panel title="Website · recordings and observed contact activity"><CompactTable caption="Page groups" rows={[...rows("web_content")].sort(byDesc("unique_recordings"))} columns={[{ key: "page_group", label: "Page group" }, { key: "unique_recordings", label: "Recordings", numeric: true }, { key: "unique_visitors", label: "Visitors", numeric: true }, { key: "recordings_with_observed_contact_activity", label: "Contact flag", numeric: true }]} /></Panel>
+      <Panel title="Website · recordings and observed contact activity"><WebContact rows={rows("web_content")} /></Panel>
     </div>;
-    case "main-10": return <Panel title="Exclusive source / touch overlap groups · opportunities"><Bars label="Opportunities by overlap group" rows={rows("attribution_overlap")} name={row => text(row.overlap_group)} value="opportunities" detail={row => `${orNA(numeric(row.won_opportunities), count)} won · ${orNA(numeric(row.recorded_pipeline), money)} recorded pipeline`} /></Panel>;
+    case "main-10": return <Panel title="Exclusive groups · marketing source × 365-day touch link · opportunities"><OverlapMatrix rows={rows("attribution_overlap")} /></Panel>;
     case "main-11": return <div className="deck-two">
       <Panel title="Attribution · model and lookback kept explicit"><AttributionPanel rows={rows("attribution_model_sensitivity")} /></Panel>
-      <Panel title="Observed journeys · resolved denominator"><CompactTable caption="Journey sequences" rows={rows("journey_outcomes")} columns={[{ key: "sequence", label: "Sequence" }, { key: "resolved_opportunities", label: "Resolved", numeric: true }, { key: "wins", label: "Wins", numeric: true }, { key: "win_rate", label: "Win rate", numeric: true, format: v => orNA(numeric(v), percent) }]} /></Panel>
+      <Panel title="Observed journeys · resolved denominator"><CompactTable caption="Journey sequences" rows={rows("journey_outcomes")} highlight={row => row === [...rows("journey_outcomes")].sort(byDesc("win_rate"))[0]} columns={[{ key: "sequence", label: "Sequence" }, { key: "resolved_opportunities", label: "Resolved", numeric: true }, { key: "wins", label: "Wins", numeric: true }, { key: "win_rate", label: "Win rate", numeric: true, format: v => orNA(numeric(v), percent) }]} /></Panel>
     </div>;
     case "main-12": return <div className="deck-two">
       <Panel title="From assessed domains to eligible audience"><AudienceWaterfall rows={rows("audience_exclusions")} summary={summaryRow(data)} /></Panel>
