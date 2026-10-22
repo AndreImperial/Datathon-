@@ -5,7 +5,7 @@ import { build } from 'esbuild';
 import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-const compiled = await build({entryPoints:['frontend/src/presentation/PresentationApp.tsx'],bundle:true,write:false,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','lucide-react']});
+const compiled = await build({entryPoints:['frontend/src/presentation/PresentationApp.tsx'],bundle:true,write:false,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','lucide-react'],loader:{'.css':'empty'}});
 // Resolve external imports from a file URL, rather than a data URL.
 const { writeFile, unlink } = await import('node:fs/promises');
 const output = new URL('../../.presentation-test.mjs', import.meta.url);
