@@ -24,14 +24,59 @@ export function fieldUnit(key: string): string {
   if (/days/.test(field)) return "days";
   return "source value";
 }
+/**
+ * Display-only dollar formatting. Amounts of $100 or more show whole dollars
+ * (recorded cents add noise, not precision); small unit costs such as CPC keep
+ * cents. CSV export never uses this — it serializes the raw source values.
+ */
+export function formatDollars(value: number): string {
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  const digits = abs >= 100 ? 0 : 2;
+  return `${sign}$${abs.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: digits })}`;
+}
+/** Compact dollar form for tight spaces: $3.3M, $678K, $940. */
+export function formatDollarsCompact(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  const sign = value < 0 ? "-" : "";
+  const abs = Math.abs(value);
+  if (abs >= 999_500) return `${sign}$${(abs / 1_000_000).toFixed(1)}M`;
+  if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000)}K`;
+  return `${sign}$${Math.round(abs).toLocaleString("en-US")}`;
+}
+const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}(T|\s|$)/;
+/** Observation-window bounds read as a month, e.g. "Jan 2023". */
+export function formatMonthYear(value: string): string {
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" }).format(parsed);
+}
+const ACRONYMS = new Set(["roi", "ctr", "cpc", "cpm", "mrr", "icp", "auc", "id", "crm", "abm", "pp", "iqr", "ci"]);
+const UNIT_SUFFIX: Record<string, string> = {
+  multiple: "×",
+  "percentage points": "pp",
+  fraction: "%",
+  "recorded dollars (currency unverified)": "$",
+  "recorded dollars per month (currency unverified)": "$/mo",
+  days: "days",
+};
+/** Readable table header: "channel_spend" -> "Channel spend ($)". Units stay explicit but short. */
+export function columnLabel(key: string): string {
+  const words = key.replaceAll("_", " ").trim().split(/\s+/).map((word) => ACRONYMS.has(word.toLowerCase()) ? word.toUpperCase() : word.toLowerCase());
+  const text = words.join(" ");
+  const label = text.charAt(0).toUpperCase() + text.slice(1);
+  const suffix = UNIT_SUFFIX[fieldUnit(key)];
+  return suffix ? `${label} (${suffix})` : label;
+}
 export function formatField(key: string, value: unknown): string {
   if (value == null || value === "" || (typeof value === "number" && !Number.isFinite(value))) return "—";
+  if (typeof value === "string" && /_period_(start|end)$/.test(key) && ISO_DATETIME.test(value)) return formatMonthYear(value);
   if (typeof value !== "number") return String(value);
   if (key === "year" || key.endsWith("_year")) return String(value);
   const unit = fieldUnit(key);
   if (unit === "multiple") return `${value.toFixed(1)}×`;
   if (unit === "fraction") return `${(value * 100).toFixed(key.toLowerCase().includes("ctr") ? 4 : 2)}%`;
   if (unit === "percentage points") return `${value > 0 ? "+" : ""}${(key.includes("gap") ? value * 100 : value).toFixed(2)} pp`;
-  if (unit.startsWith("recorded dollars")) return `$${value.toLocaleString("en-US", { maximumFractionDigits: 2 })}`;
+  if (unit.startsWith("recorded dollars")) return formatDollars(value);
   return value.toLocaleString("en-US", { maximumFractionDigits: 3 });
 }
