@@ -1,4 +1,4 @@
-import { formatDollarsCompact, formatField } from "../evidence";
+import { columnLabel, formatDollars, formatDollarsCompact, formatField, formatMonthYear } from "../evidence";
 import { displayName } from "../labels";
 import {
   Bar,
@@ -10,6 +10,7 @@ import {
   Line,
   Pie,
   PieChart,
+  ReferenceArea,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -17,23 +18,35 @@ import {
   YAxis,
 } from "recharts";
 import { useEffect, useState } from "react";
-import type { CSSProperties, ReactElement, ReactNode } from "react";
+import type { CSSProperties, ReactElement } from "react";
 import type { DashboardDatasets, DataRow } from "../types";
 import { numberValue, textValue } from "../types";
+import {
+  ACCENT,
+  COLORS,
+  CONTEXT,
+  CONTEXT_LIGHT,
+  ChartNote,
+  ChartShell,
+  GAIN,
+  LIMITED_N,
+  LOSS,
+  TICK_SIZE,
+  axisTick,
+  bandCursor,
+  categoryAxis,
+  gridProps,
+  limitedFlag,
+  lineCursor,
+  niceTicks,
+  tooltipBase,
+  tooltipContent,
+  useActiveIndex,
+  valueAxis,
+} from "./chartKit";
+import type { TipRow } from "./chartKit";
 
-export const COLORS = {
-  ink: "#F7F4F4",
-  blue: "#E12636",
-  azure: "#FF7B84",
-  teal: "#F2EEEE",
-  amber: "#C4616A",
-  red: "#FF4F5D",
-  violet: "#9F5660",
-  slate: "#91888A",
-  pale: "#BFB7B8",
-  grid: "#332F30",
-  muted: "#AFA6A7",
-};
+export { COLORS } from "./chartKit";
 
 // Distinct, ordered series colours for multi-series charts (largest series
 // first).  The neutral tail colour is reserved for the long-tail bucket.
@@ -42,17 +55,16 @@ const TAIL_COLOR = "#5C5455";
 const TAIL_BUCKET = "Other";
 const TAIL_LABEL = "All other channels";
 
+// CRM channel categories that are not marketing programmes.  Everything else
+// is a marketing channel; together those sum to the marketing-sourced total.
+const NON_MARKETING = new Set(["other", "existing_client", "referral"]);
+
 // Compact axis/label money: $1.2M, $350K, $940.
 const money = formatDollarsCompact;
 const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 });
 const pct = (value: number, digits = 1) => `${(value * 100).toFixed(digits)}%`;
-const tooltipStyle: CSSProperties = { background: "#080809", border: "1px solid #49383A", borderRadius: 8, color: "#FFFFFF", fontSize: 12, boxShadow: "0 14px 34px rgba(0, 0, 0, .42)", maxWidth: 340, whiteSpace: "normal" };
-const tooltipLabelStyle: CSSProperties = { color: "#FFFFFF", fontWeight: 700, marginBottom: 4, overflowWrap: "anywhere" };
-const TICK_SIZE = 12;
-const axisTick = { fill: COLORS.muted, fontSize: TICK_SIZE };
-const gridProps = { stroke: COLORS.grid, vertical: false };
+const count = (value: number) => Math.round(value).toLocaleString("en-US");
 const legendStyle: CSSProperties = { fontSize: 12 };
-const noteStyle: CSSProperties = { margin: "6px 0 0", color: COLORS.muted, fontSize: 12, lineHeight: 1.4 };
 
 /** Pretty label for a raw code or a "a -> b" journey sequence. */
 const prettyLabel = (value: unknown) => String(value ?? "").split(" -> ").map((part) => displayName(part.trim())).join(" → ");
@@ -77,12 +89,10 @@ function wrapText(value: string, maxChars: number, maxLines = 2): string[] {
   return kept;
 }
 
-/** Round a positive maximum up to a "nice" axis bound split into `count` equal steps. */
-function niceTicks(maxValue: number, count = 4): number[] {
-  const raw = Math.max(maxValue, Number.EPSILON) / count;
-  const magnitude = 10 ** Math.floor(Math.log10(raw));
-  const step = ([1, 2, 2.5, 5, 10].find((factor) => factor * magnitude >= raw) ?? 10) * magnitude;
-  return Array.from({ length: count + 1 }, (_, index) => index * step);
+/** Nice ticks whose top bound overshoots the maximum the least (3–6 steps). */
+function bestTicks(maxValue: number): number[] {
+  const options = [4, 5, 3, 6].map((steps) => niceTicks(maxValue, steps));
+  return options.reduce((best, ticks) => ticks[ticks.length - 1] < best[best.length - 1] ? ticks : best);
 }
 
 interface TickProps { x?: number | string; y?: number | string; payload?: { value?: unknown } }
@@ -124,27 +134,70 @@ function EmptyChart({ message = "No chart data available for this scope." }: { m
   return <div className="chart-empty" role="status"><strong>Chart unavailable</strong><span>{message}</span></div>;
 }
 
-function ChartShell({ children, minHeight = 280 }: { children: ReactNode; minHeight?: number }) {
-  return <div className="chart-stage" style={{ minHeight }}>{children}</div>;
+/** Footnote naming the categories whose sample is too small to rank on. */
+function LimitedNote({ labels, unit }: { labels: string[]; unit: string }) {
+  if (!labels.length) return null;
+  return <ChartNote tone="flag">Fewer than {LIMITED_N} {unit}: {labels.join(", ")}. Read {labels.length === 1 ? "it" : "these"} as directional only.</ChartNote>;
 }
 
 const valueLabel = (format: (value: number) => string) => ({ fill: COLORS.ink, fontSize: TICK_SIZE, formatter: (value: number) => format(value) });
 
+/** Accent only a clear leader: at least 5% ahead of the runner-up. */
+const clearLeader = (values: number[]) => values.length < 2 || values[0] >= values[1] * 1.05;
+const UNLABELED = /^(unknown|other|unavailable)\b/i;
+
+const swatch = (color: string, extra: CSSProperties = {}) => <i style={{ background: color, ...extra }} />;
+
 export function PipelineChart({ data, won = false }: { data: DataRow[]; won?: boolean }) {
+  const narrow = useNarrow();
+  const { handlers, opacity } = useActiveIndex();
   const key = won ? "won_pipeline" : "total_pipeline";
+  const total = data.reduce((sum, row) => sum + Math.max(0, numberValue(row, key)), 0);
   const shaped = data
     .filter((row) => numberValue(row, key) > 0)
     .sort((a, b) => numberValue(b, key) - numberValue(a, key))
-    .map((row) => ({ channel: displayName(textValue(row, "channel_category")), amount: numberValue(row, key) }));
+    .map((row) => {
+      const code = textValue(row, "channel_category");
+      return { channel: displayName(code), amount: numberValue(row, key), marketing: !NON_MARKETING.has(code), deals: numberValue(row, "deal_count"), wonDeals: numberValue(row, "won_count"), share: total ? numberValue(row, key) / total : 0 };
+    });
   if (!shaped.length) return <EmptyChart />;
-  const height = Math.max(300, shaped.length * 30);
-  return <ChartShell minHeight={height}><ResponsiveContainer width="100%" height={height}><ComposedChart data={shaped} layout="vertical" margin={{ left: 8, right: 64, top: 8, bottom: 20 }}>
-    <CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={money} tick={axisTick} /><YAxis type="category" dataKey="channel" width={160} tick={lineTick} interval={0} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number) => [formatField("recorded_amount", value), won ? "Won revenue" : "Pipeline"]} />
-    <Bar dataKey="amount" fill={won ? COLORS.teal : COLORS.blue} barSize={17} radius={[0, 4, 4, 0]} isAnimationActive={false}><LabelList dataKey="amount" position="right" {...valueLabel(money)} /></Bar>
-  </ComposedChart></ResponsiveContainer></ChartShell>;
+  const marketingTotal = shaped.filter((row) => row.marketing).reduce((sum, row) => sum + row.amount, 0);
+  const height = Math.max(300, shaped.length * (narrow ? 34 : 30));
+  const ticks = bestTicks(Math.max(...shaped.map((row) => row.amount)));
+  const tick = narrow ? stackedTick((value) => wrapText(value, 14, 2)) : lineTick;
+  const metric = won ? "Won revenue" : "Pipeline";
+  const limited = shaped.filter((row) => row.deals < LIMITED_N).map((row) => row.channel);
+  return <>
+    <ChartShell minHeight={height}>{(motion) => <ResponsiveContainer width="100%" height={height}><ComposedChart data={shaped} layout="vertical" margin={{ left: 4, right: 60, top: 8, bottom: 12 }} {...handlers}>
+      <CartesianGrid {...gridProps} horizontal={false} vertical />
+      <XAxis type="number" {...valueAxis} domain={[0, ticks[ticks.length - 1]]} ticks={narrow ? ticks.filter((_, index) => index % 2 === 0) : ticks} tickFormatter={money} />
+      <YAxis type="category" dataKey="channel" width={narrow ? 112 : 160} tick={tick} interval={0} {...categoryAxis} />
+      <Tooltip {...tooltipBase} cursor={false} content={tooltipContent((row) => ({
+        title: String(row.channel),
+        rows: [
+          { label: metric, value: formatDollars(Number(row.amount)), color: row.marketing ? ACCENT : CONTEXT_LIGHT, strong: true },
+          { label: `Share of ${won ? "won revenue" : "pipeline"}`, value: pct(Number(row.share)) },
+          { label: "Deals", value: count(Number(row.deals)) },
+          ...(won ? [{ label: "Won deals", value: count(Number(row.wonDeals)) }] : []),
+        ],
+        note: row.marketing ? "Marketing channel" : "Not a marketing programme (referral, existing client or unlabeled CRM)",
+        flag: limitedFlag(Number(row.deals), "deals"),
+      }))} />
+      <Bar dataKey="amount" name={metric} barSize={17} radius={[0, 4, 4, 0]} {...motion}>
+        {shaped.map((row, index) => <Cell key={row.channel} fill={row.marketing ? ACCENT : CONTEXT_LIGHT} fillOpacity={opacity(index)} />)}
+        <LabelList dataKey="amount" position="right" {...valueLabel(money)} />
+      </Bar>
+    </ComposedChart></ResponsiveContainer>}</ChartShell>
+    <div className="chart-legend" style={legendStyle} aria-label={`${metric} by channel legend`}>
+      <span>{swatch(ACCENT)}Marketing channels · {money(marketingTotal)} ({total ? pct(marketingTotal / total, 0) : "0%"})</span>
+      <span>{swatch(CONTEXT_LIGHT)}Referral, existing client &amp; unlabeled CRM · {money(total - marketingTotal)}</span>
+    </div>
+    <LimitedNote labels={limited} unit="deals" />
+  </>;
 }
 
 export function MonthlyPipelineChart({ data }: { data: DataRow[] }) {
+  const narrow = useNarrow();
   const channels = Array.from(new Set(data.map((row) => textValue(row, "channel"))));
   const months = Array.from(new Set(data.map((row) => textValue(row, "month")))).sort();
   // Keep the long-tail bucket last so the stack and legend read as a ranked
@@ -164,70 +217,119 @@ export function MonthlyPipelineChart({ data }: { data: DataRow[] }) {
   }));
   const rows = months.map((month) => {
     const row: Record<string, string | number> = { month };
+    let total = 0;
     series.forEach(({ channel, key }) => {
-      row[key] = data.filter((item) => textValue(item, "month") === month && textValue(item, "channel") === channel).reduce((sum, item) => sum + numberValue(item, "pipeline"), 0);
+      const value = data.filter((item) => textValue(item, "month") === month && textValue(item, "channel") === channel).reduce((sum, item) => sum + numberValue(item, "pipeline"), 0);
+      row[key] = value;
+      total += value;
     });
+    row.total = total;
     return row;
   });
   if (!rows.length || !series.length) return <EmptyChart />;
+  // One tick per January (every other year on phones) reads as a timeline,
+  // instead of arbitrary YYYY-MM labels.
+  const januaries = months.filter((month) => month.endsWith("-01"));
+  const yearTicks = (narrow ? januaries.filter((_, index) => index % 2 === 0) : januaries);
+  const yTicks = bestTicks(Math.max(...rows.map((row) => Number(row.total))));
   return <>
-    <ChartShell minHeight={320}><ResponsiveContainer width="100%" height={320}><ComposedChart data={rows} margin={{ left: 0, right: 28, top: 10, bottom: 8 }} barCategoryGap={1}>
+    <ChartShell minHeight={320}>{(motion) => <ResponsiveContainer width="100%" height={320}><ComposedChart data={rows} margin={{ left: 0, right: 16, top: 10, bottom: 8 }} barCategoryGap={1}>
       <CartesianGrid {...gridProps} />
-      <XAxis dataKey="month" tick={axisTick} interval="preserveStartEnd" minTickGap={24} tickMargin={6} />
-      <YAxis tickFormatter={money} tick={axisTick} width={56} />
-      <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "rgba(255,255,255,.06)" }} formatter={(value: number, name: string) => [formatField("recorded_amount", value), name]} />
-      {series.map(({ key, label, color }) => <Bar key={key} dataKey={key} name={label} stackId="mix" fill={color} isAnimationActive={false} />)}
-    </ComposedChart></ResponsiveContainer></ChartShell>
-    <div className="chart-legend" style={legendStyle} aria-label="Monthly pipeline mix legend">{series.map(({ key, label, color }) => <span key={key}><i style={{ background: color }} />{label}</span>)}</div>
+      <XAxis dataKey="month" {...categoryAxis} tick={axisTick} ticks={yearTicks.length >= 2 ? yearTicks : undefined} interval={yearTicks.length >= 2 ? 0 : "preserveStartEnd"} minTickGap={8} tickFormatter={(value: string) => yearTicks.length >= 2 ? value.slice(0, 4) : value} tickMargin={6} />
+      <YAxis {...valueAxis} domain={[0, yTicks[yTicks.length - 1]]} ticks={yTicks} tickFormatter={money} width={56} />
+      <Tooltip {...tooltipBase} cursor={bandCursor} content={tooltipContent((row) => {
+        const parts: TipRow[] = series.map(({ key, label, color }) => ({ label, value: formatDollars(Number(row[key] ?? 0)), color, amount: Number(row[key] ?? 0) }))
+          .filter((part) => part.amount > 0).sort((a, b) => b.amount - a.amount).map(({ label, value, color }) => ({ label, value, color }));
+        return { title: formatMonthYear(`${row.month}-01`), rows: [...parts, { label: "Total pipeline created", value: formatDollars(Number(row.total)), strong: true }] };
+      })} />
+      {series.map(({ key, label, color }) => <Bar key={key} dataKey={key} name={label} stackId="mix" fill={color} {...motion} />)}
+    </ComposedChart></ResponsiveContainer>}</ChartShell>
+    <div className="chart-legend" style={legendStyle} aria-label="Monthly pipeline mix legend">{series.map(({ key, label, color }) => <span key={key}>{swatch(color)}{label}</span>)}</div>
   </>;
 }
 
 export function CohortChart({ data }: { data: DataRow[] }) {
   const rows = data.filter((row) => textValue(row, "quarter") >= "2022Q1");
   if (!rows.length) return <EmptyChart />;
-  const lineRows = rows.map((row) => ({
-    quarter: textValue(row, "quarter"),
-    is_mature: Boolean(row.is_mature),
-    // `closed_win_rate` is the canonical contract key; the fallback keeps
-    // the evidence line resilient if an older validated cohort export only
-    // exposes the legacy `win_rate` alias.
-    "Closed-deal win rate": numberValue(row, "closed_win_rate", numberValue(row, "win_rate")) * 100,
-    winError: (() => {
-      const rate = numberValue(row, "closed_win_rate", numberValue(row, "win_rate"));
-      const low = numberValue(row, "win_rate_ci_low", numberValue(row, "ci_low", rate));
-      const high = numberValue(row, "win_rate_ci_high", numberValue(row, "ci_high", rate));
-      return [Math.max(0, (rate - low) * 100), Math.max(0, (high - rate) * 100)];
-    })(),
-    "Resolved share": numberValue(row, "resolved_share") * 100,
-  }));
-  const pipelineRows = rows.map((row) => ({ quarter: textValue(row, "quarter"), Pipeline: numberValue(row, "pipeline") }));
+  const rateOf = (row: DataRow) => numberValue(row, "closed_win_rate", numberValue(row, "win_rate"));
+  const lineRows = rows.map((row) => {
+    const rate = rateOf(row);
+    const low = numberValue(row, "win_rate_ci_low", numberValue(row, "ci_low", rate));
+    const high = numberValue(row, "win_rate_ci_high", numberValue(row, "ci_high", rate));
+    return {
+      quarter: textValue(row, "quarter"),
+      is_mature: Boolean(row.is_mature),
+      // `closed_win_rate` is the canonical contract key; the fallback keeps
+      // the evidence line resilient if an older validated cohort export only
+      // exposes the legacy `win_rate` alias.
+      "Closed-deal win rate": rate * 100,
+      winError: [Math.max(0, (rate - low) * 100), Math.max(0, (high - rate) * 100)],
+      low: low * 100,
+      high: high * 100,
+      "Resolved share": numberValue(row, "resolved_share") * 100,
+      won: numberValue(row, "won", Number.NaN),
+      resolved: numberValue(row, "resolved", Number.NaN),
+    };
+  });
+  const pipelineRows = rows.map((row) => ({ quarter: textValue(row, "quarter"), Pipeline: numberValue(row, "pipeline"), deals: numberValue(row, "deals", Number.NaN), is_mature: Boolean(row.is_mature), resolvedShare: numberValue(row, "resolved_share") }));
+  // Reference: pooled closed-deal win rate across mature cohorts in view.
+  const mature = lineRows.filter((row) => row.is_mature);
+  const pooledWon = mature.reduce((sum, row) => sum + (Number.isFinite(row.won) ? row.won : 0), 0);
+  const pooledResolved = mature.reduce((sum, row) => sum + (Number.isFinite(row.resolved) ? row.resolved : 0), 0);
+  const matureAvg = pooledResolved > 0 ? (pooledWon / pooledResolved) * 100 : mature.length ? mature.reduce((sum, row) => sum + row["Closed-deal win rate"], 0) / mature.length : Number.NaN;
+  const provisional = lineRows.filter((row) => !row.is_mature).map((row) => row.quarter);
+  const pipelineTicks = bestTicks(Math.max(...pipelineRows.map((row) => row.Pipeline)));
+  const provisionalBand = provisional.length ? <ReferenceArea x1={provisional[0]} x2={provisional[provisional.length - 1]} fill="#FFFFFF" fillOpacity={0.06} stroke="none" /> : null;
+  const quarterAxis = { dataKey: "quarter", ...categoryAxis, tick: axisTick, interval: "preserveStartEnd" as const, minTickGap: 24, tickMargin: 6 };
   return <div className="chart-stack">
     <div className="mini-chart-label">Pipeline created</div>
-    <ChartShell minHeight={170}>
+    <ChartShell minHeight={170}>{(motion) =>
       <ResponsiveContainer width="100%" height={170}>
         <ComposedChart data={pipelineRows} margin={{ left: 0, right: 12, top: 8, bottom: 4 }}>
           <CartesianGrid {...gridProps} />
-          <XAxis dataKey="quarter" tick={axisTick} interval="preserveStartEnd" minTickGap={24} tickMargin={6} />
-          <YAxis tickFormatter={money} tick={axisTick} width={56} tickCount={4} />
-          <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} cursor={{ fill: "rgba(255,255,255,.06)" }} formatter={(value: number) => [formatField("recorded_amount", value), "Pipeline created"]} />
-          <Bar dataKey="Pipeline" fill={COLORS.blue} radius={[3, 3, 0, 0]} maxBarSize={28} isAnimationActive={false} />
+          <XAxis {...quarterAxis} />
+          <YAxis {...valueAxis} domain={[0, pipelineTicks[pipelineTicks.length - 1]]} ticks={pipelineTicks} tickFormatter={money} width={56} />
+          <Tooltip {...tooltipBase} cursor={bandCursor} content={tooltipContent((row) => ({
+            title: `${row.quarter} cohort`,
+            rows: [
+              { label: "Pipeline created", value: formatDollars(Number(row.Pipeline)), color: ACCENT, strong: true },
+              ...(Number.isFinite(Number(row.deals)) ? [{ label: "Deals", value: count(Number(row.deals)) }] : []),
+              { label: "Resolved share", value: pct(Number(row.resolvedShare), 0) },
+            ],
+            flag: row.is_mature ? undefined : "Provisional cohort: too few deals resolved to judge quality",
+          }))} />
+          <Bar dataKey="Pipeline" radius={[3, 3, 0, 0]} maxBarSize={28} {...motion}>
+            {pipelineRows.map((row) => <Cell key={row.quarter} fill={ACCENT} fillOpacity={row.is_mature ? 1 : 0.45} />)}
+          </Bar>
         </ComposedChart>
-      </ResponsiveContainer>
+      </ResponsiveContainer>}
     </ChartShell>
     <div className="mini-chart-label">Closed-deal quality and cohort maturity</div>
-    <ChartShell minHeight={190}>
+    <ChartShell minHeight={190} part={1}>
       <ResponsiveContainer width="100%" height={190}>
         <ComposedChart data={lineRows} margin={{ left: 0, right: 12, top: 8, bottom: 8 }}>
           <CartesianGrid {...gridProps} />
-          <XAxis dataKey="quarter" tick={axisTick} interval="preserveStartEnd" minTickGap={24} tickMargin={6} />
-          <YAxis domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(value) => `${value}%`} tick={axisTick} width={56} />
-          <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number, name: string) => [`${value.toFixed(0)}%`, name]} />
-          <Line type="monotone" dataKey="Closed-deal win rate" stroke={COLORS.amber} strokeWidth={2.5} dot={(props: { cx?: number; cy?: number; index?: number; payload?: { is_mature?: boolean } }) => <circle key={`cohort-dot-${props.index}`} cx={props.cx} cy={props.cy} r={props.payload?.is_mature ? 2.8 : 4.5} fill={props.payload?.is_mature ? COLORS.amber : COLORS.pale} stroke={COLORS.amber} strokeWidth={props.payload?.is_mature ? 1 : 2} strokeDasharray={props.payload?.is_mature ? undefined : "2 2"} />} activeDot={{ r: 4 }} connectNulls={false} isAnimationActive={false}><ErrorBar dataKey="winError" direction="y" width={4} stroke={COLORS.amber} /></Line>
-          <Line type="monotone" dataKey="Resolved share" stroke={COLORS.teal} strokeWidth={2.5} dot={{ r: 2.5, fill: COLORS.teal }} activeDot={{ r: 4 }} connectNulls={false} isAnimationActive={false} />
+          {provisionalBand}
+          <XAxis {...quarterAxis} />
+          <YAxis {...valueAxis} domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(value) => `${value}%`} width={56} />
+          {Number.isFinite(matureAvg) && <ReferenceLine y={matureAvg} stroke={COLORS.pale} strokeDasharray="4 4" strokeOpacity={0.7} />}
+          <Tooltip {...tooltipBase} cursor={lineCursor} content={tooltipContent((row) => ({
+            title: `${row.quarter} cohort`,
+            rows: [
+              { label: "Closed-deal win rate", value: `${Number(row["Closed-deal win rate"]).toFixed(1)}%`, color: ACCENT, strong: true },
+              { label: "95% interval", value: `${Number(row.low).toFixed(0)}–${Number(row.high).toFixed(0)}%` },
+              { label: "Resolved share", value: `${Number(row["Resolved share"]).toFixed(0)}%`, color: CONTEXT_LIGHT },
+              ...(Number.isFinite(Number(row.resolved)) ? [{ label: "Won / resolved", value: `${count(Number(row.won))} / ${count(Number(row.resolved))}` }] : []),
+            ],
+            note: Number.isFinite(matureAvg) ? `Mature-cohort average ${matureAvg.toFixed(1)}%` : undefined,
+            flag: row.is_mature ? limitedFlag(Number(row.resolved), "resolved deals") : "Provisional cohort: win rate may still move",
+          }))} />
+          <Line type="monotone" dataKey="Resolved share" stroke={CONTEXT_LIGHT} strokeWidth={2} dot={{ r: 2.5, fill: CONTEXT_LIGHT, strokeWidth: 0 }} activeDot={{ r: 4 }} connectNulls={false} isAnimationActive={false} />
+          <Line type="monotone" dataKey="Closed-deal win rate" stroke={ACCENT} strokeWidth={2.5} dot={(props: { cx?: number; cy?: number; index?: number; payload?: { is_mature?: boolean } }) => <circle key={`cohort-dot-${props.index}`} cx={props.cx} cy={props.cy} r={props.payload?.is_mature ? 3 : 4.5} fill={props.payload?.is_mature ? ACCENT : "#111113"} stroke={ACCENT} strokeWidth={props.payload?.is_mature ? 1 : 2} />} activeDot={{ r: 5, fill: ACCENT, stroke: "#111113", strokeWidth: 2 }} connectNulls={false} isAnimationActive={false}><ErrorBar dataKey="winError" direction="y" width={4} stroke={ACCENT} strokeOpacity={0.55} /></Line>
         </ComposedChart>
       </ResponsiveContainer>
     </ChartShell>
-    <div className="chart-legend" style={legendStyle} aria-label="Cohort quality legend"><span><i style={{ background: COLORS.amber }} />Closed-deal win rate · 95% interval</span><span><i style={{ background: COLORS.teal }} />Resolved share</span><span><i className="cohort-marker provisional" />Hollow marker · provisional cohort</span></div>
+    <div className="chart-legend" style={legendStyle} aria-label="Cohort quality legend"><span>{swatch(ACCENT)}Closed-deal win rate · 95% interval</span><span>{swatch(CONTEXT_LIGHT)}Resolved share</span><span><i style={{ border: `2px solid ${ACCENT}`, borderRadius: 999, background: "#111113" }} />Provisional cohort · hollow marker, faded bar, shaded band</span>{Number.isFinite(matureAvg) && <span><i style={{ height: 0, borderTop: `2px dashed ${COLORS.pale}`, borderRadius: 0 }} />Mature-cohort average {matureAvg.toFixed(0)}%</span>}</div>
   </div>;
 }
 
@@ -235,45 +337,82 @@ export function ContributionChart({ data, totalPipeline }: { data: DataRow[]; to
   const sourced = data.filter((row) => textValue(row, "attribution_model") === "Marketing Sourced").reduce((sum, row) => sum + numberValue(row, "attributed_pipeline"), 0);
   const influenced = data.filter((row) => textValue(row, "attribution_model") === "Marketing Influenced").reduce((sum, row) => sum + numberValue(row, "attributed_pipeline"), 0);
   const rows = [
-    { metric: "Marketing sourced", amount: sourced, share: totalPipeline ? sourced / totalPipeline : 0, fill: COLORS.blue },
-    { metric: "Marketing influenced", amount: influenced, share: totalPipeline ? influenced / totalPipeline : 0, fill: COLORS.teal },
+    { metric: "Marketing sourced", amount: sourced, share: totalPipeline ? sourced / totalPipeline : 0, fill: ACCENT },
+    { metric: "Marketing influenced", amount: influenced, share: totalPipeline ? influenced / totalPipeline : 0, fill: COLORS.pale },
   ];
-  return <ChartShell minHeight={190}><ResponsiveContainer width="100%" height={190}><ComposedChart data={rows} layout="vertical" margin={{ left: 12, right: 84, top: 12, bottom: 16 }}>
-    <CartesianGrid {...gridProps} />
-    <XAxis type="number" domain={[0, Math.max(totalPipeline, ...rows.map((row) => row.amount))]} tickFormatter={money} tick={axisTick} />
-    <YAxis type="category" dataKey="metric" width={150} tick={lineTick} />
-    <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number) => [formatField("recorded_amount", value), "Pipeline"]} />
-    <ReferenceLine x={totalPipeline} stroke={COLORS.slate} strokeDasharray="4 4" label={{ value: "Total pipeline", fill: COLORS.muted, fontSize: TICK_SIZE, position: "insideTopRight" }} />
-    <Bar dataKey="amount" radius={[0, 5, 5, 0]} barSize={25} isAnimationActive={false}>
+  const ticks = bestTicks(Math.max(totalPipeline, ...rows.map((row) => row.amount)));
+  // Category names sit above each bar (not in a fixed-width axis) so the
+  // bars keep the full plot width in the narrow essential card.
+  const BarText = (props: { x?: string | number; y?: string | number; width?: string | number; height?: string | number; index?: number }) => {
+    const row = rows[props.index ?? 0];
+    if (!row) return null;
+    const x = Number(props.x ?? 0);
+    const y = Number(props.y ?? 0);
+    const end = x + Math.max(0, Number(props.width ?? 0));
+    return <g>
+      <text x={x} y={y - 7} fill={COLORS.pale} fontSize={TICK_SIZE} fontWeight={600}>{row.metric}</text>
+      <text x={end + 8} y={y + Number(props.height ?? 0) / 2} dominantBaseline="middle" fill={COLORS.ink} fontSize={TICK_SIZE}><tspan fontWeight={700}>{money(row.amount)}</tspan><tspan fill={COLORS.muted}>{` · ${(row.share * 100).toFixed(0)}% of total`}</tspan></text>
+    </g>;
+  };
+  return <ChartShell minHeight={200}>{(motion) => <ResponsiveContainer width="100%" height={200}><ComposedChart data={rows} layout="vertical" margin={{ left: 8, right: 24, top: 30, bottom: 8 }} barCategoryGap="38%">
+    <CartesianGrid {...gridProps} horizontal={false} vertical />
+    <XAxis type="number" {...valueAxis} domain={[0, ticks[ticks.length - 1]]} ticks={ticks} tickFormatter={money} />
+    <YAxis type="category" dataKey="metric" hide />
+    <Tooltip {...tooltipBase} cursor={bandCursor} content={tooltipContent((row) => ({
+      title: String(row.metric),
+      rows: [
+        { label: "Pipeline", value: formatDollars(Number(row.amount)), color: String(row.fill), strong: true },
+        { label: "Share of total pipeline", value: pct(Number(row.share)) },
+        { label: "Total pipeline", value: formatDollars(totalPipeline) },
+      ],
+      note: "Descriptive contribution, not causal lift.",
+    }))} />
+    <ReferenceLine x={totalPipeline} stroke={COLORS.pale} strokeDasharray="4 4" ifOverflow="extendDomain" label={{ value: `Total pipeline ${money(totalPipeline)}`, fill: COLORS.pale, fontSize: TICK_SIZE, position: "insideTopRight", offset: 6 }} />
+    <Bar dataKey="amount" radius={[0, 5, 5, 0]} barSize={24} {...motion}>
       {rows.map((row) => <Cell key={row.metric} fill={row.fill} />)}
-      <LabelList dataKey="share" position="right" formatter={(value: number) => `${money(rows.find((row) => row.share === value)?.amount ?? 0)} (${(value * 100).toFixed(0)}%)`} fill={COLORS.ink} fontSize={TICK_SIZE} />
+      <LabelList dataKey="amount" content={BarText} />
     </Bar>
-  </ComposedChart></ResponsiveContainer></ChartShell>;
+  </ComposedChart></ResponsiveContainer>}</ChartShell>;
 }
 
 const coverageTick = stackedTick((value) => wrapText(value, 9, 2), { anchor: "middle", vertical: false });
+const UNREACHED = "Not Reached";
 
 export function CoverageChart({ data }: { data: DataRow[] }) {
   const order = ["Not Reached", "6sense Only", "Email Only", "Both Channels"];
   const rows = [...data].sort((a, b) => order.indexOf(textValue(a, "coverage_tier")) - order.indexOf(textValue(b, "coverage_tier"))).map((row) => ({
     tier: textValue(row, "coverage_tier"), accounts: numberValue(row, "accounts"), rate: numberValue(row, "opp_rate") * 100,
+    withOpp: numberValue(row, "with_opp", Number.NaN), shareOfAccounts: numberValue(row, "pct_of_total", Number.NaN),
     low: numberValue(row, "opp_rate_ci_low", numberValue(row, "ci_low")) * 100,
     high: numberValue(row, "opp_rate_ci_high", numberValue(row, "ci_high")) * 100,
     error: [Math.max(0, numberValue(row, "opp_rate") * 100 - numberValue(row, "opp_rate_ci_low", numberValue(row, "ci_low")) * 100), Math.max(0, numberValue(row, "opp_rate_ci_high", numberValue(row, "ci_high")) * 100 - numberValue(row, "opp_rate") * 100)],
   }));
   if (!rows.length) return <EmptyChart />;
-  const xAxisProps = { dataKey: "tier", tick: coverageTick, interval: 0 as const, height: 40, tickLine: false };
+  const xAxisProps = { dataKey: "tier", tick: coverageTick, interval: 0 as const, height: 40, ...categoryAxis };
   const accountTicks = niceTicks(Math.max(...rows.map((row) => row.accounts)));
+  const tierColor = (tier: string) => tier === UNREACHED ? ACCENT : CONTEXT_LIGHT;
+  const tip = tooltipContent((row) => ({
+    title: String(row.tier),
+    rows: [
+      { label: "CRM account domains", value: count(Number(row.accounts)), color: tierColor(String(row.tier)) },
+      ...(Number.isFinite(Number(row.shareOfAccounts)) ? [{ label: "Share of accounts", value: pct(Number(row.shareOfAccounts)) }] : []),
+      { label: "Opportunity prevalence", value: `${Number(row.rate).toFixed(1)}%`, strong: true },
+      { label: "95% Wilson interval", value: `${Number(row.low).toFixed(1)}–${Number(row.high).toFixed(1)}%` },
+      ...(Number.isFinite(Number(row.withOpp)) ? [{ label: "Accounts with an opportunity", value: count(Number(row.withOpp)) }] : []),
+    ],
+    note: "Historical prevalence; many opportunities predate reach.",
+    flag: limitedFlag(Number(row.accounts), "accounts"),
+  }));
   return <div className="chart-stack coverage-chart">
     <div className="mini-chart-label">CRM account domains by coverage tier</div>
-    <ChartShell minHeight={200}><ResponsiveContainer width="100%" height={200}><ComposedChart data={rows} margin={{ left: 0, right: 12, top: 20, bottom: 4 }}>
-      <CartesianGrid {...gridProps} /><XAxis {...xAxisProps} /><YAxis tick={axisTick} width={52} domain={[0, accountTicks[accountTicks.length - 1]]} ticks={accountTicks} tickFormatter={(value: number) => value.toLocaleString()} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number) => [value.toLocaleString(), "Accounts"]} />
-      <Bar dataKey="accounts" fill={COLORS.blue} radius={[5, 5, 0, 0]} maxBarSize={44} isAnimationActive={false}><LabelList dataKey="accounts" position="top" formatter={(value: number) => value.toLocaleString()} fill={COLORS.ink} fontSize={TICK_SIZE} /></Bar>
-    </ComposedChart></ResponsiveContainer></ChartShell>
+    <ChartShell minHeight={200}>{(motion) => <ResponsiveContainer width="100%" height={200}><ComposedChart data={rows} margin={{ left: 0, right: 12, top: 20, bottom: 4 }}>
+      <CartesianGrid {...gridProps} /><XAxis {...xAxisProps} /><YAxis {...valueAxis} width={52} domain={[0, accountTicks[accountTicks.length - 1]]} ticks={accountTicks} tickFormatter={(value: number) => value.toLocaleString()} /><Tooltip {...tooltipBase} cursor={bandCursor} content={tip} />
+      <Bar dataKey="accounts" radius={[5, 5, 0, 0]} maxBarSize={44} {...motion}>{rows.map((row) => <Cell key={row.tier} fill={tierColor(row.tier)} />)}<LabelList dataKey="accounts" position="top" formatter={(value: number) => value.toLocaleString()} fill={COLORS.ink} fontSize={TICK_SIZE} /></Bar>
+    </ComposedChart></ResponsiveContainer>}</ChartShell>
     <div className="mini-chart-label">Historical opportunity prevalence · 95% Wilson interval</div>
-    <ChartShell minHeight={200}><ResponsiveContainer width="100%" height={200}><ComposedChart data={rows} margin={{ left: 0, right: 12, top: 12, bottom: 4 }}>
-      <CartesianGrid {...gridProps} /><XAxis {...xAxisProps} padding={{ left: 36, right: 36 }} /><YAxis domain={[0, 60]} ticks={[0, 15, 30, 45, 60]} tickFormatter={(value) => `${value}%`} tick={axisTick} width={52} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number) => [`${value.toFixed(1)}%`, "Historical opportunity prevalence"]} />
-      <Line dataKey="rate" name="Historical opportunity prevalence" stroke="transparent" strokeWidth={0} dot={{ fill: COLORS.teal, r: 5, stroke: COLORS.teal, strokeWidth: 1 }} activeDot={{ r: 7 }} isAnimationActive={false}><ErrorBar dataKey="error" direction="y" width={5} stroke={COLORS.slate} /><LabelList dataKey="rate" position="right" offset={12} formatter={(value: number) => `${value.toFixed(1)}%`} fill={COLORS.ink} fontSize={TICK_SIZE} /></Line>
+    <ChartShell minHeight={200} part={1}><ResponsiveContainer width="100%" height={200}><ComposedChart data={rows} margin={{ left: 0, right: 12, top: 12, bottom: 4 }}>
+      <CartesianGrid {...gridProps} /><XAxis {...xAxisProps} padding={{ left: 36, right: 36 }} /><YAxis {...valueAxis} domain={[0, 60]} ticks={[0, 15, 30, 45, 60]} tickFormatter={(value) => `${value}%`} width={52} /><Tooltip {...tooltipBase} cursor={lineCursor} content={tip} />
+      <Line dataKey="rate" name="Historical opportunity prevalence" stroke="transparent" strokeWidth={0} dot={(props: { cx?: number; cy?: number; index?: number; payload?: { tier?: string } }) => <circle key={`coverage-dot-${props.index}`} cx={props.cx} cy={props.cy} r={5.5} fill={props.payload?.tier === UNREACHED ? ACCENT : COLORS.pale} stroke="#111113" strokeWidth={1.5} />} activeDot={{ r: 7, fill: COLORS.ink }} isAnimationActive={false}><ErrorBar dataKey="error" direction="y" width={5} stroke={COLORS.slate} /><LabelList dataKey="rate" position="right" offset={12} formatter={(value: number) => `${value.toFixed(1)}%`} fill={COLORS.ink} fontSize={TICK_SIZE} /></Line>
     </ComposedChart></ResponsiveContainer></ChartShell>
   </div>;
 }
@@ -281,14 +420,16 @@ export function CoverageChart({ data }: { data: DataRow[] }) {
 export function CoverageMixChart({ data }: { data: DataRow[] }) {
   const rows = data.map((row) => ({ name: textValue(row, "name"), value: numberValue(row, "value") }));
   if (!rows.length) return <EmptyChart />;
-  const colors = [COLORS.slate, COLORS.blue];
+  const colors = [CONTEXT_LIGHT, ACCENT];
+  const total = rows.reduce((sum, row) => sum + row.value, 0);
   return <><ChartShell minHeight={220}><ResponsiveContainer width="100%" height={220}><PieChart>
-    <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number, name: string) => [value.toLocaleString(), name]} />
+    <Tooltip {...tooltipBase} content={tooltipContent((row) => ({ title: String(row.name), rows: [{ label: "Accounts", value: count(Number(row.value)), strong: true }, { label: "Share", value: total ? pct(Number(row.value) / total) : "—" }] }))} />
     <Pie data={rows} dataKey="value" nameKey="name" innerRadius="58%" outerRadius="86%" stroke="#080809" isAnimationActive={false}>{rows.map((row, index) => <Cell key={row.name} fill={colors[index % colors.length]} />)}</Pie>
-  </PieChart></ResponsiveContainer></ChartShell><div className="chart-legend" style={legendStyle} aria-label="Coverage mix legend">{rows.map((row, index) => <span key={row.name}><i style={{ background: colors[index % colors.length] }} />{row.name} · {row.value.toLocaleString()}</span>)}</div></>;
+  </PieChart></ResponsiveContainer></ChartShell><div className="chart-legend" style={legendStyle} aria-label="Coverage mix legend">{rows.map((row, index) => <span key={row.name}>{swatch(colors[index % colors.length])}{row.name} · {row.value.toLocaleString()}</span>)}</div></>;
 }
 
 const ATTRIBUTION_MODELS = ["First-Touch", "Last-Touch", "Linear", "Time-Decay"];
+const MODEL_SWATCH = [COLORS.blue, COLORS.teal, COLORS.amber, COLORS.violet];
 
 function attributionByChannel(data: DataRow[], models: string[]) {
   const channels = Array.from(new Set(data.map((row) => textValue(row, "channel"))));
@@ -303,41 +444,58 @@ function attributionByChannel(data: DataRow[], models: string[]) {
 
 function UnlinkedNote({ channels }: { channels: { label: string }[] }) {
   if (!channels.length) return null;
-  return <p className="chart-note" style={noteStyle} title={channels.map((row) => row.label).join(", ")}>{channels.length} {channels.length === 1 ? "channel has" : "channels have"} no linked touches under these models and {channels.length === 1 ? "is" : "are"} omitted: {channels.map((row) => row.label).join(", ")}.</p>;
+  return <ChartNote>{channels.length} {channels.length === 1 ? "channel has" : "channels have"} no linked touches under these models and {channels.length === 1 ? "is" : "are"} omitted: {channels.map((row) => row.label).join(", ")}.</ChartNote>;
 }
 
 export function AttributionComparison({ data }: { data: DataRow[] }) {
+  const narrow = useNarrow();
   const models = ATTRIBUTION_MODELS;
   const { linked, unlinked } = attributionByChannel(data, models);
   const rows = linked.map((row) => ({ channel: row.label, ...row.values }))
     .sort((a, b) => models.reduce((sum, model) => sum + Number((b as Record<string, unknown>)[model]), 0) - models.reduce((sum, model) => sum + Number((a as Record<string, unknown>)[model]), 0));
   if (!rows.length) return <><EmptyChart message="No channel has linked touches under the four attribution models." /><UnlinkedNote channels={unlinked} /></>;
   const height = Math.max(180, rows.length * 72 + 40);
-  return <><ChartShell minHeight={height}><ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 8, right: 64, top: 10, bottom: 20 }} barCategoryGap="18%">
+  const ticks = bestTicks(Math.max(...rows.flatMap((row) => models.map((model) => Number((row as Record<string, unknown>)[model])))));
+  return <><ChartShell minHeight={height}>{(motion) => <ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 60, top: 10, bottom: 12 }} barCategoryGap="18%">
     <defs>
       <pattern id="attr-stripe-teal" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(35)"><rect width="6" height="6" fill={COLORS.teal} /><rect width="2" height="6" fill="#ffffff" fillOpacity=".42" /></pattern>
       <pattern id="attr-stripe-amber" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill={COLORS.amber} /><rect width="6" height="2" fill="#ffffff" fillOpacity=".42" /></pattern>
       <pattern id="attr-dot-violet" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill={COLORS.violet} /><circle cx="2" cy="2" r="1.1" fill="#ffffff" fillOpacity=".58" /></pattern>
     </defs>
-    <CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={money} tick={axisTick} /><YAxis type="category" dataKey="channel" width={130} tick={lineTick} interval={0} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number, name: string) => [formatField("recorded_amount", value), name]} />
-    {models.map((model, index) => <Bar key={model} dataKey={model} name={model} fill={[COLORS.blue, "url(#attr-stripe-teal)", "url(#attr-stripe-amber)", "url(#attr-dot-violet)"][index]} barSize={11} radius={[0, 3, 3, 0]} isAnimationActive={false}><LabelList dataKey={model} position="right" {...valueLabel(money)} /></Bar>)}
-  </ComposedChart></ResponsiveContainer></ChartShell><div className="chart-legend" style={legendStyle} aria-label="Attribution model legend"><span><i className="attr-swatch attr-ft" />FT · First-Touch</span><span><i className="attr-swatch attr-lt" />LT · Last-Touch</span><span><i className="attr-swatch attr-lin" />LIN · Linear</span><span><i className="attr-swatch attr-td" />TD · Time-Decay</span></div><UnlinkedNote channels={unlinked} /></>;
+    <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} domain={[0, ticks[ticks.length - 1]]} ticks={narrow ? ticks.filter((_, index) => index % 2 === 0) : ticks} tickFormatter={money} /><YAxis type="category" dataKey="channel" width={narrow ? 92 : 130} tick={narrow ? stackedTick((value) => wrapText(value, 11, 2)) : lineTick} interval={0} {...categoryAxis} />
+    <Tooltip {...tooltipBase} cursor={bandCursor} content={tooltipContent((row) => ({
+      title: String(row.channel),
+      rows: models.map((model, index) => ({ label: model, value: formatDollars(Number(row[model] ?? 0)), color: MODEL_SWATCH[index] })),
+      note: "Same journeys credited four ways; do not sum across models.",
+    }))} />
+    {models.map((model, index) => <Bar key={model} dataKey={model} name={model} fill={[COLORS.blue, "url(#attr-stripe-teal)", "url(#attr-stripe-amber)", "url(#attr-dot-violet)"][index]} barSize={11} radius={[0, 3, 3, 0]} {...motion}><LabelList dataKey={model} position="right" {...valueLabel(money)} /></Bar>)}
+  </ComposedChart></ResponsiveContainer>}</ChartShell><div className="chart-legend" style={legendStyle} aria-label="Attribution model legend"><span><i className="attr-swatch attr-ft" />FT · First-Touch</span><span><i className="attr-swatch attr-lt" />LT · Last-Touch</span><span><i className="attr-swatch attr-lin" />LIN · Linear</span><span><i className="attr-swatch attr-td" />TD · Time-Decay</span></div><UnlinkedNote channels={unlinked} /></>;
 }
 
 const signedMoney = (value: number) => `${value >= 0 ? "+" : "−"}${money(Math.abs(value))}`;
 
 export function CreditShiftChart({ data }: { data: DataRow[] }) {
+  const narrow = useNarrow();
   const { linked, unlinked } = attributionByChannel(data, ["First-Touch", "Last-Touch"]);
-  const rows = linked.map((row) => ({ channel: row.label, delta: row.values["Last-Touch"] - row.values["First-Touch"] })).sort((a, b) => b.delta - a.delta);
+  const rows = linked.map((row) => ({ channel: row.label, first: row.values["First-Touch"], last: row.values["Last-Touch"], delta: row.values["Last-Touch"] - row.values["First-Touch"] })).sort((a, b) => b.delta - a.delta);
   if (!rows.length) return <><EmptyChart message="No channel has First-Touch or Last-Touch credit." /><UnlinkedNote channels={unlinked} /></>;
   const height = Math.max(160, rows.length * 56 + 40);
   const half = niceTicks(Math.max(...rows.map((row) => Math.abs(row.delta)), 1), 2);
   const extent = half[half.length - 1];
   const shiftTicks = [...half.slice(1).reverse().map((value) => -value), ...half];
-  return <><ChartShell minHeight={height}><ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 8, right: 72, top: 10, bottom: 20 }}>
-    <CartesianGrid {...gridProps} /><XAxis type="number" domain={[-extent, extent]} ticks={shiftTicks} tickFormatter={(value: number) => value === 0 ? "$0" : signedMoney(value)} tick={axisTick} /><YAxis type="category" dataKey="channel" width={130} tick={lineTick} interval={0} /><ReferenceLine x={0} stroke={COLORS.ink} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number) => [formatField("recorded_amount", value), "Last-Touch minus First-Touch"]} />
-    <Bar dataKey="delta" barSize={20} isAnimationActive={false}>
-      {rows.map((row) => <Cell key={row.channel} fill={row.delta >= 0 ? COLORS.teal : COLORS.amber} />)}
+  return <><ChartShell minHeight={height}>{(motion) => <ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 68, top: 10, bottom: 12 }}>
+    <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} domain={[-extent, extent]} ticks={narrow ? shiftTicks.filter((_, index) => index % 2 === 0) : shiftTicks} tickFormatter={(value: number) => value === 0 ? "$0" : signedMoney(value)} /><YAxis type="category" dataKey="channel" width={narrow ? 92 : 130} tick={narrow ? stackedTick((value) => wrapText(value, 11, 2)) : lineTick} interval={0} axisLine={false} tickLine={false} /><ReferenceLine x={0} stroke={COLORS.ink} strokeOpacity={0.8} />
+    <Tooltip {...tooltipBase} cursor={bandCursor} content={tooltipContent((row) => ({
+      title: String(row.channel),
+      rows: [
+        { label: "First-Touch credit", value: formatDollars(Number(row.first)) },
+        { label: "Last-Touch credit", value: formatDollars(Number(row.last)) },
+        { label: "Shift (LT − FT)", value: `${Number(row.delta) >= 0 ? "+" : "−"}${formatDollars(Math.abs(Number(row.delta)))}`, color: Number(row.delta) >= 0 ? GAIN : LOSS, strong: true },
+      ],
+      note: "A planning signal about journey role, not incrementality.",
+    }))} />
+    <Bar dataKey="delta" barSize={20} {...motion}>
+      {rows.map((row) => <Cell key={row.channel} fill={row.delta >= 0 ? GAIN : LOSS} />)}
       <LabelList dataKey="delta" content={(props: { x?: string | number; y?: string | number; width?: string | number; height?: string | number; value?: unknown }) => {
         // Negative bars grow leftwards toward the category axis, so their
         // label sits just right of the zero line instead of at the bar end.
@@ -348,7 +506,7 @@ export function CreditShiftChart({ data }: { data: DataRow[] }) {
         return <text x={right + 6} y={Number(props.y ?? 0) + Number(props.height ?? 0) / 2} dominantBaseline="middle" textAnchor="start" fill={COLORS.ink} fontSize={TICK_SIZE}>{signedMoney(value)}</text>;
       }} />
     </Bar>
-  </ComposedChart></ResponsiveContainer></ChartShell><div className="chart-legend" style={legendStyle} aria-label="Credit shift legend"><span><i style={{ background: COLORS.teal }} />Gains credit under Last-Touch</span><span><i style={{ background: COLORS.amber }} />Loses credit under Last-Touch</span></div><UnlinkedNote channels={unlinked} /></>;
+  </ComposedChart></ResponsiveContainer>}</ChartShell><div className="chart-legend" style={legendStyle} aria-label="Credit shift legend"><span>{swatch(GAIN)}Gains credit under Last-Touch</span><span>{swatch(LOSS)}Loses credit under Last-Touch</span></div><UnlinkedNote channels={unlinked} /></>;
 }
 
 export function RoiChart({ data }: { data: DataRow[] }) {
@@ -372,12 +530,12 @@ export function RoiChart({ data }: { data: DataRow[] }) {
       </div>
       <div style={{ ...muted, fontVariantNumeric: "tabular-nums" }}>{money(row.spend)} tracked spend → {money(row.pipeline)} recorded pipeline · {money(row.won)} won</div>
       <div aria-hidden="true" style={{ position: "relative", height: 10, marginTop: 2, borderRadius: 5, background: "rgba(255,255,255,.06)" }}>
-        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: at(row.multiple), minWidth: row.multiple > 0 ? 3 : 0, borderRadius: 5, background: COLORS.blue }} />
+        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: at(row.multiple), minWidth: row.multiple > 0 ? 3 : 0, borderRadius: 5, background: row.multiple >= 1 ? ACCENT : CONTEXT_LIGHT }} />
         <div style={{ position: "absolute", left: at(1), top: -4, bottom: -4, borderLeft: `2px dashed ${COLORS.pale}` }} />
       </div>
     </div>)}
     <div aria-hidden="true" style={{ position: "relative", height: 16, marginTop: -6, ...muted }}><span style={{ position: "absolute", left: 0 }}>0×</span><span style={{ position: "absolute", left: at(1), transform: "translateX(-50%)", whiteSpace: "nowrap", color: COLORS.pale }}>1× break-even</span></div>
-    <div style={{ ...muted }}><i style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: COLORS.blue, marginRight: 6, verticalAlign: "-1px" }} />Bar = same-period recorded pipeline ÷ tracked spend; dashed line = 1× break-even.</div>
+    <div style={{ ...muted }}><i style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: ACCENT, marginRight: 6, verticalAlign: "-1px" }} />At or above break-even · <i style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: CONTEXT_LIGHT, marginRight: 6, verticalAlign: "-1px" }} />Below break-even. Bar = same-period recorded pipeline ÷ tracked spend; dashed line = 1×.</div>
   </div>;
 }
 
@@ -403,6 +561,7 @@ const FUNNEL_STAGES: Record<string, string> = {
 
 export function ActivityVolumesChart({ data }: { data: DataRow[] }) {
   const narrow = useNarrow();
+  const { handlers, opacity } = useActiveIndex();
   const groupOf = (channel: string) => FUNNEL_GROUPS.findIndex((group) => channel in group.channels);
   const rows = data.map((row) => {
     const channel = textValue(row, "channel");
@@ -410,7 +569,7 @@ export function ActivityVolumesChart({ data }: { data: DataRow[] }) {
     const groupIndex = groupOf(channel);
     const group = FUNNEL_GROUPS[groupIndex];
     const source = group?.channels[channel] ?? channel;
-    return { label: `${source} · ${FUNNEL_STAGES[stage] ?? stage}`, fullLabel: `${channel} · ${stage}`, count: numberValue(row, "count"), groupIndex: groupIndex < 0 ? FUNNEL_GROUPS.length : groupIndex, color: group?.color ?? COLORS.pale };
+    return { label: `${source} · ${FUNNEL_STAGES[stage] ?? stage}`, fullLabel: `${channel} · ${stage}`, group: group?.group ?? "Other", count: numberValue(row, "count"), groupIndex: groupIndex < 0 ? FUNNEL_GROUPS.length : groupIndex, color: group?.color ?? COLORS.pale };
   }).filter((row) => Number.isFinite(row.count) && row.count > 0)
     .sort((a, b) => a.groupIndex - b.groupIndex || b.count - a.count);
   if (!rows.length) return <EmptyChart />;
@@ -424,12 +583,16 @@ export function ActivityVolumesChart({ data }: { data: DataRow[] }) {
   const groupsShown = FUNNEL_GROUPS.filter((_, index) => rows.some((row) => row.groupIndex === index));
   return <>
     <div className="mini-chart-label">Positive measured counts · logarithmic scale · separate populations; zero/unavailable rows remain in Show data</div>
-    <ChartShell minHeight={height}><ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 52, top: narrow ? 18 : 8, bottom: 16 }}>
-      <CartesianGrid stroke={COLORS.grid} horizontal={false} vertical />
-      <XAxis type="number" scale="log" domain={[10, topTick]} ticks={ticks} allowDataOverflow tickFormatter={(value: number) => compact.format(value)} tick={axisTick} />
-      <YAxis type="category" dataKey="label" width={narrow ? 134 : 190} tick={funnelTick} interval={0} />
-      <Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} labelFormatter={(_label, payload) => (payload?.[0]?.payload as { fullLabel?: string } | undefined)?.fullLabel ?? String(_label)} formatter={(value: number) => [value.toLocaleString(), "Count"]} />
-      <Line dataKey="count" name="Count" stroke="transparent" strokeWidth={0} isAnimationActive={false} activeDot={{ r: 6 }} dot={(props: { cx?: number; cy?: number; index?: number; payload?: { color?: string } }) => <circle key={`funnel-dot-${props.index}`} cx={props.cx} cy={props.cy} r={5} fill={props.payload?.color ?? COLORS.pale} stroke="#080809" strokeWidth={1} />}>
+    <ChartShell minHeight={height}><ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 52, top: narrow ? 18 : 8, bottom: 16 }} {...handlers}>
+      <CartesianGrid stroke={COLORS.grid} strokeOpacity={0.7} horizontal={false} vertical />
+      <XAxis type="number" scale="log" domain={[10, topTick]} ticks={ticks} allowDataOverflow tickFormatter={(value: number) => compact.format(value)} {...valueAxis} />
+      <YAxis type="category" dataKey="label" width={narrow ? 134 : 190} tick={funnelTick} interval={0} {...categoryAxis} />
+      <Tooltip {...tooltipBase} cursor={false} content={tooltipContent((row) => ({
+        title: String(row.fullLabel),
+        rows: [{ label: "Count", value: count(Number(row.count)), color: String(row.color), strong: true }, { label: "Population", value: String(row.group) }],
+        note: "Separate population; not a sequential funnel step.",
+      }))} />
+      <Line dataKey="count" name="Count" stroke="transparent" strokeWidth={0} isAnimationActive={false} activeDot={{ r: 6 }} dot={(props: { cx?: number; cy?: number; index?: number; payload?: { color?: string } }) => <circle key={`funnel-dot-${props.index}`} cx={props.cx} cy={props.cy} r={5} fill={props.payload?.color ?? COLORS.pale} fillOpacity={opacity(props.index ?? -1)} stroke="#080809" strokeWidth={1} />}>
         <LabelList dataKey="count" position="right" offset={10} formatter={(value: number) => compact.format(value)} fill={COLORS.ink} fontSize={TICK_SIZE} />
       </Line>
     </ComposedChart></ResponsiveContainer></ChartShell>
@@ -478,14 +641,46 @@ export function Heatmap({ data, xKey, yKey, valueKey, valueFormatter = (value: n
 }
 
 export function SegmentWinRateChart({ data }: { data: DataRow[] }) {
-  const rows = data.map((row) => { const rate = numberValue(row, "win_rate"); const deals = numberValue(row, "deals"); const avg = numberValue(row, "avg_deal"); return { segment: textValue(row, "segment__c"), rate: rate * 100, error: [Math.max(0, (rate - numberValue(row, "ci_low", rate)) * 100), Math.max(0, (numberValue(row, "ci_high", rate) - rate) * 100)], deals, avg }; }).sort((a, b) => b.rate - a.rate);
+  const narrow = useNarrow();
+  const { handlers, opacity } = useActiveIndex();
+  const rows = data.map((row) => {
+    const rate = numberValue(row, "win_rate");
+    const deals = numberValue(row, "deals");
+    const avg = numberValue(row, "avg_deal");
+    const low = numberValue(row, "ci_low", rate);
+    const high = numberValue(row, "ci_high", rate);
+    return { segment: textValue(row, "segment__c"), rate: rate * 100, low: low * 100, high: high * 100, error: [Math.max(0, (rate - low) * 100), Math.max(0, (high - rate) * 100)], deals, won: numberValue(row, "won", Number.NaN), avg, pipeline: numberValue(row, "pipeline", Number.NaN) };
+  }).sort((a, b) => b.rate - a.rate);
   if (!rows.length) return <EmptyChart />;
-  const tickLines = new Map(rows.map((row) => [row.segment, [row.segment, `n=${row.deals.toLocaleString()} · avg ${money(row.avg)}`]]));
+  // Overall (pooled) closed-deal win rate across segments, as the reference.
+  const pooledDeals = rows.reduce((sum, row) => sum + row.deals, 0);
+  const pooledWon = rows.reduce((sum, row) => sum + (Number.isFinite(row.won) ? row.won : 0), 0);
+  const overall = pooledDeals > 0 && rows.every((row) => Number.isFinite(row.won)) ? (pooledWon / pooledDeals) * 100 : Number.NaN;
+  const below = (rate: number) => Number.isFinite(overall) && rate < overall;
+  const tickLines = new Map(rows.map((row) => [row.segment, narrow ? [row.segment, `n=${row.deals.toLocaleString()}`] : [row.segment, `n=${row.deals.toLocaleString()} · avg ${money(row.avg)}`]]));
   const tick = stackedTick((value) => tickLines.get(value) ?? [value]);
-  const height = Math.max(220, rows.length * 58 + 40);
-  return <ChartShell minHeight={height}><ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 24, top: 20, bottom: 20 }}>
-    <CartesianGrid {...gridProps} /><XAxis type="number" domain={[0, 100]} ticks={[0, 25, 50, 75, 100]} tickFormatter={(value) => `${value}%`} tick={axisTick} /><YAxis type="category" dataKey="segment" width={150} tick={tick} interval={0} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number, name: string) => [name === "Win rate" ? `${value.toFixed(1)}%` : value, name]} /><Line dataKey="rate" name="Win rate" stroke="transparent" strokeWidth={0} dot={{ fill: COLORS.blue, r: 5, stroke: COLORS.blue, strokeWidth: 1 }} activeDot={{ r: 7 }} isAnimationActive={false}><ErrorBar dataKey="error" direction="x" width={6} stroke={COLORS.slate} /></Line>
-  </ComposedChart></ResponsiveContainer></ChartShell>;
+  const height = Math.max(240, rows.length * 62 + 60);
+  return <><ChartShell minHeight={height}><ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 24, top: 24, bottom: 12 }} {...handlers}>
+    <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} domain={[0, 100]} ticks={narrow ? [0, 50, 100] : [0, 25, 50, 75, 100]} tickFormatter={(value) => `${value}%`} /><YAxis type="category" dataKey="segment" width={narrow ? 96 : 150} tick={tick} interval={0} padding={{ top: 26, bottom: 26 }} {...categoryAxis} />
+    {Number.isFinite(overall) && <ReferenceLine x={overall} stroke={COLORS.pale} strokeDasharray="4 4" strokeOpacity={0.8} label={{ value: `All segments ${overall.toFixed(1)}%`, position: "top", fill: COLORS.pale, fontSize: TICK_SIZE }} />}
+    <Tooltip {...tooltipBase} cursor={false} content={tooltipContent((row) => ({
+      title: String(row.segment),
+      rows: [
+        { label: "Closed-deal win rate", value: `${Number(row.rate).toFixed(1)}%`, color: below(Number(row.rate)) ? ACCENT : COLORS.pale, strong: true },
+        { label: "95% Wilson interval", value: `${Number(row.low).toFixed(1)}–${Number(row.high).toFixed(1)}%` },
+        ...(Number.isFinite(Number(row.won)) ? [{ label: "Won / resolved", value: `${count(Number(row.won))} / ${count(Number(row.deals))}` }] : [{ label: "Resolved deals", value: count(Number(row.deals)) }]),
+        { label: "Average deal", value: formatDollars(Number(row.avg)) },
+        ...(Number.isFinite(Number(row.pipeline)) ? [{ label: "Pipeline", value: formatDollars(Number(row.pipeline)) }] : []),
+      ],
+      note: Number.isFinite(overall) ? `${Number(row.rate) >= overall ? "+" : "−"}${Math.abs(Number(row.rate) - overall).toFixed(1)} pts vs all segments (${overall.toFixed(1)}%)` : undefined,
+      flag: limitedFlag(Number(row.deals), "resolved deals"),
+    }))} />
+    <Line dataKey="rate" name="Win rate" stroke="transparent" strokeWidth={0} isAnimationActive={false} activeDot={false} dot={(props: { cx?: number; cy?: number; index?: number; payload?: { rate?: number } }) => <circle key={`seg-dot-${props.index}`} cx={props.cx} cy={props.cy} r={6} fill={below(props.payload?.rate ?? 0) ? ACCENT : COLORS.pale} fillOpacity={opacity(props.index ?? -1)} stroke="#111113" strokeWidth={1.5} />}>
+      <ErrorBar dataKey="error" direction="x" width={6} stroke={COLORS.slate} />
+      <LabelList dataKey="rate" position="top" offset={10} formatter={(value: number) => `${value.toFixed(1)}%`} fill={COLORS.ink} fontSize={TICK_SIZE} />
+    </Line>
+  </ComposedChart></ResponsiveContainer></ChartShell>
+  {Number.isFinite(overall) && <div className="chart-legend" style={legendStyle} aria-label="Segment win rate legend"><span><i className="dot" style={{ background: ACCENT }} />Below the all-segment rate</span><span><i className="dot" style={{ background: COLORS.pale }} />At or above</span><span>Whiskers · 95% interval</span></div>}</>;
 }
 
 export function CreativeCtrChart({ data }: { data: DataRow[] }) {
@@ -495,41 +690,133 @@ export function CreativeCtrChart({ data }: { data: DataRow[] }) {
   const axisWidth = narrow ? 150 : 200;
   const chars = narrow ? 21 : 27;
   const tick = stackedTick((value) => wrapText(value.replaceAll("_", " "), chars, 2));
-  return <div className="facet-grid">{platforms.map((platform) => {
-    const rows = data.filter((row) => textValue(row, "platform") === platform).sort((a, b) => numberValue(b, "ctr") - numberValue(a, "ctr")).map((row) => ({ ad_name: textValue(row, "ad_name"), ctr: numberValue(row, "ctr"), impressions: numberValue(row, "impressions") }));
-    const ctrTicks = niceTicks(Math.max(...rows.map((row) => row.ctr), 0.0001), 3);
-    const ctrStep = ctrTicks[1] * 100;
-    const ctrDigits = ctrStep >= 1 ? 0 : ctrStep >= 0.1 ? 1 : 2;
-    const height = Math.max(200, rows.length * 44 + 30);
-    return <div className="facet" key={platform}><div className="mini-chart-label">{platform}: top high-volume ads</div><ChartShell minHeight={height}><ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 0, right: 52, top: 14, bottom: 15 }}><CartesianGrid {...gridProps} /><XAxis type="number" domain={[0, ctrTicks[ctrTicks.length - 1]]} ticks={ctrTicks} tickFormatter={(value: number) => value === 0 ? "0%" : `${(value * 100).toFixed(ctrDigits)}%`} tick={axisTick} /><YAxis type="category" dataKey="ad_name" width={axisWidth} tick={tick} interval={0} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, "CTR"]} /><Bar dataKey="ctr" name="CTR" fill={COLORS.blue} barSize={14} radius={[0, 4, 4, 0]} isAnimationActive={false}><LabelList dataKey="ctr" position="right" {...valueLabel((value) => `${(value * 100).toFixed(2)}%`)} /></Bar></ComposedChart></ResponsiveContainer></ChartShell></div>;
-  })}</div>;
+  return <div className="facet-grid">{platforms.map((platform, platformIndex) => <CreativeFacet key={platform} platform={platform} part={platformIndex} rows={data.filter((row) => textValue(row, "platform") === platform)} axisWidth={axisWidth} tick={tick} />)}</div>;
 }
 
-export function SimpleRankedChart({ data, labelKey, valueKey, color = COLORS.blue, formatter = (value: number) => value.toLocaleString(), suffixKey }: { data: DataRow[]; labelKey: string; valueKey: string; color?: string; formatter?: (value: number) => string; suffixKey?: string }) {
-  const rows = data.map((row) => ({ label: prettyLabel(textValue(row, labelKey)), value: numberValue(row, valueKey), suffix: suffixKey ? (suffixKey === "pipeline" ? money(numberValue(row, suffixKey)) : `${textValue(row, suffixKey)} ${suffixKey.replaceAll("_", " ")}`) : "" })).sort((a, b) => b.value - a.value);
+function CreativeFacet({ platform, part, rows: source, axisWidth, tick }: { platform: string; part: number; rows: DataRow[]; axisWidth: number; tick: (props: TickProps) => ReactElement }) {
+  const { handlers, opacity } = useActiveIndex();
+  const rows = [...source].sort((a, b) => numberValue(b, "ctr") - numberValue(a, "ctr")).map((row) => ({ ad_name: textValue(row, "ad_name"), ctr: numberValue(row, "ctr"), impressions: numberValue(row, "impressions"), clicks: numberValue(row, "clicks", Number.NaN) }));
+  const leader = clearLeader(rows.map((row) => row.ctr));
+  const ctrTicks = niceTicks(Math.max(...rows.map((row) => row.ctr), 0.0001), 3);
+  const ctrStep = ctrTicks[1] * 100;
+  const ctrDigits = ctrStep >= 1 ? 0 : ctrStep >= 0.1 ? 1 : 2;
+  const height = Math.max(200, rows.length * 44 + 30);
+  return <div className="facet"><div className="mini-chart-label">{platform}: top high-volume ads</div><ChartShell minHeight={height} part={part}>{(motion) => <ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 0, right: 52, top: 14, bottom: 8 }} {...handlers}>
+    <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} domain={[0, ctrTicks[ctrTicks.length - 1]]} ticks={ctrTicks} tickFormatter={(value: number) => value === 0 ? "0%" : `${(value * 100).toFixed(ctrDigits)}%`} /><YAxis type="category" dataKey="ad_name" width={axisWidth} tick={tick} interval={0} {...categoryAxis} />
+    <Tooltip {...tooltipBase} cursor={false} content={tooltipContent((row) => ({
+      title: String(row.ad_name).replaceAll("_", " "),
+      rows: [
+        { label: "CTR", value: `${(Number(row.ctr) * 100).toFixed(2)}%`, color: leader && row.ad_name === rows[0]?.ad_name ? ACCENT : CONTEXT_LIGHT, strong: true },
+        { label: "Impressions", value: count(Number(row.impressions)) },
+        ...(Number.isFinite(Number(row.clicks)) ? [{ label: "Clicks", value: count(Number(row.clicks)) }] : []),
+      ],
+      note: `${platform} · ads with at least 10,000 impressions`,
+    }))} />
+    <Bar dataKey="ctr" name="CTR" barSize={14} radius={[0, 4, 4, 0]} {...motion}>{rows.map((row, index) => <Cell key={`${row.ad_name}-${index}`} fill={leader && index === 0 ? ACCENT : CONTEXT_LIGHT} fillOpacity={opacity(index)} />)}<LabelList dataKey="ctr" position="right" {...valueLabel((value) => `${(value * 100).toFixed(2)}%`)} /></Bar>
+  </ComposedChart></ResponsiveContainer>}</ChartShell></div>;
+}
+
+export function SimpleRankedChart({ data, labelKey, valueKey, color = COLORS.blue, formatter = (value: number) => value.toLocaleString(), suffixKey, metricLabel, sampleKey, sampleUnit = "observations" }: { data: DataRow[]; labelKey: string; valueKey: string; color?: string; formatter?: (value: number) => string; suffixKey?: string; metricLabel?: string; sampleKey?: string; sampleUnit?: string }) {
+  const narrow = useNarrow();
+  const { handlers, opacity } = useActiveIndex();
+  const rows = data.map((row) => ({
+    label: prettyLabel(textValue(row, labelKey)),
+    value: numberValue(row, valueKey),
+    suffix: suffixKey ? (suffixKey === "pipeline" ? money(numberValue(row, suffixKey)) : `${textValue(row, suffixKey)} ${suffixKey.replaceAll("_", " ")}`) : "",
+    suffixValue: suffixKey ? numberValue(row, suffixKey) : Number.NaN,
+    sample: sampleKey ? numberValue(row, sampleKey, Number.NaN) : Number.NaN,
+  })).sort((a, b) => b.value - a.value);
   if (!rows.length) return <EmptyChart />;
   const longest = Math.max(...rows.map((row) => row.label.length));
   const twoLine = longest > 24;
   const tick = stackedTick((value) => wrapText(value, 24, 2));
   const height = Math.max(230, rows.length * (twoLine ? 40 : 32));
-  return <><ChartShell minHeight={height}><ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 64, top: 16, bottom: 18 }}><CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={formatter} tick={axisTick} /><YAxis type="category" dataKey="label" width={170} tick={tick} interval={0} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number) => [formatField(valueKey, value), valueKey.replaceAll("_", " ")]} /><Bar dataKey="value" fill={color} radius={[0, 4, 4, 0]} barSize={17} isAnimationActive={false}><LabelList dataKey="value" position="right" {...valueLabel(formatter)} /></Bar></ComposedChart></ResponsiveContainer></ChartShell>{suffixKey && <div className="ranked-samples" aria-label="Supporting sample and amount labels">{rows.map(row => <span key={row.label}><b>{row.label}:</b> {row.suffix}</span>)}</div>}</>;
+  const metric = metricLabel ?? columnLabel(valueKey);
+  // Accent only a clear leader among known, adequately sampled categories;
+  // an "Unknown" bucket or a tiny sample never carries the highlight.
+  const eligible = rows.filter((row) => !UNLABELED.test(row.label) && !(Number.isFinite(row.sample) && row.sample < LIMITED_N));
+  const leaderLabel = eligible.length && clearLeader(eligible.map((row) => row.value)) ? eligible[0].label : null;
+  const limited = rows.filter((row) => Number.isFinite(row.sample) && row.sample < LIMITED_N).map((row) => row.label);
+  return <><ChartShell minHeight={height}>{(motion) => <ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 64, top: 16, bottom: 12 }} {...handlers}>
+    <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} tickFormatter={formatter} tickCount={narrow ? 3 : 5} /><YAxis type="category" dataKey="label" width={170} tick={tick} interval={0} {...categoryAxis} />
+    <Tooltip {...tooltipBase} cursor={false} content={tooltipContent((row) => ({
+      title: String(row.label),
+      rows: [
+        { label: metric, value: formatter(Number(row.value)), color: row.label === leaderLabel ? color : CONTEXT_LIGHT, strong: true },
+        ...(suffixKey && Number.isFinite(Number(row.suffixValue)) ? [{ label: columnLabel(suffixKey).replace(/ \(\$\)$/, ""), value: suffixKey === "pipeline" ? formatDollars(Number(row.suffixValue)) : count(Number(row.suffixValue)) }] : []),
+        ...(sampleKey && sampleKey !== suffixKey && Number.isFinite(Number(row.sample)) ? [{ label: columnLabel(sampleKey), value: count(Number(row.sample)) }] : []),
+      ],
+      flag: sampleKey && Number.isFinite(Number(row.sample)) ? limitedFlag(Number(row.sample), sampleUnit) : undefined,
+    }))} />
+    <Bar dataKey="value" radius={[0, 4, 4, 0]} barSize={17} {...motion}>{rows.map((row, index) => <Cell key={row.label} fill={row.label === leaderLabel ? color : CONTEXT_LIGHT} fillOpacity={opacity(index)} />)}<LabelList dataKey="value" position="right" {...valueLabel(formatter)} /></Bar>
+  </ComposedChart></ResponsiveContainer>}</ChartShell>{suffixKey && <div className="ranked-samples" aria-label="Supporting sample and amount labels">{rows.map(row => <span key={row.label}><b>{row.label}:</b> {row.suffix}</span>)}</div>}<LimitedNote labels={limited} unit={sampleUnit} /></>;
 }
 
 const budgetTick = stackedTick((value) => wrapText(value, 11, 2), { anchor: "middle", vertical: false });
+const BUDGET_PARTS = [
+  { key: "activated", label: "Activated media", color: CONTEXT },
+  { key: "holdout", label: "Holdout reserve", color: ACCENT },
+  { key: "experiment", label: "Experiment pool", color: COLORS.azure },
+] as const;
 
 export function BudgetChart({ data }: { data: DataRow[] }) {
   const order = ["Status Quo", "10% Holdout", "Measurement First"];
-  const rows = order.map((scenario) => { const group = data.filter((row) => textValue(row, "Scenario") === scenario); return { scenario, activated: group.reduce((sum, row) => sum + numberValue(row, "Active Spend ($)"), 0), holdout: group.reduce((sum, row) => sum + numberValue(row, "Holdout Reserve ($)"), 0), experiment: group.reduce((sum, row) => sum + numberValue(row, "Experiment Pool ($)"), 0) }; });
-  return <><ChartShell minHeight={300}><ResponsiveContainer width="100%" height={300}><ComposedChart data={rows} margin={{ left: 0, right: 16, top: 18, bottom: 4 }}><CartesianGrid {...gridProps} /><XAxis dataKey="scenario" tick={budgetTick} interval={0} height={40} tickLine={false} /><YAxis tickFormatter={money} tick={axisTick} width={56} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number, name: string) => [formatField("recorded_amount", value), name]} /><Bar dataKey="activated" stackId="budget" fill={COLORS.blue} name="Activated media" isAnimationActive={false} /><Bar dataKey="holdout" stackId="budget" fill={COLORS.amber} name="Holdout reserve" isAnimationActive={false} /><Bar dataKey="experiment" stackId="budget" fill={COLORS.teal} name="Experiment pool" isAnimationActive={false} /></ComposedChart></ResponsiveContainer></ChartShell><div className="chart-legend" style={legendStyle} aria-label="Budget allocation legend"><span><i style={{ background: COLORS.blue }} />Activated media</span><span><i style={{ background: COLORS.amber }} />Holdout reserve</span><span><i style={{ background: COLORS.teal }} />Experiment pool</span></div></>;
+  const rows = order.map((scenario) => {
+    const group = data.filter((row) => textValue(row, "Scenario") === scenario);
+    const activated = group.reduce((sum, row) => sum + numberValue(row, "Active Spend ($)"), 0);
+    const holdout = group.reduce((sum, row) => sum + numberValue(row, "Holdout Reserve ($)"), 0);
+    const experiment = group.reduce((sum, row) => sum + numberValue(row, "Experiment Pool ($)"), 0);
+    return { scenario, activated, holdout, experiment, total: activated + holdout + experiment };
+  });
+  if (!rows.some((row) => row.total > 0)) return <EmptyChart message="No budget scenarios are available." />;
+  const ticks = bestTicks(Math.max(...rows.map((row) => row.total)) * 1.08);
+  return <><ChartShell minHeight={300}>{(motion) => <ResponsiveContainer width="100%" height={300}><ComposedChart data={rows} margin={{ left: 0, right: 16, top: 22, bottom: 4 }}>
+    <CartesianGrid {...gridProps} /><XAxis dataKey="scenario" tick={budgetTick} interval={0} height={40} {...categoryAxis} /><YAxis {...valueAxis} domain={[0, ticks[ticks.length - 1]]} ticks={ticks} tickFormatter={money} width={56} />
+    <Tooltip {...tooltipBase} cursor={bandCursor} content={tooltipContent((row) => ({
+      title: String(row.scenario),
+      rows: [
+        ...BUDGET_PARTS.map((part) => ({ label: part.label, value: `${formatDollars(Number(row[part.key]))} · ${Number(row.total) ? pct(Number(row[part.key]) / Number(row.total), 0) : "0%"}`, color: part.color })),
+        { label: "Total budget", value: formatDollars(Number(row.total)), strong: true },
+      ],
+      note: "Every plan keeps the same total budget.",
+    }))} />
+    {BUDGET_PARTS.map((part, index) => <Bar key={part.key} dataKey={part.key} stackId="budget" fill={part.color} name={part.label} maxBarSize={180} {...motion}>{index === BUDGET_PARTS.length - 1 && <LabelList dataKey="total" position="top" offset={8} formatter={(value: number) => `${money(value)} total`} fill={COLORS.ink} fontSize={TICK_SIZE} />}</Bar>)}
+  </ComposedChart></ResponsiveContainer>}</ChartShell><div className="chart-legend" style={legendStyle} aria-label="Budget allocation legend">{BUDGET_PARTS.map((part) => <span key={part.key}>{swatch(part.color)}{part.label}</span>)}</div></>;
 }
 
 export function VelocityChart({ data }: { data: DataRow[] }) {
-  const rows = data.filter((row) => numberValue(row, "deal_count") >= 5).map((row) => { const median = numberValue(row, "median_days"); const count = numberValue(row, "deal_count"); return { channel: displayName(textValue(row, "channel_category")), median, error: [Math.max(0, median - numberValue(row, "p25", median)), Math.max(0, numberValue(row, "p75", median) - median)], count }; }).sort((a, b) => b.median - a.median);
+  const narrow = useNarrow();
+  const { handlers, opacity } = useActiveIndex();
+  const rows = data.filter((row) => numberValue(row, "deal_count") >= 5).map((row) => {
+    const median = numberValue(row, "median_days");
+    const count = numberValue(row, "deal_count");
+    const p25 = numberValue(row, "p25", median);
+    const p75 = numberValue(row, "p75", median);
+    return { channel: displayName(textValue(row, "channel_category")), median, p25, p75, error: [Math.max(0, median - p25), Math.max(0, p75 - median)], count, limited: count < LIMITED_N };
+  }).sort((a, b) => b.median - a.median);
   if (!rows.length) return <EmptyChart message="No channel has at least five won deals." />;
-  const tickLines = new Map(rows.map((row) => [row.channel, [row.channel, `n=${row.count.toLocaleString()} won`]]));
+  const tickLines = new Map(rows.map((row) => [row.channel, [row.channel, `n=${row.count.toLocaleString()} won${row.limited ? " · limited" : ""}`]]));
   const tick = stackedTick((value) => tickLines.get(value) ?? [value]);
-  const height = Math.max(240, rows.length * 46 + 30);
-  return <ChartShell minHeight={height}><ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 24, top: 20, bottom: 20 }}><CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={(value) => `${value}d`} tick={axisTick} /><YAxis type="category" dataKey="channel" width={160} tick={tick} interval={0} /><Tooltip contentStyle={tooltipStyle} labelStyle={tooltipLabelStyle} formatter={(value: number) => [`${value.toFixed(0)} days`, "Median"]} /><Line dataKey="median" name="Median days" stroke="transparent" strokeWidth={0} dot={{ fill: COLORS.blue, r: 5, stroke: COLORS.blue, strokeWidth: 1 }} activeDot={{ r: 7 }} isAnimationActive={false}><ErrorBar dataKey="error" direction="x" width={7} stroke={COLORS.slate} /></Line></ComposedChart></ResponsiveContainer></ChartShell>;
+  const height = Math.max(260, rows.length * 48 + 50);
+  const ticks = bestTicks(Math.max(...rows.map((row) => row.p75)));
+  const limited = rows.filter((row) => row.limited);
+  return <><ChartShell minHeight={height}><ResponsiveContainer width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 24, top: 12, bottom: 12 }} {...handlers}>
+    <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} domain={[0, ticks[ticks.length - 1]]} ticks={narrow ? ticks.filter((_, index) => index % 2 === 0) : ticks} tickFormatter={(value) => `${value}d`} /><YAxis type="category" dataKey="channel" width={narrow ? 128 : 160} tick={tick} interval={0} padding={{ top: 20, bottom: 20 }} {...categoryAxis} />
+    <Tooltip {...tooltipBase} cursor={false} content={tooltipContent((row) => ({
+      title: String(row.channel),
+      rows: [
+        { label: "Median days to close", value: `${Number(row.median).toFixed(0)} days`, color: row.limited ? CONTEXT_LIGHT : ACCENT, strong: true },
+        { label: "Interquartile range", value: `${Number(row.p25).toFixed(0)}–${Number(row.p75).toFixed(0)} days` },
+        { label: "Won deals", value: count(Number(row.count)) },
+      ],
+      flag: limitedFlag(Number(row.count), "won deals"),
+    }))} />
+    <Line dataKey="median" name="Median days" stroke="transparent" strokeWidth={0} isAnimationActive={false} activeDot={false} dot={(props: { cx?: number; cy?: number; index?: number; payload?: { limited?: boolean } }) => <circle key={`velocity-dot-${props.index}`} cx={props.cx} cy={props.cy} r={6} fill={props.payload?.limited ? "#111113" : ACCENT} stroke={props.payload?.limited ? COLORS.pale : "#111113"} strokeWidth={props.payload?.limited ? 2 : 1.5} opacity={opacity(props.index ?? -1)} />}>
+      <ErrorBar dataKey="error" direction="x" width={7} stroke={COLORS.slate} />
+      <LabelList dataKey="median" position="top" offset={10} formatter={(value: number) => `${value.toFixed(0)}d`} fill={COLORS.ink} fontSize={TICK_SIZE} />
+    </Line>
+  </ComposedChart></ResponsiveContainer></ChartShell>
+  <div className="chart-legend" style={legendStyle} aria-label="Deal velocity legend"><span><i className="dot" style={{ background: ACCENT }} />Median · {LIMITED_N}+ won deals</span>{limited.length > 0 && <span><i className="dot" style={{ border: `2px solid ${COLORS.pale}`, background: "#111113" }} />Median · fewer than {LIMITED_N} (directional)</span>}<span>Whiskers · 25th–75th percentile</span></div></>;
 }
 
 const FIT_ORDER = ["Strong", "Moderate", "Weak"];
@@ -556,11 +843,11 @@ export function ChartRenderer({ id, data, totalPipeline, coverageMix }: { id: st
     case "c-seg-heatmap": return <Heatmap data={data.segment_industry} xKey="segment__c" yKey="industry" valueKey="total_pipeline" valueFormatter={formatDollarsCompact} domain={[0, Math.max(...data.segment_industry.map((row) => numberValue(row, "total_pipeline")), 1)]} />;
     case "c-seg-winrate": return <SegmentWinRateChart data={data.segment_win_rate} />;
     case "c-creative-ctr": return <CreativeCtrChart data={data.creative_ctr} />;
-    case "c-creative-attr": return <SimpleRankedChart data={data.creative_tone} labelKey="_copytone" valueKey="ctr" color={COLORS.blue} formatter={(value) => `${(value * 100).toFixed(2)}%`} suffixKey="impressions" />;
-    case "c-email-seniority": return <SimpleRankedChart data={data.email_seniority} labelKey="_seniority" valueKey="click_event_share" color={COLORS.amber} formatter={(value) => `${(value * 100).toFixed(1)}%`} suffixKey="engaged_people" />;
+    case "c-creative-attr": return <SimpleRankedChart data={data.creative_tone} labelKey="_copytone" valueKey="ctr" color={COLORS.blue} formatter={(value) => `${(value * 100).toFixed(2)}%`} suffixKey="impressions" metricLabel="CTR" sampleKey="ads" sampleUnit="ads" />;
+    case "c-email-seniority": return <SimpleRankedChart data={data.email_seniority} labelKey="_seniority" valueKey="click_event_share" color={COLORS.blue} formatter={(value) => `${(value * 100).toFixed(1)}%`} suffixKey="engaged_people" metricLabel="Click-event share" sampleKey="engaged_people" sampleUnit="engaged people" />;
     case "c-budget-scenario": return <BudgetChart data={data.budget_scenarios} />;
     case "c-deal-velocity": return <VelocityChart data={data.deal_velocity} />;
-    case "c-journey": return <SimpleRankedChart data={data.journey_sequences} labelKey="sequence_2ch" valueKey="deals" formatter={(value) => value.toLocaleString()} suffixKey="pipeline" />;
+    case "c-journey": return <SimpleRankedChart data={data.journey_sequences} labelKey="sequence_2ch" valueKey="deals" formatter={(value) => value.toLocaleString()} suffixKey="pipeline" metricLabel="Won deals" sampleKey="deals" sampleUnit="won deals" />;
     case "c-targeting-matrix": return <TargetingHeatmap data={data.targeting} />;
     default: return id === "coverage-mix" ? <CoverageMixChart data={coverageMix} /> : <EmptyChart />;
   }
