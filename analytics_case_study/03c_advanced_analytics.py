@@ -96,7 +96,7 @@ def build_account_coverage():
     opp_domains = set(opps_d["opp_domain"].dropna().str.lower().str.strip()) if "opp_domain" in opps_d.columns else set()
 
     rows = []
-    for domain in acct_domains:
+    for domain in sorted(acct_domains):
         row = {
             "domain": domain,
             "population_label": "CRM account domains",

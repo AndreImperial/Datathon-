@@ -29,3 +29,6 @@ Analytics - Case Study.pptx
 
 # Throwaway local package installs used during audit runs
 audit/python-deps/
+
+# Agent worktrees and local Claude Code state
+.claude/

@@ -47,7 +47,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-DtCa2VeM.js",
+    "file": "assets/index-BFzV6wde.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -60,7 +60,7 @@
       "src/components/Charts.tsx"
     ],
     "css": [
-      "assets/index-B_tdoe2C.css"
+      "assets/index-B3rNnK_A.css"
     ],
     "assets": [
       "assets/manrope-cyrillic-wght-normal-Dvxsihut.woff2",
@@ -74,7 +74,7 @@
     ]
   },
   "src/components/Charts.tsx": {
-    "file": "assets/Charts-DZg6QXU2.js",
+    "file": "assets/Charts-B7cAv5SK.js",
     "name": "Charts",
     "src": "src/components/Charts.tsx",
     "isDynamicEntry": true,
