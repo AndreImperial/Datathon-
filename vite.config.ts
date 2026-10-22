@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { copyFile, mkdir } from "node:fs/promises";
@@ -25,7 +26,10 @@ function preserveAnalysisArchive() {
 export default defineConfig({
   root: resolve(rootDirectory, "frontend"),
   base: "./",
-  plugins: [react(), preserveAnalysisArchive()],
+  plugins: [react(), tailwindcss(), preserveAnalysisArchive()],
+  // Tailwind v4 runs through @tailwindcss/vite; an inline (empty) PostCSS config
+  // stops Vite from picking up a stray postcss.config.* from a parent directory.
+  css: { postcss: { plugins: [] } },
   build: {
     outDir: outputDirectory,
     emptyOutDir: true,

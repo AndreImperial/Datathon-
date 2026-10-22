@@ -1,6 +1,60 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*
+ * Tailwind CSS v4 (CSS-first config; replaces tailwind.config.js + postcss.config.js).
+ * Sources mirror the former v3 `content` globs, including Tremor's compiled classes.
+ */
+@import "tailwindcss" source(none);
+
+@source "../index.html";
+@source "./**/*.{js,ts,jsx,tsx}";
+@source "../../node_modules/@tremor/**/*.{js,ts,jsx,tsx}";
+
+/* Former v3 safelist: chart colour classes Tremor builds at runtime. */
+@source inline("{fill,stroke}-{blue,teal,cyan,emerald,slate,amber,gray}-500 bg-teal-500");
+
+/* Keep v3 hover semantics (v4 otherwise gates hover: behind @media (hover: hover)). */
+@custom-variant hover (&:hover);
+
+@theme {
+  --font-sans: "Manrope Variable", "Manrope", sans-serif;
+  --font-display: "Manrope Variable", "Manrope", sans-serif;
+
+  --shadow-lift: 0 20px 50px rgba(0,0,0,0.42);
+
+  --color-ink: #f7f4f4;
+  --color-cobalt: #e12636;
+  --color-azure: #ff7b84;
+  --color-canvas: #070708;
+  --color-amber: #c4616a;
+  --color-amber-500: #c4616a;
+  --color-amber-600: #a24750;
+  --color-teal: #f2eeee;
+  --color-teal-500: #f2eeee;
+  --color-teal-600: #d7cfd0;
+  --color-blue-500: #e12636;
+  --color-blue-600: #c1121f;
+  --color-blue-700: #a90f1b;
+  --color-cyan-500: #ff7b84;
+  --color-cyan-600: #e12636;
+  --color-emerald-500: #f2eeee;
+  --color-emerald-600: #d7cfd0;
+  --color-slate-500: #91888a;
+  --color-slate-600: #746b6d;
+  --color-gray-500: #6f6769;
+  --color-gray-600: #554e50;
+}
+
+/* v3 preflight compatibility (v4 changed these defaults). */
+@layer base {
+  *, ::after, ::before, ::backdrop, ::file-selector-button { border-color: #e5e7eb; }
+  input::placeholder, textarea::placeholder { color: #9ca3af; }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+}
+
+/*
+ * App styles live in the utilities layer, after the generated utilities, so the
+ * cascade (specificity, then source order) matches the v3 build exactly.
+ */
+@layer utilities {
 
 :root {
   color: #f7f4f4;
@@ -509,4 +563,5 @@ footer { display: flex; align-items: center; justify-content: space-between; gap
   .chart-stage svg [stroke="#F7F4F4"], .chart-stage svg [stroke="#F2EEEE"] { stroke: #49645d !important; }
   .slide-table-wrap { break-inside: auto; }
   .slide-table th { position: static; }
+}
 }
