@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from artifact_safety import assert_public_fields
+from analytics_case_study.utils.population import canonical_opportunities
 from analytics_case_study.utils.metrics import resolved_stage_mask, wilson_interval
 
 
@@ -46,6 +48,8 @@ def _clean(value):
 
 def _records(name: str, columns: list[str] | None = None, source_dir: Path = DATA_DIR) -> list[dict]:
     frame = pd.read_parquet(source_dir / f"{name}.parquet")
+    if name == "opportunities":
+        frame = canonical_opportunities(frame)
     if columns:
         frame = frame[[column for column in columns if column in frame.columns]]
     return [
@@ -84,7 +88,7 @@ def _monthly_pipeline() -> list[dict]:
     path = CLEAN_DIR / "opportunities.parquet"
     if not path.exists():
         return []
-    frame = pd.read_parquet(path).copy()
+    frame = canonical_opportunities(pd.read_parquet(path)).copy()
     date_col = next((column for column in frame.columns if "createdate" in column.lower()), None)
     required = {"_amount", "channel_category"}
     if not date_col or not required.issubset(frame.columns):
@@ -119,7 +123,7 @@ def _segment_win_rate() -> list[dict]:
     path = CLEAN_DIR / "opportunities.parquet"
     if not path.exists():
         return []
-    frame = pd.read_parquet(path)
+    frame = canonical_opportunities(pd.read_parquet(path))
     stage_col = next((column for column in frame.columns if "current_stage" in column.lower()), None)
     won_col = "iswon" if "iswon" in frame.columns else ("_iswon" if "_iswon" in frame.columns else None)
     required = {"segment__c", "_opportunity_id", "_amount"}
@@ -186,21 +190,21 @@ def _tables(payload: dict, context: dict) -> dict:
     metrics = context.get("metrics", {})
     essential_rows = [
         {"Priority": "1", "Decision": "Protect quality", "Why": f"Closed-deal win rate moved from {metrics.get('cohort_start_win_rate', 'N/A')} to {metrics.get('cohort_end_win_rate', 'N/A')} across cohorts at least 80% resolved.", "Next step": "Run a quarterly ICP and qualification review before scaling volume."},
-        {"Priority": "2", "Decision": "Expand coverage", "Why": f"{metrics.get('unreached_pct', 'N/A')} of CRM account domains are unreached by tracked email or 6sense.", "Next step": "Launch email-first coverage test with a holdout group."},
+        {"Priority": "2", "Decision": "Expand coverage", "Why": f"{metrics.get('unreached_pct', 'N/A')} of CRM account domains are unreached by tracked email or 6sense.", "Next step": "Define exposure before future outcomes; exclude customers and active pipeline, then randomize eligible strong-fit domains to treatment and holdout."},
         {"Priority": "3", "Decision": "Use attribution carefully", "Why": f"{metrics.get('linked_opportunities', 'N/A')} opportunities link to classified marketing touches; {metrics.get('linked_win_share', 'N/A')} of won deals are covered.", "Next step": "Use journey models for hypothesis generation, then validate lift with holdouts."},
     ]
     confidence_rows = [
-        {"Recommendation": "Expand coverage to unreached CRM account domains.", "Confidence": "High", "Why We Believe It": f"{metrics.get('unreached_accounts', 'N/A')} CRM account domains are unreached, and reached groups show materially higher opportunity rates than unreached accounts.", "What To Test Next": "Prioritize strong-fit unreached accounts and compare opportunity creation against a holdout group."},
+        {"Recommendation": "Expand coverage to unreached CRM account domains.", "Confidence": "High", "Why We Believe It": f"{metrics.get('unreached_accounts', 'N/A')} CRM account domains are unreached, and 2024 reached groups show higher all-history opportunity prevalence; time ordering and selection prevent a conversion or lift claim.", "What To Test Next": "Exclude existing customers and active pipeline; define exposure before future opportunity outcomes, then compare eligible strong-fit domains with a randomized holdout."},
         {"Recommendation": "Coordinate email engagement with 6sense display.", "Confidence": "Medium", "Why We Believe It": "Journey and attribution patterns show email often starts conversations while 6sense appears later in the path.", "What To Test Next": "Trigger display frequency after email engagement and measure lift in meetings, opportunities, pipeline, and win rate."},
         {"Recommendation": "Tighten ICP and qualification criteria.", "Confidence": "High", "Why We Believe It": f"Cohort analysis shows pipeline growth alongside a mature-cohort closed-win-rate move from {metrics.get('cohort_start_win_rate', 'N/A')} to {metrics.get('cohort_end_win_rate', 'N/A')}.", "What To Test Next": "Track win rate, stage conversion, and disqualification reasons by source and profile fit."},
         {"Recommendation": "Reserve budget for a causal measurement plan.", "Confidence": "High", "Why We Believe It": "Only two paid channels have tracked spend, one has a single opportunity, and neither has recorded won revenue.", "What To Test Next": "Use a budget-neutral holdout and pre-register incremental qualified pipeline as the decision metric."},
     ]
     action_rows = [
-        {"Priority": "P1", "Action": "Coverage: reach unreached CRM account domains with email first, then test 6sense overlay with a holdout.", "Why": f"Email-only accounts show a {metrics.get('email_only_opportunity_rate', 'N/A')} opportunity rate and both-channel accounts show {metrics.get('both_channels_opportunity_rate', 'N/A')}, compared with {metrics.get('not_reached_opportunity_rate', 'N/A')} for unreached accounts.", "Measure Success With": "Account coverage, opportunity rate, incremental lift, pipeline created."},
+        {"Priority": "P1", "Action": "Coverage: test email-first reach with a randomized holdout after customer and active-pipeline exclusions.", "Why": f"Email-only accounts show a {metrics.get('email_only_opportunity_rate', 'N/A')} historical opportunity prevalence and both-channel accounts show {metrics.get('both_channels_opportunity_rate', 'N/A')}, compared with {metrics.get('not_reached_opportunity_rate', 'N/A')} for unreached accounts.", "Measure Success With": "Future opportunity creation after assigned exposure, qualified pipeline and randomized treatment-minus-holdout lift; current prevalence is not the baseline."},
         {"Priority": "P1", "Action": "Pipeline quality: tighten ICP and qualification criteria.", "Why": f"Quarterly pipeline is rising while closed-deal win rate moved from {metrics.get('cohort_start_win_rate', 'N/A')} to {metrics.get('cohort_end_win_rate', 'N/A')}.", "Measure Success With": "Win rate, stage conversion, disqualification reasons."},
         {"Priority": "P2", "Action": "Attribution reporting: report sourced and influenced side by side.", "Why": f"Sourced pipeline is {metrics.get('sourced_pipeline', 'N/A')}, while influenced pipeline is {metrics.get('marketing_influenced_pipeline', 'N/A')}.", "Measure Success With": "Sourced pipeline, influenced pipeline, influenced won revenue."},
-        {"Priority": "P2", "Action": "Sales prioritization: use win probability bands in weekly pipeline review.", "Why": f"The leakage-reduced baseline scored {metrics.get('active_scored_opportunities', 'N/A')} active deals using opportunity-time fields.", "Measure Success With": "Close rate by probability band, sales follow-up SLA."},
-        {"Priority": "P3", "Action": "Creative: scale high-CTR creative patterns and retire weak ads.", "Why": "Creative patterns are tied to click efficiency before accounts become opportunities.", "Measure Success With": "CTR, CPC, form fills, account engagement."},
+        {"Priority": "P2", "Action": "Model validation: evaluate retrospective scores before sales use.", "Why": f"The exploratory calendar-only resolved-within-180-days baseline scored {metrics.get('active_scored_opportunities', 'N/A')} active deals using creation-calendar fields; scores are retrospective research evidence.", "Measure Success With": "Future-cohort calibration and precision/recall before operational use."},
+        {"Priority": "P3", "Action": "Creative: test engagement patterns within matched platform/audience conditions.", "Why": "CTR is descriptive and audience/delivery/creative attributes are confounded; no causal creative effect is identified.", "Measure Success With": "Qualified-opportunity outcomes, delivery coverage and cost guardrails; CTR is a supporting diagnostic."},
     ]
     deliverable_rows = [
         {"Rubric Area": "Data Processing", "Where It Is Answered": "Pipeline runner and methodology notes", "What The Evaluator Should See": "Eight raw sources are cleaned, deduplicated, normalized by domain, and rebuilt through reproducible scripts."},
@@ -266,7 +270,7 @@ def _chart_metadata() -> list[dict]:
     common = "Source-backed metric; see the analyst explanation and caveat in this section."
     entries = [
         ("c-essential-contribution", "s-essential", "Marketing Contribution vs Total Pipeline", "Pipeline ($)", "attribution", ["attribution_model", "attributed_pipeline"], "$", common, "c-essential-contribution"),
-        ("c-essential-coverage", "s-essential", "CRM Account Coverage and Observed Opportunity Rate", "CRM account domains and observed opportunity rate", "coverage", ["coverage_tier", "accounts", "opp_rate", "opp_rate_ci_low", "opp_rate_ci_high"], "accounts; rate", "Coverage groups are observational, not randomized; the source population is all CRM account domains, not an approved target list.", "c-essential-coverage"),
+        ("c-essential-coverage", "s-essential", "CRM Account Coverage and Historical Opportunity Prevalence", "CRM account domains and historical opportunity prevalence", "coverage", ["coverage_tier", "accounts", "opp_rate", "opp_rate_ci_low", "opp_rate_ci_high"], "accounts; rate", "Coverage groups are observational, not randomized; the source population is all CRM account domains, not an approved target list.", "c-essential-coverage"),
         ("c-essential-cohort", "s-essential", "Pipeline Cohorts - Volume, Closed-Deal Win Rate, and Maturity", "Pipeline ($), win rate, and resolved share", "cohorts", ["quarter", "pipeline", "closed_win_rate", "resolved_share", "is_mature"], "$; rate", "Recent cohorts with low resolved share are provisional.", "c-essential-cohort"),
         ("c-bar-channel", "s-exec", "Pipeline by Channel", "Pipeline ($)", "channel_pipeline", ["channel_category", "total_pipeline", "pipeline_pct"], "$", common, "c-bar-channel"),
         ("c-donut-won", "s-exec", "Won Revenue by Channel", "Won revenue ($)", "channel_pipeline", ["channel_category", "won_pipeline", "won_count"], "$", "Only channels with won revenue are shown.", "c-donut-won"),
@@ -274,7 +278,7 @@ def _chart_metadata() -> list[dict]:
         ("c-attrib-comparison", "s-attrib", "Multi-Touch Attribution by Channel and Model", "Attributed pipeline ($)", "attribution", ["channel", "attribution_model", "attributed_pipeline"], "$", "Attribution is descriptive journey context, not causal proof.", "c-attrib-comparison"),
         ("c-sourced-influenced", "s-attrib", "Marketing Contribution vs Total Pipeline", "Sourced and influenced pipeline ($)", "attribution", ["attribution_model", "attributed_pipeline"], "$", "Sourced and influenced totals answer different questions.", "c-essential-contribution"),
         ("c-attrib-waterfall", "s-attrib", "Credit Shift: Last-Touch vs First-Touch by Channel", "Credit delta ($)", "attribution", ["channel", "attribution_model", "attributed_pipeline"], "$", "Model allocation changes do not establish incrementality.", "c-attrib-waterfall"),
-        ("c-spend-pipeline", "s-channel", "Tracked-Spend ROI by Channel", "ROI multiple", "channel_pipeline", ["channel_category", "channel_spend", "pipeline_roi", "revenue_roi"], "×", "Only two paid channels have spend; outcomes are sparse.", "c-spend-pipeline"),
+        ("c-spend-pipeline", "s-channel", "Tracked-Spend ROI by Channel", "ROI multiple", "channel_pipeline", ["channel_category", "channel_spend", "pipeline_roi", "revenue_roi", "pipeline_period_start", "pipeline_period_end", "spend_period_start", "spend_period_end", "period_matched_pipeline", "spend_measurement_status"], "×; recorded amount; dates", "Only two paid channels have spend; outcomes are sparse.", "c-spend-pipeline"),
         ("c-funnel", "s-channel", "Channel Activity Volumes (Separate Populations)", "Count on log scale", "funnel_metrics", ["channel", "stage", "count", "metric_type", "event_share"], "count", "These are separate populations, not sequential funnel steps.", "c-funnel"),
         ("c-seg-heatmap", "s-segment", "Pipeline Heatmap: Industry x Segment", "Pipeline ($)", "segment_industry", ["industry", "segment__c", "total_pipeline"], "$", common, "c-seg-heatmap"),
         ("c-seg-winrate", "s-segment", "Closed-Deal Win Rate by Segment", "Resolved-only win rate", "segment_win_rate", ["segment__c", "win_rate", "ci_low", "ci_high", "deals", "avg_deal"], "rate; deals; $", "95% Wilson interval; resolved opportunities only.", "c-seg-winrate"),
@@ -282,17 +286,17 @@ def _chart_metadata() -> list[dict]:
         ("c-creative-attr", "s-creative", "6sense CTR by Recorded Copy Tone", "CTR and impressions", "creative_tone", ["_copytone", "ctr", "impressions", "ads"], "rate; impressions", "Unknown dominates delivery; labeled comparisons have limited volume.", "c-creative-attr"),
         ("c-email-seniority", "s-creative", "Click-Event Share Within the Email Engagement Log by Seniority", "Click events / recorded engagement events", "email_seniority", ["_seniority", "click_event_share", "engaged_people", "engagement_events"], "event share; people", "Delivered-email counts are unavailable.", "c-email-seniority"),
         ("c-budget-scenario", "s-budget", "Budget-Neutral Measurement Plans", "Tracked budget ($)", "budget_scenarios", ["Scenario", "Channel", "Active Spend ($)", "Holdout Reserve ($)", "Experiment Pool ($)", "Total Budget ($)"], "$", "No pipeline forecast is shown because paid-channel outcomes are sparse.", "c-budget-scenario"),
-        ("c-feat-imp", "s-advanced", "Win Model: Opportunity-Time Feature Importance", "Importance score", "feature_importance", ["feature", "importance"], "importance", "Feature importance supports prioritization, not causal interpretation.", "c-feat-imp"),
-        ("c-win-prob", "s-advanced", "Active Opportunity Score Distribution", "Win probability distribution", "win_probability", ["_opportunity_id", "win_probability"], "probability", "Active scored opportunities only; no operating cutoff is implied.", "c-win-prob"),
-        ("c-account-coverage", "s-advanced", "CRM Account Coverage and Observed Opportunity Rate", "CRM account domains and observed opportunity rate", "coverage", ["coverage_tier", "accounts", "opp_rate", "opp_rate_ci_low", "opp_rate_ci_high"], "accounts; rate", "Association only because coverage groups are not randomized; the source population is all CRM account domains, not an approved target list.", "c-essential-coverage"),
+        ("c-feat-imp", "s-advanced", "Exploratory Calendar Model: Feature Importance", "Importance score", "feature_importance", ["feature", "importance"], "importance", "Calendar-only resolved-within-180-days target; exploratory retrospective evidence.", "c-feat-imp"),
+        ("c-win-prob", "s-advanced", "Active Opportunity Score Distribution", "Win probability distribution", "win_probability", ["score_band", "active_opportunities"], "probability interval; count", "Active scored opportunities only; no operating cutoff is implied.", "c-win-prob"),
+        ("c-account-coverage", "s-advanced", "CRM Account Coverage and Historical Opportunity Prevalence", "CRM account domains and historical opportunity prevalence", "coverage", ["coverage_tier", "accounts", "opp_rate", "opp_rate_ci_low", "opp_rate_ci_high"], "accounts; rate", "Association only because coverage groups are not randomized; the source population is all CRM account domains, not an approved target list.", "c-essential-coverage"),
         ("c-deal-velocity", "s-advanced", "Deal Velocity - Median Days to Close with IQR", "Days to close", "deal_velocity", ["channel_category", "median_days", "p25", "p75", "deal_count"], "days; deals", "Channels with at least five won deals.", "c-deal-velocity"),
-        ("c-journey", "s-advanced", "Winning Touchpoint Journey Sequences", "Won deals and pipeline", "journey_sequences", ["sequence_2ch", "amount"], "deals; $", "Sequence counts are descriptive of linked journeys.", "c-journey"),
+        ("c-journey", "s-advanced", "Winning Touchpoint Journey Sequences", "Won deals and pipeline", "journey_sequences", ["sequence_2ch", "deals", "pipeline"], "deals; recorded amount", "Sequence counts are descriptive of linked journeys.", "c-journey"),
         ("c-targeting-matrix", "s-advanced", "Win Rate by Segment and 6sense Profile Fit", "Win rate and deal count", "targeting", ["segment__c", "accountprofilefit6sense__c", "adjusted_win_rate", "deals", "evidence_tier"], "rate; deals", "Cells below n=30 are exploratory.", "c-targeting-matrix"),
         ("c-cohort", "s-advanced", "Pipeline Cohorts - Volume, Closed-Deal Win Rate, and Maturity", "Pipeline ($), win rate, and resolved share", "cohorts", ["quarter", "pipeline", "closed_win_rate", "resolved_share", "is_mature"], "$; rate", "Recent cohorts with low resolved share are provisional.", "c-essential-cohort"),
     ]
     summaries = {
         "c-essential-contribution": "Influenced pipeline is larger than sourced pipeline; both are descriptive measures rather than causal lift.",
-        "c-essential-coverage": "Not Reached is the largest coverage tier, while reached tiers show higher observed opportunity rates.",
+        "c-essential-coverage": "Not Reached is the largest coverage tier, while reached tiers show higher historical opportunity prevalences.",
         "c-essential-cohort": "Recent pipeline grows across cohorts, but resolved share determines whether a cohort is mature enough for win-rate comparison.",
         "c-bar-channel": "Total pipeline is concentrated in a small number of CRM channel categories; the ranking is descriptive, not causal.",
         "c-donut-won": "Recorded won revenue is concentrated in relationship-led channels; only channels with positive won revenue appear.",
@@ -308,8 +312,8 @@ def _chart_metadata() -> list[dict]:
         "c-creative-attr": "Unknown copy tone remains visible as a large delivery class; labeled tone comparisons have less volume.",
         "c-email-seniority": "Click-event share is measured within recorded engagement events because delivered-email counts are unavailable.",
         "c-budget-scenario": "All three budget plans keep the same total budget while reallocating activated, holdout, and experiment spend.",
-        "c-feat-imp": "Feature importance ranks opportunity-time predictors; importance is predictive prioritization, not causal effect.",
-        "c-win-prob": "Active opportunity scores span several probability bands; the distribution does not define an operating cutoff.",
+        "c-feat-imp": "Feature importance ranks creation-calendar predictors for the exploratory resolved-within-180-days target.",
+        "c-win-prob": "Active scores are exploratory retrospective estimates for the resolved-within-180-days target; no operating probability is established.",
         "c-account-coverage": "Account coverage repeats the CRM-domain population with separate volume and observed-rate panels; groups are observational.",
         "c-deal-velocity": "Median days to close is compared with an interquartile range for channels with at least five won deals.",
         "c-journey": "The most frequent winning touchpoint sequences are shown with deal counts and recorded pipeline.",
@@ -365,8 +369,8 @@ def _chart_data(datasets: dict[str, list[dict]]) -> dict[str, list[dict]]:
     for row in datasets.get("journey_sequences", []):
         key = str(row.get("sequence_2ch", ""))
         current = journey_counts.setdefault(key, {"sequence_2ch": key, "deals": 0, "pipeline": 0})
-        current["deals"] += 1
-        current["pipeline"] += float(row.get("amount", 0) or 0)
+        current["deals"] += int(row.get("deals", 0))
+        current["pipeline"] += float(row.get("pipeline", 0) or 0)
     journey = sorted(journey_counts.values(), key=lambda row: int(row["deals"]))[-10:]
 
     return {
@@ -397,6 +401,26 @@ def _chart_data(datasets: dict[str, list[dict]]) -> dict[str, list[dict]]:
     }
 
 
+def _score_histogram() -> list[dict]:
+    frame = pd.read_parquet(DATA_DIR / "win_probability.parquet")
+    scores = pd.to_numeric(frame.get("win_probability", pd.Series(dtype=float)), errors="coerce").dropna()
+    if scores.empty:
+        return []
+    counts, edges = np.histogram(scores, bins=np.linspace(0, 1, 11))
+    return [{"score_band": f"[{edges[i]:.0%}, {edges[i+1]:.0%}{']' if i == 9 else ')'}", "lower_bound": float(edges[i]), "upper_bound": float(edges[i+1]), "active_opportunities": int(count)} for i, count in enumerate(counts)]
+
+
+def _aggregate_journeys() -> list[dict]:
+    rows = _records("journey_sequences", ["sequence_2ch", "amount"])
+    groups = {}
+    for row in rows:
+        key = row.get("sequence_2ch")
+        group = groups.setdefault(key, {"sequence_2ch": key, "deals": 0, "pipeline": 0.0})
+        group["deals"] += 1
+        group["pipeline"] += float(row.get("amount") or 0)
+    return list(groups.values())
+
+
 def main() -> None:
     PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -414,7 +438,7 @@ def main() -> None:
             "generated_from": "validated Parquet outputs",
             "methodology": "365-day primary attribution with 30/90/180/365-day sensitivity; resolved-outcome win rates; cohort maturity controls",
             "generated_at": pd.Timestamp.now(tz="UTC").isoformat(),
-            "source_freshness": "Generated from the latest validated integrated and cleaned Parquet outputs.",
+            "source_freshness": "Source dates are historical; generated_at is build time, not evidence of source freshness. No production refresh policy is approved.",
         },
         "context": context,
         "datasets": {},
@@ -423,7 +447,6 @@ def main() -> None:
     datasets = {
         "channel_pipeline": _records(
             "channel_pipeline",
-            ["channel_category", "deal_count", "resolved_count", "total_pipeline", "won_pipeline", "won_count", "closed_win_rate", "win_rate", "resolved_share", "pipeline_pct", "avg_deal_size", "channel_spend", "pipeline_roi", "revenue_roi", "cost_per_opp"],
         ),
         "cohorts": _records(
             "cohort_analysis",
@@ -459,8 +482,9 @@ def main() -> None:
         "creative_tone": _creative_tone(),
         "email_seniority": _email_seniority(),
         "deal_velocity": _records("deal_velocity"),
-        "journey_sequences": _records("journey_sequences"),
-        "win_probability": _records("win_probability", ["_opportunity_id", "_account_name", "_current_stage", "_amount", "channel_category", "segment__c", "win_probability", "amount_quality"]),
+        "deal_velocity_exclusions": _records("deal_velocity_exclusions"),
+        "journey_sequences": _aggregate_journeys(),
+        "win_probability": _score_histogram(),
         "account_coverage_detail": _records("account_coverage_summary"),
         "attribution_touchpoint_quality": _records("attribution_touchpoint_quality"),
         "qa_performance": _records("qa_performance"),
@@ -482,11 +506,23 @@ def main() -> None:
         "table_ids": list(payload["tables"].keys()),
         "table_count": len(payload["tables"]),
         "required_audit_phrases": [
-            "Email Event Mix", "Budget-Neutral Measurement Plans", "time-based 80/20 holdout",
+            "Email Event Mix", "Budget-Neutral Measurement Plans", "as-of resolved-within-180-days holdout",
         ],
         "legacy_reference": "outputs/dashboard/Marketing_Analytics_Dashboard.html",
     }
 
+    payload["dataset_status"] = {name: {"status": "available" if rows else "unavailable", "reason": "Aggregate analytical output" if rows else "No eligible analytical output; see model diagnostics or source coverage."} for name, rows in datasets.items()}
+    v3_path = PUBLIC_DIR / "dashboard-data-v3.json"
+    if v3_path.exists():
+        v3 = json.loads(v3_path.read_text(encoding="utf-8"))
+        payload["meta"]["snapshot_id"] = v3.get("meta", {}).get("snapshot_id")
+        payload["meta"]["run_metadata"] = v3.get("meta", {}).get("run_metadata", {})
+    model_reason = next((row.get("validation") or row.get("model_limitation") for row in datasets.get("model_stats", []) if row.get("validation") or row.get("model_limitation")), "No eligible scores; inspect model diagnostics and source outcome history.")
+    for name in ("win_probability", "feature_importance", "model_calibration"):
+        if not datasets.get(name):
+            payload["dataset_status"][name]["reason"] = model_reason
+    payload["meta"]["privacy_scope"] = "Public aggregate evidence only; private source records are excluded."
+    assert_public_fields(payload)
     serialized = json.dumps(payload, ensure_ascii=False, indent=2)
     public_target = PUBLIC_DIR / "dashboard-data.json"
     output_target = OUTPUT_DIR / "dashboard_data.json"

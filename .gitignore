@@ -26,3 +26,6 @@ outputs/presentation/rendered/
 
 # Original briefing deck (large, not needed)
 Analytics - Case Study.pptx
+
+# Throwaway local package installs used during audit runs
+audit/python-deps/

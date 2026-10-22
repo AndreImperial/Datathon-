@@ -1,0 +1,25 @@
+
+[1/7] Exploratory calendar baseline (as-of validation) ...
+  Resolved deals (train/evaluate): 201  |  Active deals (score): 3
+  Time-based holdout AUC: 0.470 | Brier: 0.252 | precision: 44.4% | recall: 40.0%
+  Calibration: mean absolute gap 5.0% across 5 score bands
+
+[2/8] Account Log
+  Deduplicated to 1 unique accounts
+  Saved -> C:\Users\andre\Downloads\Datathon\data\cleaned\accounts.parquet
+  Loaded opportunities: 3 rows
+
+  Building master_account ...
+  master_account: 2 rows, 20 columns
+  Built 2 raw marketing touchpoints
+  Opportunities with domain + create date: 2
+  Touchpoints linked within 365-day window: 2
+
+[1/7] Exploratory calendar baseline (as-of validation) ...
+  Resolved deals (train/evaluate): 0  |  Active deals (score): 1
+  Insufficient mature historical outcomes for as-of validation - skipping
+........................
+----------------------------------------------------------------------
+Ran 24 tests in 4.114s
+
+OK

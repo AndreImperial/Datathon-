@@ -1,8 +1,6 @@
-# Design System Master File
+# Archived Design System Reference
 
-> **LOGIC:** When building a specific page, first check `design-system/pages/[page-name].md`.
-> If that file exists, its rules **override** this Master file.
-> If not, strictly follow the rules below.
+> **Status:** Superseded. The current, authoritative black-primary, crimson, warm-white, Manrope-only system is documented in [`DESIGN.md`](../../DESIGN.md). Do not use the blue/amber palette or Fira typography below for current dashboard work.
 
 ---
 

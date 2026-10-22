@@ -1,57 +1,55 @@
-name: Validate Pipeline Artifacts
-
+name: Validate and release exact artifact
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
-
+permissions:
+  contents: read
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      - name: Set up Node
-        uses: actions/setup-node@v4
+          python-version: '3.11.9'
+      - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: '20'
           cache: npm
-
-      - name: Install frontend dependencies
-        run: npm ci
-
-      - name: Compile pipeline scripts
+      - run: python -m pip install -r requirements.txt
+      - run: npm ci
+      - run: npm run typecheck
+      - name: Regenerate every source-backed analysis and build
+        run: python run_pipeline.py
+      - name: Required regression checks
         run: |
-          python -m py_compile \
-            analytics_case_study/01_data_cleaning.py \
-            analytics_case_study/02_data_integration.py \
-            analytics_case_study/03_analysis.py \
-            analytics_case_study/03b_attribution.py \
-            analytics_case_study/03c_advanced_analytics.py \
-            analytics_case_study/04_html_dashboard.py \
-            analytics_case_study/05_presentation.py \
-            analytics_case_study/06_validate_metrics.py \
-            run_pipeline.py
-
-      - name: Check pipeline runner
-        run: python run_pipeline.py --dry-run
-
-      - name: Typecheck and build dashboard
-        run: |
-          npm run typecheck
-          python analytics_case_study/04_react_dashboard.py
-
-      - name: Validate generated artifacts
-        run: python analytics_case_study/06_validate_metrics.py
+          python -m unittest discover -s tests -p 'test_*.py' -v
+          npm test
+          python analytics_case_study/06_validate_metrics.py
+      - name: Upload successful bytes
+        uses: actions/upload-artifact@v4
+        with:
+          name: validated-public
+          path: public/
+          include-hidden-files: true
+      - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+  deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: validate
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/configure-pages@v5
+      - uses: actions/deploy-pages@v4
+        id: deployment

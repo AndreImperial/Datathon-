@@ -1,0 +1,33 @@
+{
+  "canonical_rows": 3245,
+  "latest_creation": "2024-12-20 00:00:00+00:00",
+  "motion_by_year": {
+    "Acquisition": {
+      "2023": 29,
+      "2024": 0
+    },
+    "Renewal": {
+      "2023": 3,
+      "2024": 0
+    },
+    "Unknown": {
+      "2023": 622,
+      "2024": 1191
+    }
+  },
+  "public_deal_rows": 411,
+  "public_deal_fields": [
+    "_opportunity_id",
+    "_account_name",
+    "_current_stage",
+    "_amount",
+    "channel_category",
+    "segment__c",
+    "win_probability",
+    "amount_quality"
+  ],
+  "sections": 10,
+  "chart_placements": 24,
+  "sortable_tables": 6,
+  "slides": 22
+}

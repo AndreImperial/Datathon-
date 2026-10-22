@@ -8,8 +8,10 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from analytics_case_study.utils.population import canonical_opportunities
 from analytics_case_study.config import INTEGRATED_DATA_DIR, CLEANED_DATA_DIR, ANALYSIS_DIR, RAW_FILES
 from analytics_case_study.utils.metrics import resolved_stage_mask
+from analytics_case_study.utils.cleaning_helpers import email_person_identity
 
 
 def _load_int(name: str) -> pd.DataFrame:
@@ -17,7 +19,8 @@ def _load_int(name: str) -> pd.DataFrame:
 
 
 def _load_clean(name: str) -> pd.DataFrame:
-    return pd.read_parquet(os.path.join(CLEANED_DATA_DIR, f"{name}.parquet"))
+    frame = pd.read_parquet(os.path.join(CLEANED_DATA_DIR, f"{name}.parquet"))
+    return canonical_opportunities(frame) if name == "opportunities" else frame
 
 
 def _write_excel(dfs: dict, filename: str):
@@ -52,8 +55,11 @@ def analyze_channel_roi():
     summary.columns = [
         "Channel", "Deals", "Resolved Deals", "Total Pipeline ($)", "Won Revenue ($)",
         "Won Deals", "Closed-Deal Win Rate", "Resolved Share", "Avg Deal Size ($)", "Pipeline Share",
-        "Channel Spend ($)", "Pipeline ROI (x)", "Revenue ROI (x)", "Cost per Opp ($)",
+        "Channel Spend ($)", "Recorded Pipeline / Tracked Spend (x)", "Recorded Won Amount / Tracked Spend (x)", "Cost per Opp ($)",
     ]
+    for field in ["spend_measurement_status", "spend_period_start", "spend_period_end", "pipeline_period_start", "pipeline_period_end", "period_matched_pipeline", "period_matched_won_amount", "period_matched_opportunities", "ratio_definition"]:
+        if field in cp:
+            summary[field] = cp[field]
     summary["Closed-Deal Win Rate"] = summary["Closed-Deal Win Rate"].apply(lambda v: f"{v:.1%}" if pd.notna(v) else "")
     summary["Resolved Share"] = summary["Resolved Share"].apply(lambda v: f"{v:.1%}" if pd.notna(v) else "")
     summary["Pipeline Share"] = summary["Pipeline Share"].apply(lambda v: f"{v:.1%}" if pd.notna(v) else "")
@@ -184,7 +190,8 @@ def analyze_email_performance():
         return
 
     sheets = {}
-    person_col = "_prospectID" if "_prospectID" in email.columns else "_email"
+    email["person_id"] = email_person_identity(email)
+    person_col = "person_id"
 
     def summarize(group_col, include_subject=False):
         source = email.copy()
@@ -232,7 +239,7 @@ def analyze_email_performance():
         },
         {
             "Metric": "Engaged people",
-            "Definition": "Distinct prospect IDs with at least one recorded engagement.",
+            "Definition": "Distinct supplied prospect IDs; valid normalized email fallback only when ID is missing.",
             "Safe interpretation": "Reach among people who engaged; the delivered audience is unavailable.",
         },
     ])
@@ -259,7 +266,7 @@ def analyze_budget_recommendation():
     channels_with_spend["current_spend_pct"] = channels_with_spend["channel_spend"] / total_spend
     channels_with_spend["evidence_status"] = np.where(
         (channels_with_spend["won_count"] >= 10) & (channels_with_spend["deal_count"] >= 30),
-        "Decision-grade",
+        "Descriptive historical evidence; incrementality unvalidated",
         "Insufficient outcome evidence",
     )
     evidence = channels_with_spend[[
@@ -322,7 +329,7 @@ def analyze_data_quality():
     stage_col = next((c for c in opps.columns if "current_stage" in c.lower()), None)
     resolved = resolved_stage_mask(opps[stage_col]) if stage_col else pd.Series(True, index=opps.index)
     active = ~resolved
-    zero_amount = opps["_amount"].fillna(0).eq(0)
+    zero_amount = pd.to_numeric(opps["_amount"], errors="coerce").eq(0)
     won = opps[won_col].eq(True) if won_col else pd.Series(False, index=opps.index)
 
     domain_series = pd.Series(index=opps.index, dtype="object")
@@ -360,10 +367,10 @@ def analyze_data_quality():
         campaign_ok = matched_web["_utmcampaign"].fillna("").astype(str).str.strip().ne("")
         utm_complete = source_ok | campaign_ok
     web_identity = pd.DataFrame([
-        {"metric": "web_sessions", "value": len(web)},
-        {"metric": "domain_matched_sessions", "value": len(matched_web)},
+        {"metric": "web_event_rows", "value": len(web)},
+        {"metric": "domain_matched_event_rows", "value": len(matched_web)},
         {"metric": "unique_matched_domains", "value": matched_web["_domain"].nunique() if "_domain" in matched_web.columns else 0},
-        {"metric": "matched_sessions_with_utm", "value": int(utm_complete.sum())},
+        {"metric": "matched_event_rows_with_utm", "value": int(utm_complete.sum())},
     ])
 
     ad_6sense_spend = float(ad.loc[ad.get("_platform", pd.Series(index=ad.index)).eq("6sense"), "_spend"].sum()) if "_spend" in ad.columns else 0.0

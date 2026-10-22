@@ -1,6 +1,6 @@
 """
 Phase 3c: Advanced Analytics — decision-grade extensions
-  1. Leakage-reduced win model — evaluate resolved outcomes, score active deals
+  1. Exploratory calendar model — as-of recorded outcomes, conditional scores
   2. Account Coverage Analysis — which CRM account domains has marketing reached?
   3. Deal Velocity by Channel — which channels close fastest?
   4. Journey Sequence Analysis — what touchpoint order leads to wins?
@@ -24,20 +24,32 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from analytics_case_study.config import CLEANED_DATA_DIR, INTEGRATED_DATA_DIR, ANALYSIS_DIR
+from analytics_case_study.config import CLEANED_DATA_DIR, INTEGRATED_DATA_DIR, ANALYSIS_DIR, RAW_FILES
 from analytics_case_study.utils.metrics import resolved_stage_mask, wilson_interval
+from analytics_case_study.utils.population import canonical_opportunities
+from analytics_case_study.utils.diagnostics import calibration_table, duration_diagnostics
+from analytics_case_study.utils.cleaning_helpers import normalize_domain
 
 # ── loaders ────────────────────────────────────────────────────────────────
 def _lc(n): p=os.path.join(CLEANED_DATA_DIR,f"{n}.parquet"); return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
 def _li(n): p=os.path.join(INTEGRATED_DATA_DIR,f"{n}.parquet"); return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
 
-opps  = _lc("opportunities")
+def _canonical_opportunities(df):
+    """Exclude explicit deletions consistently across all advanced analyses."""
+    return canonical_opportunities(df)
+
+
+opps  = _canonical_opportunities(_lc("opportunities"))
 accts = _lc("accounts")
 email = _lc("email_engagements")
 c6    = _lc("6sense_campaign")
 web   = _lc("web_engagements")
 icp   = _lc("icp_database")
 ma    = _li("master_account")
+for frame in [opps, accts, email, c6, web, icp]:
+    for column in ["_domain", "domain__c", "_6sensedomain"]:
+        if column in frame:
+            frame[column] = normalize_domain(frame[column])
 
 
 def _won_col(df):
@@ -69,22 +81,71 @@ def _opportunities_with_domain(df):
         d = acct_domain.get(str(acct_id), acct_domain.get(acct_id, ""))
         return str(d).strip().lower() if pd.notna(d) and str(d).strip() else np.nan
 
-    out["opp_domain"] = out.apply(resolve, axis=1)
+    out["opp_domain"] = normalize_domain(out.apply(resolve, axis=1))
     return out
 
 
 # ============================================================
 # 1. WIN PROBABILITY MODEL
 # ============================================================
-def build_win_probability():
-    """Train a leakage-reduced, time-validated model and score active deals.
+def _load_model_history():
+    """Read stage events; latest `_current_stage` and `iswon` are hindsight fields."""
+    path = RAW_FILES["opportunities"]
+    if not os.path.exists(path):
+        return pd.DataFrame()
+    history = pd.read_excel(path, dtype=str)
+    history.columns = history.columns.str.strip()
+    return history
 
-    The model intentionally excludes current account intent, contact-count, and
-    current-stage fields because the supplied account table is a present-day
-    snapshot.  Those fields may have been populated after an historical deal
-    closed and would create look-ahead bias.
+
+def _temporal_model_population(df, history, horizon_days=180):
+    """First recorded terminal outcome within 180 days, conditional on resolution.
+
+    Features are creation calendar only: the log cannot establish that mutable
+    amount, channel or segment was captured at creation. Event timestamps are
+    evidence of recorded transitions, not proof of complete historical coverage.
     """
-    print("\n[1/7] Win Probability Model (leakage-reduced) ...")
+    required = {"_opportunity_id", "current_stage", "_current_stage_change_date"}
+    if not required.issubset(history.columns):
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), {}
+    events = history.loc[history["_opportunity_id"].isin(df["_opportunity_id"])].copy()
+    events["_event_date"] = pd.to_datetime(events["_current_stage_change_date"], utc=True, errors="coerce", format="mixed")
+    observed_through = events["_event_date"].max()
+    terminal = events.loc[resolved_stage_mask(events["current_stage"]) & events["_event_date"].notna()].copy()
+    terminal["_model_won"] = terminal["current_stage"].str.lower().str.contains("won", na=False).astype(int)
+    # Conflicting simultaneous terminal events cannot establish an outcome.
+    conflicts = terminal.groupby(["_opportunity_id", "_event_date"])["_model_won"].nunique()
+    ambiguous_ids = conflicts[conflicts.gt(1)].index.get_level_values(0)
+    terminal = terminal.loc[~terminal["_opportunity_id"].isin(ambiguous_ids)]
+    terminal = terminal.sort_values("_event_date", kind="stable").drop_duplicates("_opportunity_id", keep="first")
+    population = df.merge(terminal[["_opportunity_id", "_event_date", "_model_won"]], on="_opportunity_id", how="left")
+    population["_horizon_end"] = population["_model_create_date"] + pd.Timedelta(days=horizon_days)
+    mature = population.loc[population["_horizon_end"].le(observed_through)]
+    if mature.empty:
+        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), {"observation_end": str(observed_through)}
+    # Cutoff is chosen from all mature creation dates, without consulting labels.
+    cutoff = mature["_model_create_date"].quantile(0.80)
+    eligible = mature.loc[mature["_event_date"].ge(mature["_model_create_date"]) & mature["_event_date"].le(mature["_horizon_end"])].copy()
+    train = eligible.loc[eligible["_horizon_end"].le(cutoff) & eligible["_event_date"].le(cutoff)].copy()
+    test = eligible.loc[eligible["_model_create_date"].gt(cutoff)].copy()
+    return train, test, eligible, {
+        "validation_cutoff": str(cutoff), "observation_end": str(observed_through),
+        "outcome_horizon_days": horizon_days, "mature_creation_rows": len(mature),
+        "horizon_resolved_rows": len(eligible), "ambiguous_outcome_rows": len(set(ambiguous_ids)),
+        "train_latest_resolution": str(train["_event_date"].max()),
+        "test_earliest_creation": str(test["_model_create_date"].min()),
+        "test_latest_horizon_end": str(test["_horizon_end"].max()),
+    }
+
+
+def build_win_probability():
+    """Evaluate an exploratory creation-calendar model using recorded stage events.
+
+    The outcome is first recorded terminal win vs loss/discontinued within 180
+    days, conditional on a recorded resolution. Active scores extrapolate this
+    selected population and are not validated operating win probabilities.
+    """
+    print("\n[1/7] Exploratory calendar baseline (as-of validation) ...")
     from sklearn.compose import ColumnTransformer
     from sklearn.ensemble import RandomForestClassifier
     from sklearn.impute import SimpleImputer
@@ -99,7 +160,7 @@ def build_win_probability():
     from sklearn.pipeline import Pipeline
     from sklearn.preprocessing import OneHotEncoder
 
-    df = opps.copy()
+    df = _canonical_opportunities(opps)
     stage_col = next((c for c in df.columns if "current_stage" in c.lower()), None)
     create_col = next((c for c in df.columns if "createdate" in c.lower()), None)
     won_col = _won_col(df)
@@ -115,22 +176,27 @@ def build_win_probability():
     active = df[~df["is_resolved"]].copy()
     print(f"  Resolved deals (train/evaluate): {len(closed):,}  |  Active deals (score): {len(active):,}")
 
-    categorical = [c for c in ["channel_category", "segment__c"] if c in closed.columns]
-    numeric = [c for c in ["_amount", "create_year", "create_quarter"] if c in closed.columns]
+    categorical = []
+    numeric = ["create_year", "create_quarter"]
     features = categorical + numeric
-    y = closed[won_col].eq(True).astype(int)
-    if not features or y.nunique() != 2 or len(closed) < 200:
-        print("  Insufficient resolved outcomes for a stable time holdout - skipping")
-        return pd.DataFrame(), pd.DataFrame(), {"auc": np.nan, "accuracy": np.nan, "validation": "not run"}, pd.DataFrame()
-
-    cutoff = int(len(closed) * 0.80)
-    train = closed.iloc[:cutoff].copy()
-    test = closed.iloc[cutoff:].copy()
-    y_train = train[won_col].eq(True).astype(int)
-    y_test = test[won_col].eq(True).astype(int)
-    if y_train.nunique() != 2 or y_test.nunique() != 2:
-        print("  Time holdout does not contain both outcomes - skipping")
-        return pd.DataFrame(), pd.DataFrame(), {"auc": np.nan, "accuracy": np.nan, "validation": "not run"}, pd.DataFrame()
+    train, test, closed, temporal_stats = _temporal_model_population(df, _load_model_history())
+    feature_policy = "creation year/quarter only; mutable latest amount, channel, segment and account fields excluded"
+    limitation = "Exploratory calendar baseline conditional on first recorded resolution within 180 days; incomplete event coverage and resolved-only selection prevent unconditional active-deal win forecasting."
+    y = closed.get("_model_won", pd.Series(dtype=int))
+    y_train = train.get("_model_won", pd.Series(dtype=int))
+    y_test = test.get("_model_won", pd.Series(dtype=int))
+    if len(train) < 100 or len(test) < 20 or y_train.nunique() != 2 or y_test.nunique() != 2:
+        print("  Insufficient mature historical outcomes for as-of validation - skipping")
+        diagnostics = {key: np.nan for key in ["auc", "accuracy", "precision", "recall", "brier_score", "calibration_mean_abs_gap", "calibration_max_abs_gap", "train_win_rate", "test_win_rate"]}
+        diagnostics.update({key: 0 for key in ["true_negative", "false_positive", "false_negative", "true_positive", "active_scored_rows"]})
+        diagnostics.update({"train_rows": len(train), "test_rows": len(test), "canonical_resolved_rows": int(df["is_resolved"].sum()), "canonical_active_rows": len(active), "validation": "not run: insufficient mature historical stage events", "feature_policy": feature_policy, "model_limitation": limitation, **temporal_stats})
+        # Overwrite stale score artifacts when validation is unavailable.
+        empty_scores = active.head(0).copy()
+        empty_scores["win_probability"] = pd.Series(dtype=float)
+        empty_importance = pd.DataFrame(columns=["feature", "importance"])
+        empty_importance.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "feature_importance.parquet"), index=False)
+        empty_scores.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "win_probability.parquet"), index=False)
+        return empty_importance, empty_scores, diagnostics, pd.DataFrame(columns=["score_band", "n", "predicted_win_rate", "observed_win_rate", "abs_gap"])
 
     transformers = []
     if categorical:
@@ -169,20 +235,8 @@ def build_win_probability():
     tn, fp, fn, tp = confusion_matrix(y_test, test_pred, labels=[0, 1]).ravel()
     print(f"  Time-based holdout AUC: {auc:.3f} | Brier: {brier:.3f} | precision: {precision:.1%} | recall: {recall:.1%}")
 
-    # Calibration is a descriptive diagnostic, separate from ranking metrics.
-    # Quantile bands keep the readout balanced even when score values cluster.
-    calibration = pd.DataFrame({"predicted": test_prob, "observed": y_test.to_numpy()})
-    calibration["band"] = pd.qcut(
-        calibration["predicted"].rank(method="first"), q=min(5, len(calibration)), labels=False, duplicates="drop"
-    ) + 1
-    calibration = calibration.groupby("band", as_index=False).agg(
-        n=("observed", "size"),
-        predicted_win_rate=("predicted", "mean"),
-        observed_win_rate=("observed", "mean"),
-    )
-    calibration["score_band"] = calibration["band"].map(lambda value: f"Test quintile {int(value)}")
-    calibration["abs_gap"] = (calibration["predicted_win_rate"] - calibration["observed_win_rate"]).abs()
-    calibration = calibration[["score_band", "n", "predicted_win_rate", "observed_win_rate", "abs_gap"]]
+    # Fixed probability bins preserve ties and explicitly define exact boundaries.
+    calibration = calibration_table(test_prob, y_test.to_numpy())
     print(f"  Calibration: mean absolute gap {calibration['abs_gap'].mean():.1%} across {len(calibration)} score bands")
 
     # Fit the deployable scoring model on all resolved outcomes only after the
@@ -207,8 +261,11 @@ def build_win_probability():
     ]].copy()
     if len(active):
         active_scored["win_probability"] = model.predict_proba(active[features])[:, 1]
-        active_scored["amount_quality"] = np.where(active["_amount"].fillna(0).gt(0), "positive amount", "zero/missing amount")
-        active_scored = active_scored.sort_values(["win_probability", "_amount"], ascending=[False, False])
+        active_scored["score_interpretation"] = "Exploratory calendar baseline; conditional 180-day recorded-resolution outcome, not an operating win probability"
+        amount = active.get("_amount", pd.Series(0, index=active.index))
+        active_scored["amount_quality"] = np.where(amount.fillna(0).gt(0), "positive amount", "zero/missing amount")
+        sort_columns = [c for c in ["win_probability", "_amount"] if c in active_scored.columns]
+        active_scored = active_scored.sort_values(sort_columns, ascending=False)
 
     feat_imp.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "feature_importance.parquet"), index=False)
     active_scored.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "win_probability.parquet"), index=False)
@@ -227,8 +284,12 @@ def build_win_probability():
         "train_win_rate": float(y_train.mean()),
         "test_win_rate": float(y_test.mean()),
         "active_scored_rows": len(active_scored),
-        "validation": "time-based 80/20 holdout; preprocessing fit on train only",
-        "feature_policy": "opportunity-time fields only; present-day account snapshot fields excluded",
+        "canonical_resolved_rows": int(df["is_resolved"].sum()),
+        "canonical_active_rows": len(active),
+        "validation": "as-of cutoff; train horizon and recorded resolution <= cutoff; test creation > cutoff and 180-day horizon <= latest recorded event; preprocessing fit on train only",
+        "feature_policy": feature_policy,
+        "model_limitation": limitation,
+        **temporal_stats,
         "calibration_mean_abs_gap": float(calibration["abs_gap"].mean()),
         "calibration_max_abs_gap": float(calibration["abs_gap"].max()),
     }
@@ -240,9 +301,9 @@ def build_win_probability():
 # ============================================================
 def build_account_coverage():
     print("\n[2/7] Account Coverage Analysis ...")
-    acct_domains = set(accts["domain__c"].dropna().str.lower().str.strip()) if "domain__c" in accts.columns else set()
-    email_domains = set(email["_domain"].dropna().str.lower().str.strip()) if "_domain" in email.columns else set()
-    c6_domains    = set(c6["_6sensedomain"].dropna().str.lower().str.strip()) if "_6sensedomain" in c6.columns else set()
+    acct_domains = set(normalize_domain(accts["domain__c"]).dropna()) if "domain__c" in accts.columns else set()
+    email_domains = set(normalize_domain(email["_domain"]).dropna()) if "_domain" in email.columns else set()
+    c6_domains    = set(normalize_domain(c6["_6sensedomain"]).dropna()) if "_6sensedomain" in c6.columns else set()
     opps_d = _opportunities_with_domain(opps)
     opp_domains = set(opps_d["opp_domain"].dropna().str.lower().str.strip()) if "opp_domain" in opps_d.columns else set()
 
@@ -279,8 +340,16 @@ def build_account_coverage():
     )
     summary["opp_rate_ci_low"] = [interval[0] for interval in intervals]
     summary["opp_rate_ci_high"] = [interval[1] for interval in intervals]
-    summary["interpretation"] = "Observed association; coverage groups were not randomized."
+    summary["interpretation"] = "Historical opportunity prevalence in all CRM history associated with reach in supplied activity windows; many opportunities predate reach. Not post-exposure conversion or a test baseline."
     summary["population_label"] = "CRM account domains"
+    summary["metric_definition"] = "Domains with any canonical historical opportunity / CRM account domains in coverage group"
+    summary["outcome_period"] = "All supplied CRM history"
+    summary["reach_period"] = "Supplied email and 6sense activity windows"
+    for source, frame, column in [("email", email, "_timestamp"), ("6sense", c6, "_latestimpression" if "_latestimpression" in c6 else "_date")]:
+        stamps = pd.to_datetime(frame.get(column, pd.Series(dtype="object")), utc=True, errors="coerce")
+        summary[f"{source}_reach_start"] = stamps.min()
+        summary[f"{source}_reach_end"] = stamps.max()
+    summary["historical_opportunity_prevalence"] = summary["opp_rate"]
 
     print(f"  Total account domains: {total:,}")
     for _, r in summary.sort_values("accounts", ascending=False).iterrows():
@@ -313,13 +382,18 @@ def build_deal_velocity():
     if not won_col:
         print("  Missing won flag — skipping")
         return pd.DataFrame()
-    won = df[(df[won_col]==True) & df["days_to_close"].between(1, 730)].copy()
+    won, exclusions = duration_diagnostics(df.loc[df[won_col].eq(True)].copy())
+    exclusions.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "deal_velocity_exclusions.parquet"), index=False)
 
     vel = won.groupby("channel_category")["days_to_close"].agg(
         mean_days="mean", median_days="median", deal_count="count",
         p25=lambda x: x.quantile(0.25), p75=lambda x: x.quantile(0.75)
     ).reset_index().sort_values("median_days")
 
+    totals = exclusions.groupby("channel_category")["wins"].sum()
+    vel["canonical_wins"] = vel["channel_category"].map(totals)
+    vel["included_share"] = vel["deal_count"] / vel["canonical_wins"]
+    vel["eligibility_note"] = "Includes same-day wins; excludes negative, missing and >730-day intervals. See exclusions by channel/motion."
     print("  Won deal velocity by channel (median days to close):")
     for _, r in vel.iterrows():
         bar = "=" * int(r["median_days"] / 3)
@@ -677,7 +751,11 @@ def main():
     out_path = os.path.join(ANALYSIS_DIR, "advanced_analytics.xlsx")
     with pd.ExcelWriter(out_path, engine="xlsxwriter") as writer:
         for sheet_name, df in results.items():
-            df.to_excel(writer, sheet_name=sheet_name[:31], index=False)
+            excel_df = df.copy()
+            for column in excel_df.columns:
+                if isinstance(excel_df[column].dtype, pd.DatetimeTZDtype):
+                    excel_df[column] = excel_df[column].map(lambda value: value.isoformat() if pd.notna(value) else None)
+            excel_df.to_excel(writer, sheet_name=sheet_name[:31], index=False)
     print(f"\nOK Saved -> {out_path}")
     print(f"   Model AUC: {model_stats['auc']:.3f} | Accuracy: {model_stats['accuracy']:.1%}")
     print("\nOK Advanced analytics complete")

@@ -1,4 +1,5 @@
 import re
+from urllib.parse import urlsplit
 import numpy as np
 import pandas as pd
 
@@ -9,13 +10,39 @@ FREE_EMAIL_DOMAINS = {
 
 
 def normalize_domain(series: pd.Series) -> pd.Series:
-    """Lowercase, strip www., strip protocol, strip trailing slashes."""
-    s = series.astype(str).str.strip().str.lower()
-    s = s.str.replace(r"^https?://", "", regex=True)
-    s = s.str.replace(r"^www\.", "", regex=True)
-    s = s.str.rstrip("/")
-    s = s.replace({"nan": np.nan, "none": np.nan, "": np.nan})
-    return s
+    """Extract only an explicit hostname; reject ambiguous or invalid identities.
+
+    URL paths, ports and email local parts are discarded; subdomains are retained.
+    No public-suffix inference, spelling corrections or guessed company matches.
+    """
+    def parse(value):
+        if pd.isna(value):
+            return np.nan
+        value = str(value).strip().lower()
+        if not value or value in {'nan', 'none', 'null'} or re.search(r'\s', value):
+            return np.nan
+        if value.startswith('mailto:'):
+            value = value[7:]
+        if '@' in value and '://' not in value:
+            if value.count('@') != 1 or not value.split('@')[0]:
+                return np.nan
+            value = value.split('@')[1]
+        try:
+            host = urlsplit(value if '://' in value else '//' + value).hostname
+            host = host.rstrip('.').encode('idna').decode('ascii') if host else ''
+        except (ValueError, UnicodeError):
+            return np.nan
+        host = re.sub(r'^www\.', '', host)
+        return host if re.fullmatch(r'(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}', host) else np.nan
+    return series.map(parse)
+
+
+def email_person_identity(frame: pd.DataFrame) -> pd.Series:
+    """Prefer supplied prospect ID; use a valid normalized email only if absent."""
+    primary = frame.get('_prospectID', pd.Series('', index=frame.index)).fillna('').astype(str).str.strip()
+    fallback = frame.get('_email', pd.Series('', index=frame.index)).fillna('').astype(str).str.strip().str.lower()
+    valid = fallback.str.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+').fillna(False)
+    return primary.where(primary.ne(''), fallback.where(valid)).replace('', np.nan)
 
 
 def replace_null_strings(df: pd.DataFrame) -> pd.DataFrame:

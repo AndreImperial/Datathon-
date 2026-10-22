@@ -140,8 +140,8 @@ def clean_account_log() -> pd.DataFrame:
 
     if "accountid" in df.columns:
         if "createddate" in df.columns:
-            df = df.sort_values("createddate")
-        df = df.groupby("accountid", as_index=False).last()
+            df = df.sort_values("createddate", kind="stable", na_position="first")
+        df = df.drop_duplicates("accountid", keep="last").copy()
         print(f"  Deduplicated to {len(df):,} unique accounts")
 
     # Normalise tier

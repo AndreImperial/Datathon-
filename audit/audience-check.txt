@@ -1,0 +1,30 @@
+EX                                                exclusion  domains
+                                      Active opportunity      221
+                              Conflicting segment or fit       14
+Customer, partner, competitor, or private-equity account      202
+                             Eligible before reach check     2032
+                                  Missing segment or fit       47
+                              Not an explicit ICP target     2281 SUM 4797
+PR ELIGIBLE SUM 2032.0
+   segment      fit  resolved  wins  positive_amount_coverage  win_rate  win_rate_ci_low  win_rate_ci_high  eligible_domains  shortlist_eligible           segment_fit   wilson_low                             status
+Commercial   Strong       360   180                  0.344444  0.500000     4.486229e-01          0.551377              61.0                True   Commercial / Strong 4.486229e-01                 Shortlist eligible
+       Mid Moderate       215   104                  0.488372  0.483721     4.177950e-01          0.550218             230.0                True        Mid / Moderate 4.177950e-01                 Shortlist eligible
+Commercial Moderate       331   153                  0.419940  0.462236     4.092644e-01          0.516073             220.0                True Commercial / Moderate 4.092644e-01                 Shortlist eligible
+Enterprise     Weak       988   382                  0.420040  0.386640     3.567684e-01          0.417389             913.0                True     Enterprise / Weak 3.567684e-01                 Shortlist eligible
+Commercial     Weak       152    63                  0.513158  0.414474     3.392076e-01          0.493956             116.0                True     Commercial / Weak 3.392076e-01                 Shortlist eligible
+       Mid     Weak       148    60                  0.587838  0.405405     3.296683e-01          0.485929             261.0                True            Mid / Weak 3.296683e-01                 Shortlist eligible
+Enterprise Moderate       283    96                  0.554770  0.339223     2.865431e-01          0.396209             170.0                True Enterprise / Moderate 2.865431e-01                 Shortlist eligible
+Commercial  Unknown        43    17                  0.441860  0.395349     2.636511e-01          0.544212               0.0               False  Commercial / Unknown 2.636511e-01 Exploratory or no current audience
+Enterprise   Strong        23     9                  0.695652  0.391304     2.215738e-01          0.592148              21.0               False   Enterprise / Strong 2.215738e-01 Exploratory or no current audience
+       Mid  Unknown         5     2                  0.800000  0.400000     1.176182e-01          0.769280               0.0               False         Mid / Unknown 1.176182e-01 Exploratory or no current audience
+   Unknown   Strong       116     4                  0.172414  0.034483     1.348961e-02          0.085321               0.0               False      Unknown / Strong 1.348961e-02 Exploratory or no current audience
+   Unknown  Unknown        44     0                  0.159091  0.000000     6.938894e-18          0.080298               0.0               False     Unknown / Unknown 6.938894e-18 Exploratory or no current audience
+       Mid   Strong         6     0                  0.333333  0.000000     0.000000e+00          0.390343              40.0               False          Mid / Strong 0.000000e+00 Exploratory or no current audience
+Enterprise  Unknown         4     0                  0.500000  0.000000     0.000000e+00          0.489900               0.0               False  Enterprise / Unknown 0.000000e+00 Exploratory or no current audience
+   Unknown Moderate        63     0                  0.158730  0.000000     0.000000e+00          0.057473               0.0               False    Unknown / Moderate 0.000000e+00 Exploratory or no current audience
+   Unknown     Weak        53     0                  0.169811  0.000000     0.000000e+00          0.067584               0.0               False        Unknown / Weak 0.000000e+00 Exploratory or no current audience
+MASTER DUP campaign_spend matching raw 208854.31 master 235322.72999999998 overcount 26468.419999999984
+MASTER DUP email_clicks matching raw 468 master 485.0 overcount 17.0
+MASTER DUP web_pageviews matching raw 341 master 352.0 overcount 11.0
+AD {'6sense': 1186809.5, 'LinkedIn': 34546.99} C6 290678.7
+ZERO 0 1741 wonzero 699 wonmissing 0

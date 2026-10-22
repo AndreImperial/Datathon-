@@ -1,3 +1,4 @@
+import { compareValues, serializeEvidenceCsv, formatField, fieldUnit } from "./evidence";
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import {
   Archive, ArrowRight, ArrowUpDown, Check, ChevronDown, CircleAlert, Download, ExternalLink,
@@ -117,9 +118,9 @@ const copy: Record<SectionId, { title: string; description: string; takeaway: st
     takeaway: "Budget decision: treat historical spend as context, not an approved mix; release more only when the test shows incremental qualified pipeline.",
   },
   "s-advanced": {
-    title: "Use prediction to prioritize—not to promise",
+    title: "Inspect model limits before operational use",
     description: "Coverage, cohort, journey, and model diagnostics help focus review without replacing commercial judgment.",
-    takeaway: "Operating decision: use score bands and coverage gaps to order attention, then monitor realized outcomes by band and cohort.",
+    takeaway: "Operating decision: use coverage gaps to design controlled tests; retain near-chance model scores as exploratory diagnostics.",
   },
   "s-appendix": {
     title: "The evidence behind the decision",
@@ -137,11 +138,11 @@ const explain: Record<string, { title: string; body: ReactNode; insight: string 
   "c-essential-contribution": {
     title: "What this shows - Marketing Contribution vs Total Pipeline",
     body: <>Sourced credit is the CRM origin field. Influenced credit captures classified email or 6sense presence in an eligible pre-opportunity journey. The two totals use different definitions and populations.<br /><br /><strong>Read the bars against total pipeline:</strong> sourced credit is conservative CRM origin; influenced credit is the linked subset of classified journeys. The influenced total is not a full-population or causal lift estimate.</>,
-    insight: "Report both definitions with their populations: sourced is $4.2M, while linked influenced pipeline is $6.3M across 695 opportunities.",
+    insight: "Report both definitions with their populations: sourced is {marketing_sourced_pipeline}, while linked influenced pipeline is {marketing_influenced_pipeline}.",
   },
   "c-essential-coverage": {
     title: "What this shows - Account Coverage",
-    body: <>The account view separates CRM account domains reached by email, 6sense, both, or neither. Opportunity rates are observational associations because coverage was not randomized.<br /><br /><strong>Read the two panels together:</strong> account volume shows the size of each audience; the rate panel shows observed opportunity rate with a 95% Wilson interval.</>,
+    body: <>The account view separates CRM account domains reached by email, 6sense, both, or neither. Historical opportunity prevalence associates supplied-window reach with all-history CRM outcomes; it does not measure conversion after exposure.<br /><br /><strong>Read the two panels together:</strong> account volume shows the size of each audience; the rate panel shows historical opportunity prevalence with a 95% Wilson interval.</>,
     insight: "Use unreached strong-fit accounts as a test audience and validate lift with a holdout; reached-group differences may reflect selection or sales activity.",
   },
   "c-essential-cohort": {
@@ -166,13 +167,13 @@ const explain: Record<string, { title: string; body: ReactNode; insight: string 
   },
   "c-attrib-comparison": {
     title: "What this shows - Attribution Model Comparison",
-    body: <>This comparison isolates the common touchpoint-linked channels across first-touch, last-touch, linear, and time-decay models. Sourced and influenced totals are shown separately because they use different definitions and populations.<br /><br /><strong>How to read it:</strong> Compare the same channel across models. If a channel is taller in First-Touch than Last-Touch, it appears earlier in the observed journey; the reverse suggests later-stage presence. Source logs are normalized to one account-channel presence per ISO week before crediting, and blank-UTM web sessions are excluded rather than assumed to be marketing traffic.</>,
+    body: <>This comparison isolates the common touchpoint-linked channels across first-touch, last-touch, linear, and time-decay models. Sourced and influenced totals are shown separately because they use different definitions and populations.<br /><br /><strong>How to read it:</strong> Compare the same channel across models. If a channel is taller in First-Touch than Last-Touch, it appears earlier in the observed journey; the reverse suggests later-stage presence. Eligible precreation source events are filtered by opportunity window before retaining the latest channel presence per ISO week; positional credit describes retained weekly presence, and blank-UTM web recordings are excluded rather than assumed to be marketing traffic.</>,
     insight: "Compare first-touch, last-touch, linear, and time-decay side by side. Differences show observed journey roles, not single-channel causality.",
   },
   "c-sourced-influenced": {
     title: "What this shows - Sourced vs. Influenced Pipeline",
     body: <>Two horizontal bars, two definitions of marketing contribution.<br /><br /><strong>Sourced:</strong> the CRM “Lead Source” field explicitly says the deal came from marketing — hard, conservative attribution.<br /><br /><strong>Influenced:</strong> a classified email or 6sense touch occurred within 365 days before opportunity creation, even if CRM source credit belongs elsewhere. The gap is a definition difference, not proof of hidden causal value. Sourced covers CRM origin; influenced covers the linked subset of classified journeys.</>,
-    insight: "Report both definitions with their populations. Sourced is $4.2M; linked influenced pipeline is $6.3M across 695 opportunities. Neither is a causal lift estimate.",
+    insight: "Report both definitions with their populations. Sourced is {marketing_sourced_pipeline}; linked influenced pipeline is {marketing_influenced_pipeline}. Neither is a causal lift estimate.",
   },
   "c-attrib-waterfall": {
     title: "What this shows - First-Touch vs. Last-Touch Credit Shift",
@@ -181,13 +182,13 @@ const explain: Record<string, { title: string; body: ReactNode; insight: string 
   },
   "c-spend-pipeline": {
     title: "What this shows - Tracked-Spend ROI",
-    body: <>Each point compares return multiples for channels with tracked spend. Pipeline ROI uses total pipeline; Revenue ROI counts only won revenue.<br /><br /><strong>Why only some channels appear:</strong> only channels with tracked ad spend show up. Referral and Existing Client have $0 media spend in this dataset. Longer distances from zero mean more recorded pipeline or won revenue per tracked-spend dollar.</>,
+    body: <>Each point compares return multiples for channels with tracked spend. Pipeline and recorded-won multiples use opportunities created within each platform’s observed spend window. All-history totals are separate.<br /><br /><strong>Why only some channels appear:</strong> only channels with tracked ad spend show up. Referral and Existing Client have unmeasured media spend, not a measured zero. Longer distances from zero mean more recorded pipeline or won revenue per tracked-spend dollar.</>,
     insight: "Only 6sense_display and linkedin have tracked spend, so use this to choose where to investigate marginal spend — it is not a full marketing budget model.",
   },
   "c-funnel": {
     title: "What this shows - Channel Activity Volumes",
     body: <>This separates ad, email, web, and opportunity-outcome populations so unrelated events are not presented as one linear conversion path.<br /><br /><strong>How to read it:</strong> each group has its own denominator. Ad rows show impression/click progression; email rows show the composition of the supplied engagement-event log; opportunity rows summarize CRM outcomes. A log scale keeps very large and small counts readable together.</>,
-    insight: "This view is safer for analysis because it avoids implying that email events, website sessions, and CRM opportunities are one sequential funnel.",
+    insight: "This view is safer for analysis because it avoids implying that email events, website recordings, and CRM opportunities are one sequential funnel.",
   },
   "c-seg-heatmap": {
     title: "What this shows - Pipeline Heatmap: Industry x Segment",
@@ -221,17 +222,17 @@ const explain: Record<string, { title: string; body: ReactNode; insight: string 
   },
   "c-feat-imp": {
     title: "What this shows - Win Probability: Top Predictors",
-    body: <>A leakage-reduced Random Forest model was trained on resolved deals to prioritize active opportunities. Feature importance shows which opportunity-time fields the model relied on. AUC is 0.712 using a time-based 80/20 holdout with preprocessing fit on the train window (1.0 is perfect; 0.5 is random).<br /><br /><strong>Leakage policy:</strong> the model uses channel, CRM market segment, amount, and create-date features. Present-day account intent, contact counts, and current stage are excluded because they may post-date historical outcomes.</>,
-    insight: "Use win probability for sales prioritization alongside stage, account context, and seller judgment. Treat channel and account signals as predictive patterns, not proof that any single marketing touch caused a win.",
+    body: <>The exploratory calendar baseline uses creation year and quarter only. Mutable latest-snapshot amount, channel and segment cannot be verified as scoring-time features and are excluded. Training outcomes resolve before the evaluation cutoff; test cases have complete 180-day horizons.<br /><br /><strong>Interpretation:</strong> read the current AUC, sample and feature policy in the diagnostic panel. Near-chance discrimination does not support sales prioritization; importance describes the restricted baseline, not causal channel value.</>,
+    insight: "Keep this model as a reproducible diagnostic. Improve historical feature capture and temporal validation before proposing operating priorities.",
   },
   "c-win-prob": {
-    title: "What this shows - Active Opportunity Score Distribution",
-    body: <>This histogram shows 447 active opportunities scored by the baseline model. Each bar is the number of active opportunities in that probability range. Deals on the right side are higher-priority follow-up candidates.<br /><br /><strong>How to use it:</strong> use the score as one prioritization input alongside deal stage, account context, and seller judgment. Do not set an operating cutoff until calibration and precision/recall are validated at the proposed threshold.</>,
-    insight: "Pilot the ranking with sales, measure conversion by score band, and choose a threshold only after observed performance supports it.",
+    title: "What this shows - Exploratory Active Score Distribution",
+    body: <>This histogram shows the current canonical active opportunities scored by the exploratory calendar baseline. The score is conditional on first recorded resolution within 180 days in the historical training sample. It is not an unconditional forecast that an active deal will close.<br /><br /><strong>Decision boundary:</strong> the restricted model has near-chance discrimination. Do not use these bands to assign sales follow-up priorities or operating thresholds.</>,
+    insight: "Incomplete historical event coverage, resolved-only selection and calendar-only features limit operating usefulness.",
   },
   "c-account-coverage": {
     title: "What this shows - CRM Account Coverage",
-    body: <>Of all 4,797 CRM account domains, this shows how many have been reached by email, 6sense, both, or neither. The rate panel shows the observed opportunity rate — the share of accounts in each group with at least one CRM deal.<br /><br /><strong>The critical finding:</strong> 3,256 account domains (67.9%) have never received a tracked marketing touch. Yet accounts reached by email alone have a 45.9% observed opportunity rate versus 17.5% for unreached accounts.<br /><br /><strong>What to do:</strong> prioritize strong-fit unreached domains and compare treatment with a holdout before interpreting higher reached-account rates as lift.</>,
+    body: <>This shows CRM account domains reached by email, 6sense, both, or neither in the supplied marketing window. The rate panel shows historical opportunity prevalence — the share with any opportunity in the available CRM history.<br /><br /><strong>The critical finding:</strong> The unreached group has no observed email or 6sense touch in the supplied window. Higher prevalence in reached groups does not establish post-exposure conversion or incremental lift.<br /><br /><strong>What to do:</strong> Exclude customers and active pipeline, establish a prospective baseline, and test strong-fit eligible domains against a randomized holdout.</>,
     insight: "Coverage and opportunity creation are associated, but account selection and sales activity may explain part of the gap. Only a controlled test can estimate incremental lift.",
   },
   "c-deal-velocity": {
@@ -257,8 +258,8 @@ const explain: Record<string, { title: string; body: ReactNode; insight: string 
 };
 
 const money = (value: number) => {
-  if (!Number.isFinite(value) || value === 0) return "$0";
-  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (!Number.isFinite(value)) return "—";
+  if (Math.abs(value) >= 999_500) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (Math.abs(value) >= 1_000) return `$${Math.round(value / 1_000)}K`;
   return `$${Math.round(value).toLocaleString()}`;
 };
@@ -276,12 +277,9 @@ function interpolate(text: string, data: DashboardData) {
   return text.replace(/\{([^}]+)\}/g, (_, key: string) => metric(data, key));
 }
 
-function downloadRows(filename: string, rows: DataRow[]) {
+function downloadRows(filename: string, rows: DataRow[], provenance: DataRow = {}) {
   if (!rows.length) return;
-  const keys = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
-  const csv = [keys, ...rows.map((row) => keys.map((key) => row[key] ?? ""))]
-    .map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(","))
-    .join("\n");
+  const csv = serializeEvidenceCsv(rows, provenance);
   const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
   const link = document.createElement("a");
   link.href = url;
@@ -301,23 +299,23 @@ function downloadEvidence(data: DashboardData) {
   const datasetRows = (Object.entries(data.datasets) as Array<[string, DataRow[]]>).flatMap(([dataset, values]) => values.map((row) => ({ record_type: "dataset", source: dataset, ...row })));
   const chartRows = Object.entries(data.chart_data).flatMap(([chart, values]) => values.map((row) => ({ record_type: "chart", source: chart, ...row })));
   const tableRows = (Object.entries(data.tables) as Array<[string, { rows: DataRow[] }]>).flatMap(([table, contract]) => contract.rows.map((row) => ({ record_type: "table", source: table, ...row })));
-  downloadRows("marketing-dashboard-evidence.csv", [...datasetRows, ...chartRows, ...tableRows]);
+  downloadRows("marketing-dashboard-evidence.csv", [...datasetRows, ...chartRows, ...tableRows], { snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: data.meta.generated_from, scope: data.meta.period, methodology: data.meta.methodology });
 }
 
 function formatContractCell(column: string, value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
-  if (column.includes("($)") || column === "Avg Deal") return money(Number(value));
+  if (column.includes("($)") || column === "Avg Deal") return formatField("recorded_amount", Number(value));
   if (column === "Closed Win Rate") return pct(Number(value));
   if (column.includes("ROI")) {
     const numeric = Number(value);
-    return Number.isFinite(numeric) && numeric !== 0 ? `${numeric.toFixed(1)}×` : "—";
+    return Number.isFinite(numeric) && true ? `${numeric.toFixed(1)}×` : "—";
   }
   if (typeof value === "number") return Number.isInteger(value) ? value.toLocaleString() : value.toLocaleString(undefined, { maximumFractionDigits: 3 });
   return String(value);
 }
 
-function contractRows(table: { columns: string[]; rows: DataRow[] }): string[][] {
-  return table.rows.map((row) => table.columns.map((column) => formatContractCell(column, row[column])));
+function contractRows(table: { columns: string[]; rows: DataRow[] }): (string | number | null)[][] {
+  return table.rows.map((row) => table.columns.map((column) => row[column] as string | number | null));
 }
 
 function validatePayload(value: unknown): DashboardData {
@@ -339,7 +337,7 @@ function validatePayload(value: unknown): DashboardData {
   if (metadataScopeErrors.length) throw new Error(`Dashboard chart metadata references an invalid section or dataset: ${metadataScopeErrors.map((item) => item.chart_id).join(", ")}`);
   const missingChartData = chartPlacementIds.filter((id) => !Array.isArray(chartData[id]));
   if (missingChartData.length) throw new Error(`Dashboard chart data is missing placements: ${missingChartData.join(", ")}`);
-  const emptyChartData = chartPlacementIds.filter((id) => !(chartData[id] as unknown[]).length);
+  const emptyChartData = chartPlacementIds.filter((id) => !(chartData[id] as unknown[]).length && !payload.dataset_status?.[payload.chart_metadata.find((item) => item.chart_id === id)?.source_dataset ?? ""]);
   if (emptyChartData.length) throw new Error(`Dashboard chart data contains empty placements: ${emptyChartData.join(", ")}`);
   if (payload.manifest.chart_placement_count !== chartPlacementIds.length || payload.manifest.distinct_chart_count !== 21 || payload.manifest.section_ids.length !== REQUIRED_SECTION_IDS.length || payload.manifest.table_count !== tableIds.length) throw new Error("Dashboard preservation manifest is incomplete.");
   const incompleteTables = tableIds.filter((id) => {
@@ -350,16 +348,16 @@ function validatePayload(value: unknown): DashboardData {
   return payload;
 }
 
-function DataTable({ rows, label, id }: { rows: DataRow[]; label: string; id: string }) {
+function DataTable({ rows, label, id, provenance = {} }: { rows: DataRow[]; label: string; id: string; provenance?: DataRow }) {
   const [sort, setSort] = useState<{ key: string; direction: 1 | -1 } | null>(null);
-  const keys = Array.from(new Set(rows.flatMap((row) => Object.keys(row)))).slice(0, 9);
+  const keys = Array.from(new Set(rows.flatMap((row) => Object.keys(row))));
   const sorted = sort
-    ? [...rows].sort((a, b) => String(a[sort.key] ?? "").localeCompare(String(b[sort.key] ?? ""), undefined, { numeric: true }) * sort.direction)
+    ? [...rows].sort((a, b) => compareValues(a[sort.key], b[sort.key], sort.direction))
     : rows;
   if (!rows.length) return <div className="data-table-empty">No rows are available for this chart scope.</div>;
   return <div className="data-table-wrap" id={id}>
-    <div className="data-table-top"><span>{label}</span><button type="button" className="text-button" onClick={() => downloadRows(`${label.toLowerCase().replaceAll(" ", "-")}.csv`, rows)}><Download size={14} /> CSV</button></div>
-    <div className="table-scroll"><table className="data-table"><caption className="sr-only">{label}</caption><thead><tr>{keys.map((key) => { const active = sort?.key === key; return <th key={key} scope="col" aria-sort={active ? (sort.direction === 1 ? "ascending" : "descending") : "none"}><button type="button" onClick={() => setSort((current) => ({ key, direction: current?.key === key ? (current.direction * -1 as 1 | -1) : 1 }))}>{key.replaceAll("_", " ")} <ChevronDown size={12} aria-hidden="true" /></button></th>; })}</tr></thead><tbody>{sorted.map((row, index) => <tr key={`${String(row[keys[0]])}-${index}`}>{keys.map((key) => <td key={key}>{String(row[key] ?? "—")}</td>)}</tr>)}</tbody></table></div>
+    <div className="data-table-top"><span>{label}</span><button type="button" className="text-button" onClick={() => downloadRows(`${label.toLowerCase().replaceAll(" ", "-")}.csv`, sorted, provenance)}><Download size={14} /> CSV</button></div>
+    <div className="table-scroll" tabIndex={0} role="region" aria-label="Evidence table; scroll to read all rows and columns"><table className="data-table"><caption className="sr-only">{label}</caption><thead><tr>{keys.map((key) => { const active = sort?.key === key; return <th key={key} scope="col" aria-sort={active ? (sort.direction === 1 ? "ascending" : "descending") : "none"}><button type="button" onClick={() => setSort((current) => ({ key, direction: current?.key === key ? (current.direction * -1 as 1 | -1) : 1 }))}>{key.replaceAll("_", " ")} ({fieldUnit(key)}) <ChevronDown className={active && sort.direction === 1 ? "rotate" : ""} size={12} aria-hidden="true" /></button></th>; })}</tr></thead><tbody>{sorted.map((row, index) => <tr key={`${String(row[keys[0]])}-${index}`}>{keys.map((key) => <td key={key} className={typeof row[key] === "number" ? "numeric" : undefined}>{formatField(key, row[key])}</td>)}</tr>)}</tbody></table></div>
   </div>;
 }
 
@@ -374,12 +372,12 @@ function ChartCard({ id, metadata, data, totalPipeline, coverageMix, presenting 
   const summaryId = `${id}-summary`;
   const tableId = `${id}-data`;
   return <article className="chart-card" data-chart-id={id} data-reveal aria-labelledby={`${id}-title`}>
-    <div className="chart-heading"><div><h3 id={`${id}-title`}>{title}</h3><p id={`${id}-subtitle`}>{subtitle}</p></div><div className="chart-actions"><button type="button" className={`icon-button chart-view-toggle${table ? " is-active" : ""}`} title={table ? "Return to chart" : "View chart data"} aria-label={table ? `View chart for ${title}` : `View data for ${title}`} aria-pressed={table} aria-expanded={table} aria-controls={tableId} onClick={() => setTable((value) => !value)}><FileText size={15} /><span>{table ? "Chart" : "Data"}</span></button><button type="button" className="icon-button" title="Download chart data" aria-label={`Download data for ${title}`} onClick={() => downloadRows(`${id}.csv`, chartRows)}><Download size={15} /></button></div></div>
-    <div className="chart-visual" role="img" aria-labelledby={`${id}-title ${id}-subtitle`} aria-describedby={summaryId}><Suspense fallback={<div className="chart-empty" role="status">Loading visual…</div>}><ChartRenderer id={id} data={data.datasets} totalPipeline={totalPipeline} coverageMix={coverageMix} /></Suspense></div>
-    <p id={summaryId} className="chart-accessible-summary">{metadata?.accessible_summary}</p>
+    <div className="chart-heading"><div><h3 id={`${id}-title`}>{title}</h3><p id={`${id}-subtitle`}>{subtitle}</p></div><div className="chart-actions"><button type="button" className={`icon-button chart-view-toggle${table ? " is-active" : ""}`} title={table ? "Return to chart" : "View chart data"} aria-label={table ? `View chart for ${title}` : `View data for ${title}`} aria-pressed={table} aria-expanded={table} aria-controls={tableId} onClick={() => setTable((value) => !value)}><FileText size={15} /><span>{table ? "Hide data" : "Show data"}</span></button><button type="button" className="icon-button" title="Download chart data" aria-label={`Download data for ${title}`} onClick={() => downloadRows(`${id}.csv`, chartRows, { snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: metadata?.source_dataset ?? "Unavailable", scope: metadata?.subtitle ?? data.meta.period, methodology: data.meta.methodology, caveat: metadata?.caveat ?? "" })}><Download size={15} /></button></div></div>
+    <div className="chart-visual" role="img" aria-labelledby={`${id}-title ${id}-subtitle`} aria-describedby={summaryId}><Suspense fallback={<div className="chart-empty" role="status">Loading visual…</div>}>{!chartRows.length ? <div className="chart-empty" role="status">Chart unavailable: {source ? data.dataset_status?.[source]?.reason ?? "No observations in this scope." : "No observations in this scope."}</div> : <ChartRenderer id={id} data={data.datasets} totalPipeline={totalPipeline} coverageMix={coverageMix} />}</Suspense></div>
+    <p id={summaryId} className="chart-accessible-summary">{metadata?.accessible_summary}{source === "attribution" && " Linked opportunity counts describe the whole selected window, repeated for reference; do not sum across channels or models."}</p>
     {metadata?.caveat && <p className="chart-caveat chart-caveat-visible"><CircleAlert size={14} /><span>{metadata.caveat}</span></p>}
     {info && <div className="chart-explanation"><div className="explanation-row"><strong>{info.title}</strong><button type="button" className="text-button" aria-expanded={details} onClick={() => setDetails((value) => !value)}>{details ? "Hide details" : "How to read"}<ChevronDown className={details ? "rotate" : ""} size={14} /></button></div>{details && <div className="explanation-body"><p>{info.body}</p><div className="insight"><Sparkles size={14} />{interpolate(info.insight, data)}</div></div>}</div>}
-    {table && <DataTable id={tableId} rows={chartRows} label={`${title} data`} />}
+    {table && <DataTable id={tableId} rows={chartRows} label={`${title} data`} provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: metadata?.source_dataset ?? "Unavailable", scope: subtitle, methodology: data.meta.methodology, caveat: metadata?.caveat ?? "" }} />}
     {presenting && <span className="presentation-mark" aria-hidden="true">Evidence</span>}
   </article>;
 }
@@ -411,9 +409,9 @@ function CalibrationPanel({ data }: { data: DashboardData }) {
   const rows = data.datasets.model_calibration;
   if (!rows.length) return null;
   return <section className="method-panel calibration-panel" aria-labelledby="calibration-title">
-    <div className="method-panel-head"><div><h3 id="calibration-title">Predicted vs observed win rate</h3></div><span className="panel-note">Time-based test holdout · Model diagnostic</span></div>
-    <p className="method-panel-copy">The highest score band is directionally aligned; middle bands overpredict observed wins. Use scores to prioritize review, not as a promise of close probability.</p>
-    <div className="calibration-rows" role="table" aria-label="Model calibration by test score band"><div className="calibration-head" role="row"><span role="columnheader">Score band</span><span role="columnheader">n</span><span role="columnheader">Predicted</span><span role="columnheader">Observed</span><span role="columnheader">Gap</span></div>{rows.map((row) => <div className="calibration-row" role="row" key={textValue(row, "score_band")}><span role="cell">{textValue(row, "score_band")}</span><span role="cell">{numberValue(row, "n").toLocaleString()}</span><span role="cell">{pct(numberValue(row, "predicted_win_rate"))}</span><span role="cell">{pct(numberValue(row, "observed_win_rate"))}</span><span role="cell" className={numberValue(row, "abs_gap") > 0.1 ? "gap-high" : ""}>{pct(numberValue(row, "abs_gap"))}</span></div>)}</div>
+    <div className="method-panel-head"><div><h3 id="calibration-title">Predicted vs observed win rate</h3></div><span className="panel-note">Retrospective held-out cohort · Exploratory diagnostic</span></div>
+    <p className="method-panel-copy">Compare predicted and observed rates within each held-out score band, alongside its sample size and absolute gap. These retrospective diagnostics do not establish calibration for future scoring or an operating cutoff.</p>
+    <div className="calibration-rows" role="table" aria-label="Model calibration by test score band"><div className="calibration-head" role="row"><span role="columnheader">Score band</span><span role="columnheader">n</span><span role="columnheader">Predicted</span><span role="columnheader">Observed</span><span role="columnheader">Gap</span></div>{rows.map((row) => <div className="calibration-row" role="row" key={textValue(row, "score_band")}><span role="cell">{textValue(row, "score_band")}</span><span role="cell">{numberValue(row, "n").toLocaleString()}</span><span role="cell">{pct(numberValue(row, "predicted_win_rate"))}</span><span role="cell">{pct(numberValue(row, "observed_win_rate"))}</span><span role="cell" className={numberValue(row, "abs_gap") > 0.1 ? "gap-high" : ""}>{`${(numberValue(row, "abs_gap") * 100).toFixed(1)} pp`}</span></div>)}</div>
   </section>;
 }
 
@@ -431,11 +429,11 @@ function QualityTape({ data }: { data: DashboardData }) {
   return <section className="quality-tape" aria-label="Evidence quality status">
     <div className="quality-tape-head"><span>Evidence quality</span><strong>Decision constraints</strong></div>
     <div className="quality-tape-grid">
-      <div><span>Domain match</span><strong>{metrics.domain_match_rate}</strong><Progress value={parseFloat(metrics.domain_match_rate) || 0} tone="teal" /></div>
-      <div><span>Missing create dates</span><strong>{metrics.missing_create_dates}</strong><Progress value={0} tone="teal" /></div>
-      <div><span>Won deals at $0</span><strong>{metrics.zero_amount_won_share}</strong><Progress value={parseFloat(metrics.zero_amount_won_share) || 0} tone="amber" /></div>
-      <div><span>Unknown channel</span><strong>{metrics.unknown_channel_pct}</strong><Progress value={parseFloat(metrics.unknown_channel_pct) || 0} tone="amber" /></div>
-      <div><span>Linked wins</span><strong>{metrics.attribution_linked_won_share}</strong><Progress value={parseFloat(metrics.attribution_linked_won_share) || 0} tone="red" /></div>
+      <div><span>Domain match</span><strong>{metrics.domain_match_rate}</strong><Progress label="Domain match" value={parseFloat(metrics.domain_match_rate) || 0} tone="teal" /></div>
+      <div><span>Missing create dates</span><strong>{metrics.missing_create_dates}</strong><span className="quality-count">records with no create date</span></div>
+      <div><span>Won deals at $0</span><strong>{metrics.zero_amount_won_share}</strong><Progress label="Won deals with zero recorded amount" value={parseFloat(metrics.zero_amount_won_share) || 0} tone="amber" /></div>
+      <div><span>Unknown channel</span><strong>{metrics.unknown_channel_pct}</strong><Progress label="Unknown channel" value={parseFloat(metrics.unknown_channel_pct) || 0} tone="amber" /></div>
+      <div><span>Linked wins</span><strong>{metrics.attribution_linked_won_share}</strong><Progress label="Linked wins" value={parseFloat(metrics.attribution_linked_won_share) || 0} tone="red" /></div>
     </div>
   </section>;
 }
@@ -456,12 +454,12 @@ function ChartGrid({ ids, data, presenting, totalPipeline, coverageMix, metadata
   return <div className={`chart-grid ${ids.length === 1 ? "single" : ids.length === 2 ? "two" : ""} ${className}`.trim()}>{ids.map((id) => <ChartCard key={`${id}-${resetToken}`} id={id} metadata={metadata.get(id)} data={data} totalPipeline={totalPipeline} coverageMix={coverageMix} presenting={presenting} />)}</div>;
 }
 
-function EvidenceTable({ title, columns, rows, note }: { title: string; columns: string[]; rows: string[][]; note?: ReactNode }) {
+function EvidenceTable({ title, columns, rows, note }: { title: string; columns: string[]; rows: (string | number | null)[][]; note?: ReactNode }) {
   const [sort, setSort] = useState<{ index: number; direction: 1 | -1 } | null>(null);
   const sortedRows = sort
-    ? [...rows].sort((left, right) => String(left[sort.index] ?? "").localeCompare(String(right[sort.index] ?? ""), undefined, { numeric: true }) * sort.direction)
+    ? [...rows].sort((left, right) => compareValues(left[sort.index], right[sort.index], sort.direction))
     : rows;
-  return <article className="evidence-table-card"><div className="table-heading"><div><h3>{title}</h3>{note && <p className="table-note">{note}</p>}</div><span>{rows.length} rows · sortable</span></div><div className="table-scroll"><table className="evidence-table"><caption className="sr-only">{title}</caption><thead><tr>{columns.map((column, index) => { const active = sort?.index === index; return <th scope="col" key={column} aria-sort={active ? (sort?.direction === 1 ? "ascending" : "descending") : "none"}><button type="button" className="sort-button" onClick={() => setSort((current) => ({ index, direction: current?.index === index ? (current.direction * -1 as 1 | -1) : 1 }))}>{column}<ArrowUpDown size={11} aria-hidden="true" /></button></th>; })}</tr></thead><tbody>{sortedRows.map((row, rowIndex) => <tr key={`${title}-${rowIndex}`}>{row.map((cell, cellIndex) => <td key={`${rowIndex}-${cellIndex}`}>{cell}</td>)}</tr>)}</tbody></table></div></article>;
+  return <article className="evidence-table-card"><div className="table-heading"><div><h3>{title}</h3>{note && <p className="table-note">{note}</p>}</div><span>{rows.length} rows · sortable</span></div><div className="table-scroll" tabIndex={0} role="region" aria-label="Evidence table; scroll to read all rows and columns"><table className="evidence-table"><caption className="sr-only">{title}</caption><thead><tr>{columns.map((column, index) => { const active = sort?.index === index; return <th scope="col" key={column} aria-sort={active ? (sort?.direction === 1 ? "ascending" : "descending") : "none"}><button type="button" className="sort-button" onClick={() => setSort((current) => ({ index, direction: current?.index === index ? (current.direction * -1 as 1 | -1) : 1 }))}>{column}{active && <span>{sort.direction === 1 ? " ↑" : " ↓"}</span>}<ArrowUpDown size={11} aria-hidden="true" /></button></th>; })}</tr></thead><tbody>{sortedRows.map((row, rowIndex) => <tr key={`${title}-${rowIndex}`}>{row.map((cell, cellIndex) => <td key={`${rowIndex}-${cellIndex}`}>{formatContractCell(columns[cellIndex], cell)}</td>)}</tr>)}</tbody></table></div></article>;
 }
 
 function AttributionTable({ data }: { data: DashboardData }) {
@@ -498,7 +496,7 @@ function AttributionSection({ data, metadata, presenting, totalPipeline, coverag
 function ChannelSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
   const table = data.tables.channel_roi_summary;
   const rows = contractRows(table);
-  return <section id="s-channel" className="dashboard-section"><SectionIntro id="s-channel" data={data} /><ContextBox><strong>Decision use:</strong> pipeline ROI is recorded CRM-sourced pipeline divided by tracked ad spend; revenue ROI uses recorded won amount. Only two paid channels have tracked spend, so treat these as diagnostic efficiency ratios—not an incremental ROI ranking. <strong>Avg Deal</strong> uses opportunities with a populated amount.</ContextBox><EvidenceGrid items={[{ label: "Recorded outcome", title: "Relationship-led revenue is the strongest base", body: <>Existing-client and referral sources lead recorded won outcomes, so the current revenue story is broader than paid media.</>, tone: "high" }, { label: "Acquisition role", title: "Marketing channels build net-new pipeline", body: <>Judge acquisition channels through pipeline creation, later conversion, and time-to-close together.</>, tone: "medium" }, { label: "Decision gate", title: "Separate quality from volume", body: <>Increase spend only when added reach creates incremental qualified opportunities—not simply more activity.</>, tone: "directional" }]} /><ChartGrid ids={["c-spend-pipeline", "c-funnel"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /><EvidenceTable title="Channel ROI Summary Table" note="Pipeline ROI = total pipeline / spend. Revenue ROI = won revenue / spend. Channels without measured media spend remain unavailable rather than being assigned a zero-cost return." columns={table.columns} rows={rows} /></section>;
+  return <section id="s-channel" className="dashboard-section"><SectionIntro id="s-channel" data={data} /><ContextBox><strong>Decision use:</strong> multiples compare same-period recorded CRM-sourced pipeline or won amount with tracked ad spend. Only two paid channels have tracked spend, so treat these as diagnostic efficiency ratios—not an incremental ROI ranking. <strong>Avg Deal</strong> uses opportunities with a populated amount.</ContextBox><EvidenceGrid items={[{ label: "Recorded outcome", title: "Relationship-led revenue is the strongest base", body: <>Existing-client and referral sources lead recorded won outcomes, so the current revenue story is broader than paid media.</>, tone: "high" }, { label: "Acquisition role", title: "Marketing channels build net-new pipeline", body: <>Judge acquisition channels through pipeline creation, later conversion, and time-to-close together.</>, tone: "medium" }, { label: "Decision gate", title: "Separate quality from volume", body: <>Increase spend only when added reach creates incremental qualified opportunities—not simply more activity.</>, tone: "directional" }]} /><ChartGrid ids={["c-spend-pipeline", "c-funnel"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /><DataTable id="period-matched-efficiency" provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: "channel_pipeline", scope: data.meta.period, methodology: data.meta.methodology }} label="Period-matched efficiency inputs and observation windows" rows={data.datasets.channel_pipeline.map(row => Object.fromEntries(Object.entries(row).filter(([key]) => ["channel_category", "spend_measurement_status", "pipeline_period_start", "pipeline_period_end", "spend_period_start", "spend_period_end", "period_matched_pipeline", "period_matched_won_amount", "period_matched_opportunities", "channel_spend", "pipeline_roi", "revenue_roi", "ratio_definition"].includes(key))))} /><EvidenceTable title="Channel ROI Summary Table" note="Multiples = same-period recorded sourced pipeline or won amount / tracked spend. The period-matched inputs and dates appear above. Channels without measured media spend remain unavailable rather than being assigned a zero-cost return." columns={table.columns} rows={rows} /></section>;
 }
 
 function SegmentSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
@@ -514,7 +512,10 @@ function BudgetSection({ data, metadata, presenting, totalPipeline, coverageMix,
 }
 
 function AdvancedSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
-  return <section id="s-advanced" className="dashboard-section"><SectionIntro id="s-advanced" data={data} /><ContextBox><strong>Decision use:</strong> the model ranks relative priority among {metric(data, "active_scored_opportunities")} active opportunities; it does not promise an individual close probability. Its AUC is {metric(data, "model_auc")} using {metric(data, "model_validation")}. Review realized outcomes by score band before setting an operating threshold.</ContextBox><EvidenceGrid items={[{ label: "Observed gap", title: "Reached tiers show higher observed rates", body: <>Unreached accounts show a {metric(data, "not_reached_opportunity_rate")} opportunity rate, while email-only accounts show {metric(data, "email_only_opportunity_rate")} and both-channel accounts show {metric(data, "both_channels_opportunity_rate")}. Selection and sales activity may explain part of the difference.</>, tone: "high" }, { label: "Quality diagnosis", title: "Growth is not automatically healthy", body: <>Among cohorts at least 80% resolved, closed-deal win rate moved from {metric(data, "cohort_start_win_rate")} in {metric(data, "cohort_start_quarter")} to {metric(data, "cohort_end_win_rate")} in {metric(data, "cohort_end_quarter")}.</>, tone: "medium" }, { label: "Next test", title: "Validate causality", body: <>Run a holdout or phased rollout to measure incremental lift from email-first outreach; test a 6sense overlay separately.</>, tone: "directional" }]} /><CalibrationPanel data={data} /><ChartGrid ids={["c-feat-imp", "c-win-prob", "c-account-coverage", "c-deal-velocity", "c-journey", "c-targeting-matrix", "c-cohort"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /></section>;
+  const diagnostics = data.datasets.model_stats[0];
+  const limitation = diagnostics ? textValue(diagnostics, "model_limitation", "As-of validity and future predictive performance remain unverified.") : "Model diagnostics unavailable.";
+  const featurePolicy = diagnostics ? textValue(diagnostics, "feature_policy", "Feature policy unavailable.") : "Feature policy unavailable.";
+  return <section id="s-advanced" className="dashboard-section"><SectionIntro id="s-advanced" data={data} /><ContextBox><strong>Decision use:</strong> the exploratory retrospective model describes scores among {metric(data, "active_scored_opportunities")} active opportunities; it does not promise an individual close probability. Its retrospective AUC is {metric(data, "model_auc")} using {metric(data, "model_validation")}. As-of features and outcomes known before the training cutoff must be verified before these scores support an operating threshold.<br /><br /><strong>Feature policy:</strong> {featurePolicy}<br /><strong>Model limitations:</strong> {limitation}</ContextBox><EvidenceGrid items={[{ label: "Observed gap", title: "Reached tiers show higher observed rates", body: <>Unreached accounts show a {metric(data, "not_reached_opportunity_rate")} historical opportunity prevalence, while email-only accounts show {metric(data, "email_only_opportunity_rate")} and both-channel accounts show {metric(data, "both_channels_opportunity_rate")}. CRM outcomes can precede the reach window; selection and sales activity can explain the association.</>, tone: "high" }, { label: "Quality diagnosis", title: "Growth is not automatically healthy", body: <>Among cohorts at least 80% resolved, closed-deal win rate moved from {metric(data, "cohort_start_win_rate")} in {metric(data, "cohort_start_quarter")} to {metric(data, "cohort_end_win_rate")} in {metric(data, "cohort_end_quarter")}.</>, tone: "medium" }, { label: "Next test", title: "Validate causality", body: <>Run a holdout or phased rollout to measure incremental lift from email-first outreach; test a 6sense overlay separately.</>, tone: "directional" }]} /><CalibrationPanel data={data} /><DataTable id="calibration-details" provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: "model_calibration", scope: "Held-out validation cohort", methodology: data.meta.methodology }} label="Calibration bins, observed ranges and 95% uncertainty" rows={data.datasets.model_calibration} /><DataTable id="velocity-eligibility" provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: "deal_velocity_exclusions", scope: "Canonical won outcomes", methodology: data.meta.methodology }} label="Canonical won duration eligibility by channel and motion" rows={data.datasets.deal_velocity_exclusions ?? []} /><ChartGrid ids={["c-feat-imp", "c-win-prob", "c-account-coverage", "c-deal-velocity", "c-journey", "c-targeting-matrix", "c-cohort"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /></section>;
 }
 
 function AppendixSection({ data, onOpen }: { data: DashboardData; onOpen: (id: SectionId) => void }) {
@@ -556,7 +557,7 @@ function ConclusionSection({ data }: { data: DashboardData }) {
   </section>;
 }
 
-function Progress({ value, tone }: { value: number; tone: string }) { return <div className="progress" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value}><span className={`progress-fill ${tone}`} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></div>; }
+function Progress({ value, tone, label }: { value: number; tone: string; label: string }) { return <div className="progress" role="progressbar" aria-label={label} aria-valuetext={`${value.toFixed(1)}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={value}><span className={`progress-fill ${tone}`} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></div>; }
 
 function LegacyDashboard() {
   const root = useRef<HTMLDivElement>(null);
@@ -573,7 +574,7 @@ function LegacyDashboard() {
   const [error, setError] = useState("");
   const [active, setActive] = useState<SectionId>("s-essential");
   const [menuOpen, setMenuOpen] = useState(false);
-  const [presenting, setPresenting] = useState(() => localStorage.getItem("dashboardMode") === "presentation");
+  const [presenting, setPresenting] = useState(() => { try { return localStorage.getItem("dashboardMode") === "presentation"; } catch { return false; } });
   const [search, setSearch] = useState("");
   const [caveatsOpen, setCaveatsOpen] = useState(false);
   const [utilityOpen, setUtilityOpen] = useState(false);
@@ -617,7 +618,7 @@ function LegacyDashboard() {
     return () => ctx.revert();
   }, [data, active]);
 
-  useEffect(() => { document.body.classList.toggle("presentation-mode", presenting); localStorage.setItem("dashboardMode", presenting ? "presentation" : "analyst"); window.setTimeout(() => ScrollTrigger.refresh(), 200); }, [presenting]);
+  useEffect(() => { document.body.classList.toggle("presentation-mode", presenting); try { localStorage.setItem("dashboardMode", presenting ? "presentation" : "analyst"); } catch { /* In-memory mode remains usable. */ } const timer = window.setTimeout(() => ScrollTrigger.refresh(), 200); return () => { clearTimeout(timer); document.body.classList.remove("presentation-mode"); }; }, [presenting]);
   useEffect(() => {
     if (!menuOpen) {
       // The trigger lives inside #main-content, which is inert while the
@@ -707,7 +708,7 @@ function LegacyDashboard() {
       }
     };
     setInert(main, menuOpen || caveatsOpen);
-    setInert(sidebar, caveatsOpen);
+    setInert(sidebar, caveatsOpen || (!menuOpen && window.matchMedia("(max-width: 900px)").matches));
     return () => { setInert(main, false); setInert(sidebar, false); };
   }, [menuOpen, caveatsOpen]);
   useEffect(() => {
@@ -731,7 +732,7 @@ function LegacyDashboard() {
   const unreached = parseCount(metric(data, "unreached_accounts"));
   const coverageMix: DataRow[] = [{ name: "Unreached", value: unreached }, { name: "Reached", value: Math.max(0, targetAccounts - unreached) }];
   const activeGroup = groups.find((group) => group.children.some((child) => child.id === active));
-  const filteredGroups = groups.map((group) => ({ ...group, children: group.children.filter((child) => !search.trim() || `${group.label} ${child.label}`.toLowerCase().includes(search.toLowerCase())) })).filter((group) => group.children.length || !search.trim());
+  const filteredGroups = groups.map((group) => ({ ...group, children: group.children.filter((child) => !search.trim() || `${group.label} ${child.label}`.toLowerCase().includes(search.trim().toLowerCase())) })).filter((group) => group.children.length || !search.trim());
   const hasSearchResults = filteredGroups.some((group) => group.children.length > 0);
   const openSection = (id: SectionId) => { setActive(id); setMenuOpen(false); if (window.location.hash !== `#${id}`) window.history.pushState(null, "", `#${id}`); };
   const togglePresentation = () => {
@@ -756,13 +757,13 @@ function LegacyDashboard() {
   };
 
   return <div ref={root} className="app-shell">
-    <aside id="dashboard-navigation" className={`sidebar ${menuOpen ? "is-open" : ""}`} role={menuOpen ? "dialog" : undefined} aria-label="Dashboard sections" aria-modal={menuOpen ? "true" : undefined}><div className="brand"><span>RC</span><div><strong>Revenue Command</strong><small>Decision analytics · {data.meta.period}</small></div></div><button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button><div className="nav-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find evidence" aria-label="Search dashboard sections" /></div><nav className="section-nav">{filteredGroups.map((group) => <div className="nav-group" key={group.id}><div className="nav-group-label">{group.icon}<span>{group.label}</span></div>{group.children.map((item) => <a key={item.id} href={`#${item.id}`} className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={(event) => { event.preventDefault(); openSection(item.id); }}><span>{item.label}</span>{active === item.id && <AnimatedNavIndicator />}</a>)}</div>)}</nav>{search.trim() && !hasSearchResults && <p className="nav-empty" role="status">No sections match “{search}”.</p>}<a className="legacy-link" href="/full-analysis"><ExternalLink size={15} /><span><strong>Full analysis archive</strong><small>Original Plotly reference</small></span></a><div className="sidebar-note"><ShieldCheck size={16} /><span>Validated Parquet evidence<br />Schema v{data.schema_version}</span></div></aside>{menuOpen && <button type="button" className="nav-backdrop" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation" />}
-      <main id="main-content"><header className="topbar"><div className="topbar-left"><button ref={menuButton} className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="dashboard-navigation"><Menu size={18} /></button><div><h1>Revenue Command<span className="wide-title"> Center</span></h1><span className="top-context">{activeGroup?.label ?? "Dashboard"} / {data.meta.period}</span></div></div><div className="top-actions"><span className="data-meta">{refreshed} · {metrics.total_opportunities} opportunities</span><span className="validated"><Check size={13} /> Validated snapshot</span><button ref={caveatsTrigger} className="action-button" type="button" title="View data caveats" onClick={() => setCaveatsOpen(true)} aria-haspopup="dialog" aria-expanded={caveatsOpen}><Info size={15} /> Caveats</button><button className="action-button utility-export" type="button" title="Export all evidence" onClick={() => downloadEvidence(data)}><Download size={15} /> Export</button><button className="action-button utility-print" type="button" title="Print all dashboard sections" onClick={() => { setPrintAll(true); window.setTimeout(() => { window.print(); window.setTimeout(() => setPrintAll(false), 1500); }, 120); }}><Printer size={15} /> Print</button><a className="action-button browser-deck-link" href="#present/main-01" title="Open the browser findings deck"><Presentation size={15} /> Findings deck</a><button className={`mode-button ${presenting ? "active" : ""}`} type="button" title={presenting ? "Switch to analyst mode" : "Switch to presentation mode"} onClick={togglePresentation} aria-pressed={presenting}><Presentation size={15} /> {presenting ? "Analyst mode" : "Presentation mode"}</button><button className="icon-button utility-reset" type="button" onClick={() => { setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }} title="Reset dashboard" aria-label="Reset dashboard"><RotateCcw size={16} /></button><div ref={utilityMenu} className="utility-menu-wrap"><button ref={utilityTrigger} className="icon-button utility-more" type="button" aria-label="More dashboard actions" aria-haspopup="menu" aria-expanded={utilityOpen} aria-controls="utility-menu" onClick={() => setUtilityOpen((value) => !value)}><MoreHorizontal size={18} /></button>{utilityOpen && <div id="utility-menu" className="utility-menu-popover" role="menu"><button type="button" role="menuitem" onClick={() => { downloadEvidence(data); setUtilityOpen(false); }}><Download size={16} /><span><strong>Export evidence</strong><small>Download the full validated dataset</small></span></button><button type="button" role="menuitem" onClick={() => { setUtilityOpen(false); setPrintAll(true); window.setTimeout(() => { window.print(); window.setTimeout(() => setPrintAll(false), 1500); }, 120); }}><Printer size={16} /><span><strong>Print dashboard</strong><small>Prepare every section for print</small></span></button><button type="button" role="menuitem" aria-pressed={presenting} onClick={() => { togglePresentation(); setUtilityOpen(false); }}><Presentation size={16} /><span><strong>{presenting ? "Analyst mode" : "Presentation mode"}</strong><small>{presenting ? "Restore the working layout" : "Expand the executive canvas"}</small></span></button><button type="button" role="menuitem" onClick={() => { setUtilityOpen(false); setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }}><RotateCcw size={16} /><span><strong>Reset dashboard</strong><small>Return to the essential view</small></span></button></div>}</div></div></header>
+    <aside id="dashboard-navigation" className={`sidebar ${menuOpen ? "is-open" : ""}`} role={menuOpen ? "dialog" : undefined} aria-label="Dashboard sections" aria-modal={menuOpen ? "true" : undefined}><div className="brand"><span>RC</span><div><strong>Revenue Command</strong><small>Decision analytics · {data.meta.period}</small></div></div><button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button><div className="nav-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a section" aria-label="Search dashboard sections" />{search && <button type="button" aria-label="Clear section search" onClick={() => setSearch("")}><X size={14} /></button>}</div><nav className="section-nav">{filteredGroups.map((group) => <div className="nav-group" key={group.id}><div className="nav-group-label">{group.icon}<span>{group.label}</span></div>{group.children.map((item) => <a key={item.id} href={`#${item.id}`} className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={(event) => { event.preventDefault(); openSection(item.id); }}><span>{item.label}</span>{active === item.id && <AnimatedNavIndicator />}</a>)}</div>)}</nav>{search.trim() && !hasSearchResults && <p className="nav-empty" role="status">No sections match “{search}”.</p>}<a className="legacy-link" href={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}full-analysis/`}><ExternalLink size={15} /><span><strong>Full analysis archive</strong><small>Original Plotly reference</small></span></a><div className="sidebar-note"><ShieldCheck size={16} /><span>Validated Parquet evidence<br />Schema v{data.schema_version}</span></div></aside>{menuOpen && <button type="button" className="nav-backdrop" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation" />}
+      <main id="main-content"><header className="topbar"><div className="topbar-left"><button ref={menuButton} className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="dashboard-navigation"><Menu size={18} /></button><div><h1>Revenue Command<span className="wide-title"> Center</span></h1><span className="top-context">{activeGroup?.label ?? "Dashboard"} / {data.meta.period}</span></div></div><div className="top-actions"><span className="data-meta">{refreshed} · {metrics.total_opportunities} opportunities</span><span className="validated"><Check size={13} /> Validated snapshot</span><button ref={caveatsTrigger} className="action-button" type="button" title="View data caveats" onClick={() => setCaveatsOpen(true)} aria-haspopup="dialog" aria-expanded={caveatsOpen}><Info size={15} /> Caveats</button><button className="action-button utility-export" type="button" title="Export all evidence" onClick={() => downloadEvidence(data)}><Download size={15} /> Export</button><button className="action-button utility-print" type="button" title="Print all dashboard sections" onClick={() => { setPrintAll(true); window.setTimeout(() => { window.print(); window.setTimeout(() => setPrintAll(false), 1500); }, 120); }}><Printer size={15} /> Print</button><a className="action-button browser-deck-link" href="#present/main-01" title="Open the browser findings deck"><Presentation size={15} /> Findings deck</a><button className={`mode-button ${presenting ? "active" : ""}`} type="button" title={presenting ? "Switch to analyst mode" : "Switch to presentation mode"} onClick={togglePresentation} aria-pressed={presenting}><Presentation size={15} /> {presenting ? "Analyst mode" : "Presentation mode"}</button><button className="icon-button utility-reset" type="button" onClick={() => { setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }} title="Reset dashboard" aria-label="Reset dashboard"><RotateCcw size={16} /></button><div ref={utilityMenu} className="utility-menu-wrap"><button ref={utilityTrigger} className="icon-button utility-more" type="button" aria-label="More dashboard actions" aria-haspopup={undefined} aria-expanded={utilityOpen} aria-controls="utility-menu" onClick={() => setUtilityOpen((value) => !value)}><MoreHorizontal size={18} /></button>{utilityOpen && <div id="utility-menu" className="utility-menu-popover" role="group" aria-label="Dashboard actions"><button type="button"  onClick={() => { downloadEvidence(data); setUtilityOpen(false); }}><Download size={16} /><span><strong>Export evidence</strong><small>Download the full validated dataset</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); setPrintAll(true); window.setTimeout(() => { window.print(); window.setTimeout(() => setPrintAll(false), 1500); }, 120); }}><Printer size={16} /><span><strong>Print dashboard</strong><small>Prepare every section for print</small></span></button><button type="button"  aria-pressed={presenting} onClick={() => { togglePresentation(); setUtilityOpen(false); }}><Presentation size={16} /><span><strong>{presenting ? "Analyst mode" : "Presentation mode"}</strong><small>{presenting ? "Restore the working layout" : "Expand the executive canvas"}</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }}><RotateCcw size={16} /><span><strong>Reset dashboard</strong><small>Return to the essential view</small></span></button></div>}</div></div></header>
       <section className={`command-strip ${active === "s-essential" ? "" : "is-compact"}`} aria-label="Executive operating summary"><div className="command-decision"><h2>Protect win quality. Prove reach before scaling spend.</h2><p>Historical evidence identifies the risk and the test audience; a holdout determines the next budget move.</p><span>CMO decision · controlled growth</span></div><div className="command-kpis"><div><span>Total pipeline</span><strong>{metrics.total_pipeline}</strong><small>{metrics.total_opportunities} opportunities</small></div><div><span>Recorded won revenue</span><strong>{metrics.won_revenue}</strong><small>{metrics.closed_deal_win_rate} resolved win rate</small></div><div><span>Marketing sourced</span><strong>{metrics.marketing_sourced_pipeline}</strong><small>{metrics.marketing_sourced_share} of pipeline</small></div><div><span>Linked</span><strong>{metrics.marketing_influenced_pipeline}</strong><small>{metrics.attribution_linked_won_share} of wins linked</small></div></div></section>
-      <StoryStrip data={data} />
+      {(active === "s-essential" || printAll) && <StoryStrip data={data} />}
       <div className="progress-rail" aria-label={`Section ${sectionOrder.indexOf(active) + 1} of ${sectionOrder.length}`}><span style={{ width: "100%", transform: `scaleX(${(sectionOrder.indexOf(active) + 1) / sectionOrder.length})`, transformOrigin: "left center" }} /></div>
       <div className={`section-viewport ${printAll ? "print-all" : ""}`}>{printAll ? sectionOrder.map((id) => <div className="print-section" key={id}>{renderSection(id)}</div>) : renderSection(active)}</div>
-      <footer><span>Marketing Analytics Decision System</span><span>Source: validated integrated datasets · {data.meta.methodology}</span></footer>
+      <footer><span>Marketing Analytics Decision System</span><span>Snapshot: {data.meta.generated_at} · Source: {data.meta.generated_from} · {data.meta.methodology}</span></footer>
     </main>
     {caveatsOpen && <><button type="button" tabIndex={-1} className="drawer-backdrop" aria-hidden="true" aria-label="Close caveats" onClick={() => setCaveatsOpen(false)} /><aside className="caveats-drawer" role="dialog" aria-modal="true" aria-labelledby="caveats-title"><div className="drawer-head"><h2 id="caveats-title">Data Caveats</h2><button ref={caveatsClose} type="button" className="icon-button" onClick={() => setCaveatsOpen(false)} aria-label="Close caveats"><X size={17} /></button></div><p>These constraints stay visible because they change what the dashboard can safely claim.</p><ul>{data.context.caveats.map((caveat) => <li key={caveat}>{caveat}</li>)}</ul><div className="drawer-source"><strong>Methodology</strong><span>{data.meta.methodology}</span></div></aside></>}
   </div>;

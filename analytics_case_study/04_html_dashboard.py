@@ -18,6 +18,7 @@ from plotly.offline import get_plotlyjs
 from plotly.subplots import make_subplots
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from analytics_case_study.utils.population import canonical_opportunities
 from analytics_case_study.config import (
     INTEGRATED_DATA_DIR, CLEANED_DATA_DIR, BRAND_COLORS, CHANNEL_COLOR_MAP
 )
@@ -26,9 +27,9 @@ from analytics_case_study.utils.metrics import resolved_stage_mask, wilson_inter
 OUTPUT_HTML = os.path.join(
     os.path.dirname(__file__), "..", "outputs", "dashboard", "Marketing_Analytics_Dashboard.html"
 )
-PUBLIC_HTML = os.path.join(os.path.dirname(__file__), "..", "public", "index.html")
+PUBLIC_HTML = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "public", "full-analysis", "index.html"))
 OUTPUT_CONTEXT = os.path.join(os.path.dirname(__file__), "..", "outputs", "dashboard", "dashboard_context.json")
-PUBLIC_CONTEXT = os.path.join(os.path.dirname(__file__), "..", "public", "dashboard_context.json")
+PUBLIC_CONTEXT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "public", "dashboard_context.json"))
 
 # -----------------------------------------------------------------------------
 # Data loaders
@@ -39,7 +40,8 @@ def _load_int(name):
 
 def _load_clean(name):
     p = os.path.join(CLEANED_DATA_DIR, f"{name}.parquet")
-    return pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    frame = pd.read_parquet(p) if os.path.exists(p) else pd.DataFrame()
+    return canonical_opportunities(frame) if name == "opportunities" else frame
 
 channel_pipeline  = _load_int("channel_pipeline")
 funnel_metrics    = _load_int("funnel_metrics")
@@ -760,7 +762,7 @@ def feature_importance_chart():
         text=[f"{v:.3f}" for v in df["importance"]], textposition="outside",
         hovertemplate="<b>%{y}</b><br>Importance: %{x:.4f}<extra></extra>",
     ))
-    fig.update_layout(title="Win Model: Opportunity-Time Feature Importance",
+    fig.update_layout(title="Exploratory Calendar Model: Feature Importance",
                       xaxis_title="Importance Score", **LAYOUT)
     return fig
 
@@ -791,7 +793,7 @@ def account_coverage_chart():
         shared_xaxes=True,
         vertical_spacing=0.12,
         row_heights=[0.58, 0.42],
-        subplot_titles=("CRM Account Domains by Coverage Tier", "Observed Opportunity Rate"),
+        subplot_titles=("CRM Account Domains by Coverage Tier", "Historical Opportunity Prevalence"),
     )
     fig.add_trace(go.Bar(
         name="# Accounts", x=summary["coverage_tier"], y=summary["accounts"],
@@ -818,7 +820,7 @@ def account_coverage_chart():
     fig.update_yaxes(title_text="# Accounts", rangemode="tozero", row=1, col=1)
     fig.update_yaxes(title_text="Opportunity Rate", tickformat=".0%", range=[0, 0.6], row=2, col=1)
     fig.update_layout(
-        title="Account Coverage and Observed Opportunity Rate<br><sup>95% Wilson intervals; association only because coverage groups are not randomized</sup>",
+        title="Account Coverage and Historical Opportunity Prevalence<br><sup>95% Wilson intervals; association only because coverage groups are not randomized</sup>",
         showlegend=False,
         **LAYOUT,
     )
@@ -881,8 +883,9 @@ def win_prob_chart():
     df = win_prob.copy()
     if "win_probability" not in df.columns: return go.Figure()
     # Histogram of win probabilities
-    fig = go.Figure(go.Histogram(
-        x=df["win_probability"], nbinsx=20,
+    counts, edges = np.histogram(pd.to_numeric(df["win_probability"], errors="coerce").dropna(), bins=np.linspace(0, 1, 11))
+    fig = go.Figure(go.Bar(
+        x=(edges[:-1] + edges[1:]) / 2, y=counts, width=.09,
         marker_color=COLORS[0], opacity=0.8,
         hovertemplate="Win Prob: %{x:.0%}<br>Count: %{y}<extra></extra>",
     ))
@@ -1099,8 +1102,8 @@ def build_dashboard_context():
             "Spend ROI only covers channels with reliable tracked spend.",
             "Low-volume channels and segments can be unstable.",
             "Web traffic is partially anonymous unless matched to account domains.",
-            "Win probability supports prioritization, not guaranteed outcomes.",
-            "The win model is directionally calibrated at the top score band but overpredicts middle test bands; use it for ranking, not probability promises.",
+            "Calendar-only scores are exploratory retrospective evidence; operating probabilities are unvalidated.",
+            "Calibration must be assessed from the current holdout diagnostics; no score band establishes an operating probability or validated ranking.",
             "The email file is an engagement-event log; send-based open and click rates cannot be calculated.",
             "A large share of won opportunities has zero amount, so won revenue and revenue ROI are understated.",
         ],
@@ -1945,7 +1948,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <thead><tr><th>Priority</th><th>Decision</th><th>Why</th><th>Next step</th></tr></thead>
           <tbody>
             <tr><td><span class="priority-tag">1</span></td><td>Protect quality</td><td>Closed-deal win rate moved from {cohort_start_rate} to {cohort_end_rate} across cohorts at least 80% resolved.</td><td>Run a quarterly ICP and qualification review before scaling volume.</td></tr>
-            <tr><td><span class="priority-tag">2</span></td><td>Expand coverage</td><td>{unreached_pct} of CRM account domains are unreached by tracked email or 6sense.</td><td>Launch email-first coverage test with a holdout group.</td></tr>
+            <tr><td><span class="priority-tag">2</span></td><td>Expand coverage</td><td>{unreached_pct} of CRM account domains are unreached by tracked email or 6sense.</td><td>Define exposure before future outcomes; exclude customers and active pipeline, then randomize eligible strong-fit domains to treatment and holdout.</td></tr>
             <tr><td><span class="priority-tag">3</span></td><td>Use attribution carefully</td><td>{linked_opportunities} opportunities link to classified marketing touches; {linked_win_share} of won deals are covered.</td><td>Use journey models for hypothesis generation, then validate lift with holdouts.</td></tr>
           </tbody>
         </table>
@@ -2016,7 +2019,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="evidence-grid">
       <div class="evidence-card">
         <h3><span class="confidence-pill high">Proves</span> Marketing has measurable pipeline presence</h3>
-        <p>Sourced credit reconciles to the full CRM source view; influenced credit reconciles within the 695 linked opportunities. Report both only with their populations.</p>
+        <p>Sourced credit reconciles to the full CRM source view; influenced credit reconciles within the {linked_opportunities} linked opportunities. Report both only with their populations.</p>
       </div>
       <div class="evidence-card">
         <h3><span class="confidence-pill medium">Suggests</span> Channels play different journey roles</h3>
@@ -2258,7 +2261,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="section-desc">ML win probability model, account coverage gap, deal velocity, journey sequences, and targeting matrix - datathon-level depth.</div>
     <div class="section-takeaway"><strong>Advanced takeaway:</strong> The predictive model and coverage analysis point to the same action: focus sales and marketing on high-fit accounts that are not yet fully activated. <span class="evidence-badge">AUC {model_auc}</span><span class="evidence-badge orange">{unreached_pct} unreached</span></div>
     <div class="context-box">
-      <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section adds prioritization signals for where to focus. The leakage-reduced baseline (Random Forest, AUC = {model_auc}, {model_validation}) scores {open_deals} active opportunities. The coverage analysis reveals that {unreached_pct} of CRM account domains have no tracked email or 6sense touchpoint.
+      <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section adds coverage evidence and exploratory model diagnostics; model-based priorities are not established. The exploratory calendar-only resolved-within-180-days baseline (Random Forest, AUC = {model_auc}, {model_validation}) scores {open_deals} active opportunities. The coverage analysis reveals that {unreached_pct} of CRM account domains have no tracked email or 6sense touchpoint.
     </div>
     <div class="evidence-grid">
       <div class="evidence-card">
@@ -2280,20 +2283,20 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div id="c-feat-imp"></div>
         <div class="chart-explain">
           <div class="ex-title">What this shows - Win Probability: Top Predictors</div>
-          A Random Forest model was trained on resolved deals to prioritize active opportunities. Feature importance shows which opportunity-time fields the model relied on. <strong>AUC = {model_auc}</strong> using {model_validation} (1.0 = perfect, 0.5 = random).
+          An exploratory Random Forest baseline uses creation-calendar features to model won outcomes among deals resolved within 180 days. Feature importance describes calendar patterns in that retrospective target. <strong>AUC = {model_auc}</strong> using {model_validation} (1.0 = perfect, 0.5 = random).
           <br><br>
-          <strong>Leakage policy:</strong> The model uses channel, CRM market segment, amount, and create-date features. Present-day account intent, contact counts, and current stage are excluded because they may post-date historical outcomes.
-          <div class="ex-insight">Key insight: Use win probability for sales prioritization. Treat channel and account signals as predictive patterns, not proof that any single marketing touch caused a win.</div>
+          <strong>Leakage policy:</strong> The model uses creation year and quarter only. Channel, segment, amount, account intent, contact counts and current stage lack proven historical availability and are excluded.
+          <div class="ex-insight">Key insight: Treat calendar-only scores as retrospective research evidence. Validate future-cohort calibration before using scores in sales decisions.</div>
         </div>
       </div>
       <div class="chart-card">
         <div id="c-win-prob"></div>
         <div class="chart-explain">
           <div class="ex-title">What this shows - Active Opportunity Score Distribution</div>
-          This histogram shows {open_deals} active opportunities scored by the baseline model. Each bar is the number of active opportunities in that probability range. Deals on the right side are higher-priority follow-up candidates.
+          This histogram shows {open_deals} active opportunities scored by the baseline model. Each bar is the number of active opportunities in that probability range. These estimates do not establish operational win probabilities or follow-up priorities.
           <br><br>
-          <strong>How to use it:</strong> Use the score as one prioritization input alongside deal stage, account context, and seller judgment. Do not set an operating cutoff until calibration and precision/recall are validated at the proposed threshold.
-          <div class="ex-insight">Key insight: Pilot the ranking with sales, measure conversion by score band, and choose a threshold only after observed performance supports it.</div>
+          <strong>How to use it:</strong> Use this distribution to assess the research baseline; operational prioritization remains unvalidated. Do not set an operating cutoff until calibration and precision/recall are validated at the proposed threshold.
+          <div class="ex-insight">Key insight: Keep scores in research review; validate future-cohort calibration and operating precision/recall before any sales ranking or threshold.</div>
         </div>
       </div>
     </div>
@@ -2303,11 +2306,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <div id="c-account-coverage"></div>
         <div class="chart-explain">
           <div class="ex-title">What this shows - CRM Account Coverage</div>
-          Of all {target_accounts} CRM account domains, this shows how many have been reached by email, 6sense, both, or neither. The orange line shows the observed opportunity rate (% of accounts in each group that have at least one CRM deal).
+          Of all {target_accounts} CRM account domains, this shows how many have been reached by email, 6sense, both, or neither. The orange line shows the historical opportunity prevalence (% of accounts in each group that have at least one CRM deal).
           <br><br>
-          <strong>The critical finding:</strong> <strong>{unreached_accounts} accounts ({unreached_pct}) have never received a single marketing touchpoint.</strong> Yet accounts reached by email alone have a {email_only_rate} opportunity rate vs. {not_reached_rate} for unreached accounts.
+          <strong>The critical finding:</strong> <strong>{unreached_accounts} accounts ({unreached_pct}) have no tracked email or 6sense touch in the supplied source window.</strong> Yet accounts reached by email alone have a {email_only_rate} historical opportunity prevalence vs. {not_reached_rate} for unreached accounts.
           <br><br>
-          <strong>What to do:</strong> The {unreached_accounts} unreached accounts define the largest testable audience. Prioritize strong-fit accounts and compare treatment with a holdout before interpreting the higher reached-account opportunity rates as lift.
+          <strong>What to do:</strong> The {unreached_accounts} unreached accounts are a source coverage group, not the eligible test audience. Exclude customers and active pipeline, then prioritize strong-fit accounts and define exposure before future outcomes and compare randomized treatment with a holdout before interpreting the higher reached-account opportunity rates as lift.
           <div class="ex-insight">Key insight: Coverage and opportunity creation are associated, but account selection and sales activity may explain part of the gap. Only a controlled test can estimate incremental lift.</div>
         </div>
       </div>
@@ -2431,7 +2434,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <ul class="finding-list">
           <li>Relationship-led channels remain the strongest won-revenue base.</li>
           <li>Touchpoint attribution shows different channels appearing at different journey stages.</li>
-          <li>The win model is useful as a prioritization signal: AUC is {model_auc} using {model_validation}.</li>
+          <li>The calendar-only resolved-within-180-days model is exploratory retrospective evidence: AUC is {model_auc} using {model_validation}.</li>
         </ul>
       </div>
       <div class="conclusion-card">
@@ -2459,11 +2462,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
       </div>
       <div class="priority-card">
         <h3><span class="priority-tag p2">P2</span> Operationalize the evidence</h3>
-        <p>Report sourced plus influenced metrics together, and use win probability bands in weekly sales reviews.</p>
+        <p>Report sourced plus influenced metrics with coverage, and validate retrospective model scores before sales use.</p>
       </div>
       <div class="priority-card">
         <h3><span class="priority-tag p3">P3</span> Improve message efficiency</h3>
-        <p>Scale the creative patterns that earn engagement and retire ads that do not move accounts forward.</p>
+        <p>Test creative patterns in matched audiences with qualified-opportunity outcomes and delivery guardrails before scaling.</p>
       </div>
     </div>
 
@@ -2477,8 +2480,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <tr>
               <td><strong>Expand coverage to unreached CRM account domains.</strong></td>
               <td><span class="confidence-pill high">High</span></td>
-              <td>{unreached_accounts} CRM account domains are unreached, and reached groups show materially higher opportunity rates than unreached accounts.</td>
-              <td>Prioritize strong-fit unreached accounts and compare opportunity creation against a holdout group.</td>
+              <td>{unreached_accounts} CRM account domains are unreached, and 2024 reached groups show higher all-history opportunity prevalence; time ordering and selection prevent a conversion or lift claim.</td>
+              <td>Exclude existing customers and active pipeline; define exposure before future opportunity outcomes, then compare eligible strong-fit domains with a randomized holdout.</td>
             </tr>
             <tr>
               <td><strong>Coordinate email engagement with 6sense display.</strong></td>
@@ -2528,8 +2531,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             <tr>
               <td><span class="priority-tag p1">P1</span></td>
               <td><strong>Coverage:</strong> reach unreached CRM account domains with email first, then test 6sense overlay with a holdout.</td>
-              <td>Email-only accounts show a {email_only_rate} opportunity rate and both-channel accounts show {both_rate}, compared with {not_reached_rate} for unreached accounts.</td>
-              <td>Account coverage, opportunity rate, incremental lift, pipeline created.</td>
+              <td>Email-only accounts show a {email_only_rate} historical opportunity prevalence and both-channel accounts show {both_rate}, compared with {not_reached_rate} for unreached accounts.</td>
+              <td>Future opportunity creation after assigned exposure, qualified pipeline and randomized treatment-minus-holdout lift; current prevalence is not the baseline.</td>
             </tr>
             <tr>
               <td><span class="priority-tag p1">P1</span></td>
@@ -2545,15 +2548,15 @@ HTML_TEMPLATE = """<!DOCTYPE html>
             </tr>
             <tr>
               <td><span class="priority-tag p2">P2</span></td>
-              <td><strong>Sales prioritization:</strong> use win probability bands in weekly pipeline review.</td>
-              <td>The leakage-reduced baseline scored {open_deals} active deals using opportunity-time channel, segment, amount, and create-date fields.</td>
-              <td>Close rate by probability band, sales follow-up SLA.</td>
+              <td><strong>Model validation:</strong> evaluate retrospective scores before sales use.</td>
+              <td>The exploratory calendar-only resolved-within-180-days baseline scored {open_deals} active deals using creation-calendar fields; no operating probability is established.</td>
+              <td>Future-cohort calibration and precision/recall before operational use.</td>
             </tr>
             <tr>
               <td><span class="priority-tag p3">P3</span></td>
-              <td><strong>Creative:</strong> scale high-CTR creative patterns and retire weak ads.</td>
-              <td>Creative patterns are tied to click efficiency before accounts become opportunities.</td>
-              <td>CTR, CPC, form fills, account engagement.</td>
+              <td><strong>Creative:</strong> test engagement patterns with matched audiences; require qualified outcomes before scale decisions.</td>
+              <td>CTR is descriptive and audience/delivery/creative attributes are confounded; no causal creative effect is identified.</td>
+              <td>Qualified-opportunity outcomes, delivery coverage and cost guardrails; CTR is a supporting diagnostic.</td>
             </tr>
           </tbody>
         </table>
@@ -2599,7 +2602,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <li><strong>Web traffic is partially anonymous.</strong> Only sessions with a matched company domain can be connected to account-level journeys.</li>
     <li><strong>Low-volume categories are unstable.</strong> Channels or segments with very few won deals should be read as signals to investigate, not budget mandates.</li>
     <li><strong>Spend ROI is tracked-spend only.</strong> Channels without reliable spend data are excluded from ROI scenario math.</li>
-    <li><strong>Model scores are prioritization aids.</strong> Win probability supports sales review, but should be validated against holdout performance and business context.</li>
+    <li><strong>Model scores are exploratory.</strong> The calendar-only resolved-within-180-days target is retrospective research evidence; validate future-cohort calibration before sales use.</li>
   </ul>
 </aside>
 
@@ -2852,7 +2855,7 @@ const CHARTS = {{
 }};
 
 const CHART_META = {{
-  "c-essential-contribution": ["Question: how do CRM source credit and linked-journey credit differ?", "Population: sourced uses the CRM source population; influenced uses 695 touch-linked opportunities.", "Decision use: report both numbers with coverage, using sourced as conservative credit and influenced as linked-journey context."],
+  "c-essential-contribution": ["Question: how do CRM source credit and linked-journey credit differ?", "Population: sourced uses the CRM source population; influenced uses {linked_opportunities} touch-linked opportunities.", "Decision use: report both numbers with coverage, using sourced as conservative credit and influenced as linked-journey context."],
   "c-essential-coverage": ["Question: where is the largest measurable coverage test?", "Population: CRM account domains; groups are observational, not randomized.", "Decision use: test coverage with a holdout before claiming incremental lift."],
   "c-essential-cohort": ["Question: is growth protecting conversion quality?", "Population: opportunities by create quarter; win rate uses resolved deals only.", "Decision use: compare mature cohorts and keep low-resolution recent cohorts provisional."],
   "c-essential-targeting": ["Question: which account cells deserve ABM focus?", "Population: opportunities with segment and profile fit.", "Decision use: prioritize high-fit cells before expanding reach."],
@@ -2861,7 +2864,7 @@ const CHART_META = {{
   "c-donut-won": ["Question: which channels actually closed revenue?", "Population: closed-won opportunities only.", "Caution: low-volume channels can swing sharply."],
   "c-monthly-trend": ["Question: is pipeline creation changing over time?", "Population: opportunities with a create date; top five channels plus Other.", "Benchmark: look for sustained movement, not one-month spikes."],
   "c-attrib-comparison": ["Question: how does multi-touch credit change by model?", "Population: common touchpoint-linked channels across first-touch, last-touch, linear, and time-decay.", "Caution: sourced and influenced use different definitions and are shown separately."],
-  "c-sourced-influenced": ["Question: how do CRM source credit and linked-journey credit compare?", "Population: sourced uses CRM source mapping; influenced covers 695 opportunities linked to eligible touches.", "Caution: influenced must be reported with its 21.1% opportunity and 11.7% won-opportunity coverage."],
+  "c-sourced-influenced": ["Question: how do CRM source credit and linked-journey credit compare?", "Population: sourced uses CRM source mapping; influenced covers {linked_opportunities} opportunities linked to eligible touches.", "Caution: report the linked opportunity count and {linked_win_share} won-opportunity coverage beside influenced credit."],
   "c-attrib-waterfall": ["Question: which channels gain or lose credit near conversion?", "Population: first-touch vs last-touch attribution.", "Caution: this describes journey role, not causality."],
   "c-spend-pipeline": ["Question: where does tracked spend appear efficient?", "Population: channels with reliable spend.", "Caution: ROI excludes untracked channels."],
   "c-funnel": ["Question: what is the volume by channel activity and opportunity outcome?", "Population: separate activity populations, not one sequential funnel.", "Caution: do not read cross-channel bars as conversion steps."],
@@ -2872,7 +2875,7 @@ const CHART_META = {{
   "c-email-seniority": ["Question: which seniority contributes click events?", "Population: recorded email engagement events; no delivered-message denominator is available.", "Caution: this is event composition, not a send-based click rate."],
   "c-budget-scenario": ["Question: how much tracked budget should be reserved for measurement?", "Population: two tracked-spend channels; one has a single opportunity and neither has recorded won revenue.", "Decision use: choose a budget-neutral holdout plan, not a revenue forecast."],
   "c-feat-imp": ["Question: what signals drive the win model?", "Population: closed opportunities used for training.", "Caution: importance is predictive, not causal."],
-  "c-win-prob": ["Question: how are active opportunities distributed by predicted probability?", "Population: active scored opportunities only; evaluation used a time-based holdout of resolved deals.", "Decision use: pilot bands for prioritization before setting an operating cutoff."],
+  "c-win-prob": ["Question: how are active opportunities distributed by predicted probability?", "Population: active scored opportunities only; evaluation used a time-based holdout of resolved deals.", "Decision use: validate future-cohort calibration; scores currently provide retrospective research evidence."],
   "c-account-coverage": ["Question: where is the account coverage gap?", "Population: CRM account domains; volume and opportunity rate use separate panels.", "Caution: reached-account rates are observational and may reflect selection or sales activity."],
   "c-deal-velocity": ["Question: how long do won deals take by channel?", "Population: closed-won opportunities with valid close dates and at least five wins per channel.", "Caution: medians describe historical cases, not guaranteed sales-cycle timing."],
   "c-journey": ["Question: what touchpoint sequences appear before wins?", "Population: won deals with linked pre-opportunity touchpoints.", "Caution: sequences are descriptive."],
@@ -2883,7 +2886,7 @@ const CHART_META = {{
 const CHART_STORY = {{
   "c-essential-contribution": {{
     finding: "Linked influenced pipeline is larger than CRM-sourced pipeline within its defined population.",
-    meaning: "Touch linkage adds journey context for 695 opportunities; it does not cover the full opportunity population.",
+    meaning: "Touch linkage adds journey context for {linked_opportunities} opportunities; it does not cover the full opportunity population.",
     action: "Report sourced as conservative credit and place linkage coverage beside influenced credit."
   }},
   "c-essential-coverage": {{

@@ -1,0 +1,2 @@
+# Dashboard surface
+Mode: Operate. Authority: incumbent Revenue Command black/crimson implementation and DESIGN.md. Manrope Variable is locally bundled. Analyst reading, comparison and exact evidence export take precedence over decorative motion. Missing observations remain unavailable; data tables preserve all identifiers and units. Compact deeper-route headers keep evidence near the first viewport.

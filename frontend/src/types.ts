@@ -16,6 +16,7 @@ export interface DashboardMeta {
   period: string;
   generated_from: string;
   methodology: string;
+  snapshot_id?: string;
   generated_at?: string;
   source_freshness?: string;
 }
@@ -53,6 +54,7 @@ export interface DashboardDatasets {
   creative_tone: DataRow[];
   email_seniority: DataRow[];
   deal_velocity: DataRow[];
+  deal_velocity_exclusions?: DataRow[];
   journey_sequences: DataRow[];
   win_probability: DataRow[];
   account_coverage_detail: DataRow[];
@@ -91,6 +93,7 @@ export interface DashboardManifest {
 }
 
 export interface DashboardData {
+  dataset_status?: Record<string, { status: string; reason: string }>;
   schema_version: number;
   meta: DashboardMeta;
   context: DashboardContext;
@@ -118,8 +121,9 @@ export const REQUIRED_SECTION_IDS: SectionId[] = [
   "s-creative", "s-budget", "s-advanced", "s-appendix", "s-conclusion",
 ];
 
-export function numberValue(row: DataRow, key: string, fallback = 0): number {
+export function numberValue(row: DataRow, key: string, fallback = Number.NaN): number {
   const value = row[key];
+  if (value === null || value === undefined || typeof value === "boolean" || (typeof value === "string" && !value.trim())) return fallback;
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) ? number : fallback;
 }

@@ -1,0 +1,54 @@
+{
+  "accounts.domain__c": {
+    "changed_rows": 27,
+    "explicit_host_recoveries": 7,
+    "rejected_invalid_rows": 20
+  },
+  "opportunities._domain": {
+    "changed_rows": 6,
+    "explicit_host_recoveries": 5,
+    "rejected_invalid_rows": 1
+  },
+  "email_engagements._domain": {
+    "changed_rows": 0,
+    "explicit_host_recoveries": 0,
+    "rejected_invalid_rows": 0
+  },
+  "6sense_campaign._6sensedomain": {
+    "changed_rows": 0,
+    "explicit_host_recoveries": 0,
+    "rejected_invalid_rows": 0
+  },
+  "web_engagements._domain": {
+    "changed_rows": 0,
+    "explicit_host_recoveries": 0,
+    "rejected_invalid_rows": 0
+  },
+  "email_identity": {
+    "recoverable_rows": 45,
+    "primary_people": 5557,
+    "fallback_people": 5576
+  },
+  "positional_policy": {
+    "policy": "first/last retained latest eligible weekly presence; intentionally retained",
+    "changed_first_channel_opportunities_vs_raw": 1,
+    "weekly_minus_raw_pipeline_by_channel": {
+      "6sense display": -10000.0,
+      "Email": 10000.0
+    },
+    "total_pipeline_delta": 0.0
+  },
+  "canonical": {
+    "opportunities": 3245,
+    "wins": 1070,
+    "linked365": 684
+  },
+  "domain_linkage_effect": {
+    "old_linked365": 684,
+    "new_linked365": 684,
+    "newly_linked": 0,
+    "no_longer_linked": 0,
+    "canonical_domain_coverage_old": 3130,
+    "canonical_domain_coverage_new": 3129
+  }
+}

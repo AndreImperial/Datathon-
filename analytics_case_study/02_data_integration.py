@@ -8,13 +8,20 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from analytics_case_study.utils.population import canonical_opportunities
 from analytics_case_study.config import CLEANED_DATA_DIR, INTEGRATED_DATA_DIR, CHANNEL_LEADSOURCE_MAP
 from analytics_case_study.utils.metrics import resolved_stage_mask
+from analytics_case_study.utils.cleaning_helpers import normalize_domain
 
 
 def _load(name: str) -> pd.DataFrame:
     path = os.path.join(CLEANED_DATA_DIR, f"{name}.parquet")
     df = pd.read_parquet(path)
+    for column in ["_domain", "domain__c", "_6sensedomain"]:
+        if column in df:
+            df[column] = normalize_domain(df[column])
+    if name == "opportunities":
+        df = canonical_opportunities(df)
     print(f"  Loaded {name}: {len(df):,} rows")
     return df
 
@@ -33,6 +40,7 @@ def _agg_by_domain(df: pd.DataFrame, domain_col: str, aggs: dict) -> pd.DataFram
 def build_master_account(accounts, segments, campaign6s, email, web, opps, icp) -> pd.DataFrame:
     print("\n  Building master_account ...")
     base = accounts.copy()
+    opps = canonical_opportunities(opps)
     domain_col = "domain__c"
 
     # --- 6sense segments ---
@@ -86,9 +94,9 @@ def build_master_account(accounts, segments, campaign6s, email, web, opps, icp) 
             web2["_totalsessionviews"] = 0
         web2["_totalsessionviews"] = pd.to_numeric(web2["_totalsessionviews"], errors="coerce").fillna(0)
         w_agg = (web2.groupby("_domain")
-                 .agg(web_sessions=("_domain", "count"),
+                 .agg(web_event_rows=("_domain", "count"),
                       web_pageviews=("_totalsessionviews", "sum"),
-                      web_goal_completions=("_goal_int", "sum"))
+                      web_observed_contact_rows=("_goal_int", "sum"))
                  .reset_index()
                  .rename(columns={"_domain": domain_col}))
         base = base.merge(w_agg, on=domain_col, how="left")
@@ -133,6 +141,20 @@ def build_master_account(accounts, segments, campaign6s, email, web, opps, icp) 
         ).reset_index().rename(columns={icp_col: "accountid"})
         base = base.merge(icp_agg, on="accountid", how="left")
 
+    # Domain activity is observed at domain grain, not owned by any CRM ID.
+    # Allocate equally across matching account rows solely to conserve totals.
+    # These fractional values are allocated shares, not observed account counts.
+    base["domain_account_count"] = base.groupby(domain_col)[domain_col].transform("size")
+    base["domain_activity_allocation_weight"] = 1 / base["domain_account_count"]
+    base["domain_activity_allocation_method"] = "equal share across CRM accounts with matching domain"
+    activity_columns = ["campaign_spend", "campaign_clicks", "campaign_impressions",
+                        "campaign_form_fills", "email_opens", "email_clicks",
+                        "email_registers", "unique_email_campaigns", "web_event_rows",
+                        "web_pageviews", "web_observed_contact_rows"]
+    for column in activity_columns:
+        if column in base:
+            base[column] = base[column] * base["domain_activity_allocation_weight"]
+
     print(f"  master_account: {len(base):,} rows, {len(base.columns)} columns")
     return base
 
@@ -142,6 +164,7 @@ def build_master_account(accounts, segments, campaign6s, email, web, opps, icp) 
 # ---------------------------------------------------------------------------
 def build_channel_pipeline(opps: pd.DataFrame, campaign6s: pd.DataFrame, ad_metrics: pd.DataFrame) -> pd.DataFrame:
     print("\n  Building channel_pipeline ...")
+    opps = canonical_opportunities(opps)
 
     iswon_col = "iswon" if "iswon" in opps.columns else ("_iswon" if "_iswon" in opps.columns else None)
     if iswon_col is None:
@@ -152,7 +175,7 @@ def build_channel_pipeline(opps: pd.DataFrame, campaign6s: pd.DataFrame, ad_metr
     opps = opps.copy()
     stage_col = next((c for c in opps.columns if "current_stage" in c.lower()), None)
     opps["_is_resolved"] = resolved_stage_mask(opps[stage_col]) if stage_col else True
-    opps["_is_zero_amount"] = opps["_amount"].fillna(0).eq(0)
+    opps["_is_zero_amount"] = pd.to_numeric(opps["_amount"], errors="coerce").eq(0)
 
     result = (opps.groupby("channel_category")
               .agg(
@@ -176,34 +199,32 @@ def build_channel_pipeline(opps: pd.DataFrame, campaign6s: pd.DataFrame, ad_metr
     result["resolved_share"] = (result["resolved_count"] / result["deal_count"].replace(0, np.nan)).round(4)
     result["pipeline_pct"] = (result["total_pipeline"] / result["total_pipeline"].sum()).round(4)
 
-    # Ad spend per channel
-    ad_spend_6sense = 0.0
-    ad_spend_linkedin = 0.0
-    if "_spend" in ad_metrics.columns and "_platform" in ad_metrics.columns:
-        spend_by_platform = ad_metrics.groupby("_platform")["_spend"].sum()
-        ad_spend_6sense = spend_by_platform.get("6sense", 0)
-        ad_spend_linkedin = spend_by_platform.get("LinkedIn", 0)
-
-    spend_map = {
-        "6sense_display": ad_spend_6sense,
-        "linkedin": ad_spend_linkedin,
-    }
-    result["channel_spend"] = result["channel_category"].map(spend_map).fillna(0)
-    result["pipeline_roi"] = np.where(
-        result["channel_spend"] > 0,
-        result["total_pipeline"] / result["channel_spend"],
-        np.nan,
-    ).round(2)
-    result["revenue_roi"] = np.where(
-        result["channel_spend"] > 0,
-        result["won_pipeline"] / result["channel_spend"],
-        np.nan,
-    ).round(2)
-    result["cost_per_opp"] = np.where(
-        result["deal_count"] > 0,
-        result["channel_spend"] / result["deal_count"],
-        np.nan,
-    ).round(2)
+    # Ratios use exact observed platform dates, separately from all-history totals.
+    created_col = next((c for c in opps if "createdate" in c.lower()), None)
+    created = pd.to_datetime(opps[created_col], errors="coerce", utc=True) if created_col else pd.Series(pd.NaT, index=opps.index)
+    dates = pd.to_datetime(ad_metrics.get("day", pd.Series(dtype="object")), errors="coerce", utc=True)
+    for idx, row in result.iterrows():
+        platform = {"6sense_display": "6sense", "linkedin": "LinkedIn"}.get(row["channel_category"])
+        tracked = ad_metrics.loc[ad_metrics.get("_platform", pd.Series(index=ad_metrics.index, dtype="object")).eq(platform) & dates.notna()] if platform else ad_metrics.iloc[:0]
+        measured = len(tracked) > 0 and "_spend" in tracked
+        start, end = (dates.loc[tracked.index].min(), dates.loc[tracked.index].max()) if measured else (pd.NaT, pd.NaT)
+        spend = pd.to_numeric(tracked["_spend"], errors="coerce").sum(min_count=1) if measured else np.nan
+        matched = opps.loc[opps["channel_category"].eq(row["channel_category"]) & created.between(start, end + pd.Timedelta(days=1), inclusive="left")] if measured else opps.iloc[:0]
+        result.loc[idx, "channel_spend"] = spend
+        result.loc[idx, "spend_measurement_status"] = "tracked" if pd.notna(spend) else "unmeasured"
+        for col in ["spend_period_start", "pipeline_period_start"]:
+            result.loc[idx, col] = start.isoformat() if pd.notna(start) else None
+        for col in ["spend_period_end", "pipeline_period_end"]:
+            result.loc[idx, col] = end.isoformat() if pd.notna(end) else None
+        pipeline = matched["_amount"].sum(min_count=1) if len(matched) else (0.0 if measured else np.nan)
+        won_amount = matched.loc[matched[iswon_col].eq(True), "_amount"].sum() if measured else np.nan
+        result.loc[idx, "period_matched_pipeline"] = pipeline
+        result.loc[idx, "period_matched_won_amount"] = won_amount
+        result.loc[idx, "period_matched_opportunities"] = len(matched) if measured else np.nan
+        result.loc[idx, "pipeline_roi"] = pipeline / spend if pd.notna(spend) and spend > 0 else np.nan
+        result.loc[idx, "revenue_roi"] = won_amount / spend if pd.notna(spend) and spend > 0 else np.nan
+        result.loc[idx, "cost_per_opp"] = spend / len(matched) if pd.notna(spend) and len(matched) else np.nan
+    result["ratio_definition"] = "Recorded same-period sourced pipeline / tracked platform spend; descriptive, not incremental ROI"
 
     return result
 
@@ -214,13 +235,14 @@ def build_channel_pipeline(opps: pd.DataFrame, campaign6s: pd.DataFrame, ad_metr
 def build_funnel_metrics(campaign6s: pd.DataFrame, ad_metrics: pd.DataFrame,
                          email: pd.DataFrame, opps: pd.DataFrame, web: pd.DataFrame = None) -> pd.DataFrame:
     print("\n  Building funnel_metrics ...")
+    opps = canonical_opportunities(opps)
     rows = []
     iswon_col = "iswon" if "iswon" in opps.columns else ("_iswon" if "_iswon" in opps.columns else None)
 
     def add_funnel(channel, stages):
         prev = np.nan
         for stage, count in stages:
-            count = int(count) if pd.notna(count) else 0
+            count = int(count) if pd.notna(count) else np.nan
             rows.append({
                 "channel": channel,
                 "stage": stage,
@@ -265,12 +287,20 @@ def build_funnel_metrics(campaign6s: pd.DataFrame, ad_metrics: pd.DataFrame,
             row["conversion_from_prev"] = np.nan
 
     if web is not None and not web.empty:
-        web_sessions = len(web)
-        web_goals = web["is_goal_completed"].sum() if "is_goal_completed" in web.columns else 0
+        observed = web.get("is_goal_completed", pd.Series(pd.NA, index=web.index))
         add_funnel("Web", [
-            ("Sessions", web_sessions),
-            ("Goal Completions", web_goals),
+            ("Recorded web events", len(web)),
+            ("Unique recordings (session definition unverified)", web.get("_recordingid", pd.Series(dtype="object")).nunique()),
+            ("Unique visitors", web.get("_visitorid", pd.Series(dtype="object")).nunique()),
+            ("Observed contact-activity rows", observed.eq(True).sum()),
+            ("Recordings with observed contact activity", web.loc[observed.eq(True), "_recordingid"].nunique() if "_recordingid" in web else np.nan),
+            ("Unknown contact-flag rows", observed.isna().sum()),
         ])
+        for row in rows:
+            if row["channel"] == "Web":
+                row["conversion_from_prev"] = np.nan
+                row["metric_type"] = "observed_activity_population"
+                row["interpretation"] = "Distinct grains; missing flags remain unknown; recordings are not verified sessions or acquisitions."
 
     total_opps = len(opps)
     marketing_opps = opps["is_marketing_sourced"].sum() if "is_marketing_sourced" in opps.columns else 0

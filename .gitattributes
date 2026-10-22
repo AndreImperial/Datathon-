@@ -8,3 +8,10 @@
 *.xlsx binary
 *.pptx binary
 *.png binary
+
+# Keep generated deployment and analytical artifacts visible without letting
+# them dominate GitHub's source-language summary.
+public/** linguist-generated=true
+frontend/public/** linguist-generated=true
+outputs/** linguist-generated=true
+data/** linguist-generated=true

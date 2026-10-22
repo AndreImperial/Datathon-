@@ -1,0 +1,61 @@
+{
+  "python": "3.11.9",
+  "dependencies": {
+    "pandas": "3.0.3",
+    "numpy": "2.4.6",
+    "scikit-learn": "1.8.0",
+    "pyarrow": "24.0.0",
+    "plotly": "6.7.0",
+    "openpyxl": "3.1.5"
+  },
+  "started_at": "2026-10-03T01:30:50.155259+00:00",
+  "source_files": [
+    {
+      "source_id": "Datathon_db_6sense_campaign_accounts.xlsx",
+      "sha256": "234680a3b86cc2e68db4d8775830869b51f6b821a371e8d00885c1bcdfeb5bac",
+      "bytes": 3672765
+    },
+    {
+      "source_id": "Datathon_db_6sense_segments.xlsx",
+      "sha256": "814e2ae5b21009c07a8e8ce1b982dce5dba4391c85c73dee74bbcf7b18d61632",
+      "bytes": 364947
+    },
+    {
+      "source_id": "Datathon_db_account_log.xlsx",
+      "sha256": "f6aa469b84e86ac69170dea26cb113a243d12f9d0d8511697364c01a885af811",
+      "bytes": 954050
+    },
+    {
+      "source_id": "Datathon_db_ad_metrics.xlsx",
+      "sha256": "250cdaf0da6e367814f4a212876639a0024ae9427b3b4e9649d9d92434bf960b",
+      "bytes": 300953
+    },
+    {
+      "source_id": "Datathon_db_email_engagements_log.xlsx",
+      "sha256": "74c316b12fa9765a625783eab7d3410381cea8e1f108fd53a8a2b87ffa411767",
+      "bytes": 2097858
+    },
+    {
+      "source_id": "Datathon_db_icp_database_log.xlsx",
+      "sha256": "eb25e6d2297cf8738efcdecdf6ab052c109090e58081f4c196ae7a9691c2bd12",
+      "bytes": 5795373
+    },
+    {
+      "source_id": "Datathon_db_opportunity_log.xlsx",
+      "sha256": "d9efa72cc37420d14ec55c9c2a61fa4846517ce5dc40fa9e34c7b73fb4afbe72",
+      "bytes": 4446328
+    },
+    {
+      "source_id": "Datathon_db_web_engagements_log.xlsx",
+      "sha256": "3ba0b1bd12e61c7535651ecffc7f3bfb2293f2f5ee9e2888464afe440ab8a4df",
+      "bytes": 3624047
+    }
+  ],
+  "source_freshness_status": "historical supplied extract; production expected-date/refresh policy pending",
+  "release_status": "validated",
+  "source_control": {
+    "schema_status": "matches historical supplied baseline",
+    "source_date_policy": "pending owner-approved expected dates and cadence; build time is not freshness"
+  },
+  "completed_at": "2026-10-03T01:33:29.657156+00:00"
+}

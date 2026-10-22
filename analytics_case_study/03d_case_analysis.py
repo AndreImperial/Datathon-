@@ -20,13 +20,16 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from analytics_case_study.config import CLEANED_DATA_DIR, INTEGRATED_DATA_DIR
 from analytics_case_study.utils.metrics import resolved_stage_mask, wilson_interval
+from analytics_case_study.utils.population import canonical_opportunities
+from analytics_case_study.utils.cleaning_helpers import normalize_domain, email_person_identity
+from analytics_case_study.utils.diagnostics import score_bins
 
 ROOT = Path(__file__).resolve().parents[1]
 CLEAN = Path(CLEANED_DATA_DIR)
 INTEGRATED = Path(INTEGRATED_DATA_DIR)
 FRONTEND_PUBLIC = ROOT / "frontend" / "public"
 OUTPUT = ROOT / "outputs" / "dashboard"
-METHOD_VERSION = "case-analysis-v3.0"
+METHOD_VERSION = "case-analysis-v3.2"
 LOOKBACKS = (30, 90, 180, 365)
 
 
@@ -81,8 +84,8 @@ def date_col(frame: pd.DataFrame, needle: str) -> str | None:
 def canonical_population() -> tuple[pd.DataFrame, pd.DataFrame]:
     opps = pd.read_parquet(CLEAN / "opportunities.parquet").copy()
     accounts = pd.read_parquet(CLEAN / "accounts.parquet").copy()
-    deleted = opps["isdeleted"].eq(True) if "isdeleted" in opps else pd.Series(False, index=opps.index)
-    active = opps.loc[~deleted].copy()
+    active = canonical_opportunities(opps)
+    deleted = ~opps.index.isin(active.index)
     stage = next((column for column in active.columns if "current_stage" in column.lower()), None)
     active["resolved"] = resolved_stage_mask(active[stage]) if stage else active["iswon"].eq(True)
     active["won"] = active["iswon"].eq(True)
@@ -101,7 +104,8 @@ def canonical_population() -> tuple[pd.DataFrame, pd.DataFrame]:
     account_domains = accounts.set_index("accountid").get("domain__c", pd.Series(dtype="object")).to_dict()
     direct = active.get("_domain", pd.Series("", index=active.index)).fillna("").astype(str).str.strip().str.lower()
     fallback = active.get("_account_id", pd.Series("", index=active.index)).map(account_domains).fillna("").astype(str).str.strip().str.lower()
-    active["domain"] = direct.where(direct.ne("") & direct.ne("nan"), fallback).replace({"": np.nan, "nan": np.nan})
+    direct = normalize_domain(direct)
+    active["domain"] = direct.fillna(normalize_domain(fallback))
     reconciliation = pd.DataFrame([
         {"stage": "Raw latest snapshots", "opportunities": len(opps), "recorded_amount": pd.to_numeric(opps.get("_amount"), errors="coerce").sum(), "won_opportunities": int(opps.get("iswon", pd.Series(False, index=opps.index)).eq(True).sum())},
         {"stage": "Deleted snapshots excluded", "opportunities": int(deleted.sum()), "recorded_amount": pd.to_numeric(opps.loc[deleted].get("_amount"), errors="coerce").sum(), "won_opportunities": int(opps.loc[deleted].get("iswon", pd.Series(False, index=opps.loc[deleted].index)).eq(True).sum())},
@@ -115,7 +119,7 @@ def touchpoints() -> tuple[pd.DataFrame, pd.DataFrame]:
     coverage = []
     def add_source(filename: str, name: str, domain_col: str, timestamp_col: str, channel: str, frame: pd.DataFrame):
         stamp = pd.to_datetime(frame.get(timestamp_col), utc=True, errors="coerce")
-        domain = frame.get(domain_col, pd.Series("", index=frame.index)).fillna("").astype(str).str.strip().str.lower()
+        domain = normalize_domain(frame.get(domain_col, pd.Series("", index=frame.index)))
         valid = pd.DataFrame({"domain": domain, "timestamp": stamp}).dropna()
         valid = valid[valid["domain"].ne("") & valid["domain"].ne("nan")]
         coverage.append({"source": name, "min_timestamp": valid["timestamp"].min(), "max_timestamp": valid["timestamp"].max(), "rows": len(frame), "usable_touchpoints": len(valid), "rule": f"{channel} touchpoints with usable domain and timestamp"})
@@ -132,9 +136,12 @@ def touchpoints() -> tuple[pd.DataFrame, pd.DataFrame]:
         subset = web.loc[web.get(column, pd.Series(False, index=web.index)).eq(True)].copy()
         add_source("web_engagements.parquet", label, "_domain", "_timestamp", channel, subset)
     all_touch = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame(columns=["domain", "timestamp", "channel", "source"])
-    all_touch["week"] = all_touch["timestamp"].dt.strftime("%G-W%V")
-    all_touch = all_touch.sort_values("timestamp").drop_duplicates(["domain", "channel", "week"], keep="last")
-    return all_touch, pd.DataFrame(coverage)
+    return normalize_touchpoints(all_touch), pd.DataFrame(coverage)
+
+
+def normalize_touchpoints(touches: pd.DataFrame) -> pd.DataFrame:
+    """Retain event times until each opportunity's eligible window is known."""
+    return touches.dropna(subset=["domain", "timestamp"]).sort_values("timestamp").copy()
 
 
 def linked_touches(opps: pd.DataFrame, touches: pd.DataFrame, lookback: int) -> pd.DataFrame:
@@ -169,9 +176,32 @@ def channel_scorecard(opps: pd.DataFrame, linked: pd.DataFrame, ad: pd.DataFrame
                 tracked = spend[spend.get("_platform").eq(platform)] if platform else spend.iloc[0:0]
                 if start is not None:
                     tracked = tracked[tracked["date"].between(start, end, inclusive="left")]
-                spend_value = pd.to_numeric(tracked.get("_spend"), errors="coerce").sum() if platform else np.nan
-                pipeline_same_period = group["amount"].sum() if start is not None and platform else np.nan
-                rows.append({"scope": scope, "business_motion": motion, "channel": str(channel or "Unknown"), "opportunities": len(group), "resolved": len(resolved), "won": won, "resolved_share": pct(len(resolved), len(group)), "win_rate": pct(won, len(resolved)), "win_rate_ci_low": low, "win_rate_ci_high": high, "recorded_pipeline": group["amount"].sum(), "recorded_won_amount": group.loc[group["won"], "amount"].sum(), "positive_amount_coverage": pct(int(group["amount"].gt(0).sum()), len(group)), "won_positive_amount_coverage": pct(int(group.loc[group["won"], "amount"].gt(0).sum()), won), "median_positive_amount": group.loc[group["amount"].gt(0), "amount"].median(), "linked_opportunities": len(linked_ids), "linked_share": pct(len(linked_ids), len(group)), "tracked_spend": spend_value if platform else None, "spend_period_start": tracked["date"].min() if len(tracked) else None, "spend_period_end": tracked["date"].max() if len(tracked) else None, "recorded_sourced_pipeline_per_tracked_spend": pct(pipeline_same_period, spend_value) if platform and spend_value else None, "evidence_status": "Limited" if len(resolved) < 30 else "Observed", "recommendation_id": ""})
+                spend_value = pd.to_numeric(tracked.get("_spend"), errors="coerce").sum(min_count=1) if platform and len(tracked) else np.nan
+                spend_start = tracked["date"].min() if len(tracked) else pd.NaT
+                spend_end = tracked["date"].max() if len(tracked) else pd.NaT
+                matched = group[group.created_at.between(spend_start, spend_end + pd.Timedelta(days=1), inclusive="left")] if len(tracked) else group.iloc[:0]
+                pipeline_same_period = matched["amount"].sum() if len(tracked) and motion == "All" else np.nan
+                rows.append({"scope": scope, "business_motion": motion, "channel": str(channel or "Unknown"), "opportunities": len(group), "resolved": len(resolved), "won": won, "resolved_share": pct(len(resolved), len(group)), "win_rate": pct(won, len(resolved)), "win_rate_ci_low": low, "win_rate_ci_high": high, "recorded_pipeline": group["amount"].sum(), "recorded_won_amount": group.loc[group["won"], "amount"].sum(), "positive_amount_coverage": pct(int(group["amount"].gt(0).sum()), len(group)), "won_positive_amount_coverage": pct(int(group.loc[group["won"], "amount"].gt(0).sum()), won), "median_positive_amount": group.loc[group["amount"].gt(0), "amount"].median(), "linked_opportunities": len(linked_ids), "linked_share": pct(len(linked_ids), len(group)), "tracked_spend": spend_value if platform else None, "pipeline_period_start": spend_start, "pipeline_period_end": spend_end, "period_matched_pipeline": pipeline_same_period, "period_matched_opportunities": len(matched) if len(tracked) else None, "spend_measurement_status": "Tracked platform spend" if len(tracked) else "Unmeasured", "spend_period_start": tracked["date"].min() if len(tracked) else None, "spend_period_end": tracked["date"].max() if len(tracked) else None, "recorded_sourced_pipeline_per_tracked_spend": pct(pipeline_same_period, spend_value) if platform and spend_value else None, "evidence_status": "Limited" if len(resolved) < 30 else "Observed", "recommendation_id": ""})
+    result = pd.DataFrame(rows)
+    for scope, (start, end) in scopes.items():
+        cohort = opps if start is None else opps[opps.created_at.between(start, end, inclusive="left")]
+        classified = int(cohort.business_motion.ne("Unknown").sum())
+        mask = result.scope.eq(scope)
+        result.loc[mask, "cohort_opportunities"] = len(cohort)
+        result.loc[mask, "classified_opportunities"] = classified
+        result.loc[mask, "motion_classification_coverage"] = pct(classified, len(cohort))
+        for motion in ["Acquisition", "Renewal"]:
+            if len(cohort) and classified == 0:
+                result = pd.concat([result, pd.DataFrame([{"scope":scope,"business_motion":motion,"channel":"Unavailable","opportunities":None,"resolved":None,"won":None,"evidence_status":"Unavailable","unavailable_reason":"No classified motion in this observed creation-year cohort","cohort_opportunities":len(cohort),"classified_opportunities":0,"motion_classification_coverage":0.0}])], ignore_index=True)
+    result["population_definition"] = "All history known-motion subsets when motion filtered; otherwise canonical opportunities in observed creation-date cohort"
+    return result
+
+
+def motion_coverage(opps):
+    rows = []
+    for year, group in opps.groupby("created_year", dropna=False):
+        classified = int(group.business_motion.ne("Unknown").sum())
+        rows.append({"created_year": int(year) if pd.notna(year) else None, "opportunities":len(group),"classified_opportunities":classified,"unknown_motion_opportunities":int(group.business_motion.eq("Unknown").sum()),"classification_coverage":pct(classified,len(group)),"acquisition_opportunities":int(group.business_motion.eq("Acquisition").sum()) if classified else None,"acquisition_status":"Observed known-motion subset" if classified else "Unavailable: no classified motion", "period_start":group.created_at.min(),"period_end":group.created_at.max(),"period_definition":"Observed creation-date records; calendar completeness unverified"})
     return pd.DataFrame(rows)
 
 
@@ -200,7 +230,7 @@ def content_analysis() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Dat
     email = pd.read_parquet(CLEAN / "email_engagements.parquet").copy()
     identity = email.get("_prospectID", pd.Series("", index=email.index)).fillna("").astype(str).str.strip()
     fallback = email.get("_email", pd.Series("", index=email.index)).fillna("").astype(str).str.strip().str.lower()
-    email["person_id"] = identity.where(identity.ne(""), fallback).replace("", np.nan)
+    email["person_id"] = email_person_identity(email)
     email["content_title"] = email.get("_contentTitle", pd.Series("Unknown", index=email.index)).fillna("Unknown").astype(str)
     email_rows = []
     for title, group in email.groupby("content_title", dropna=False):
@@ -211,7 +241,7 @@ def content_analysis() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.Dat
     web = pd.read_parquet(CLEAN / "web_engagements.parquet").copy()
     web_rows = []
     for page_group, group in web.groupby("_pagegroup", dropna=False):
-        web_rows.append({"page_group": page_group or "Unknown", "recorded_rows": len(group), "unique_recordings": group.get("_recordingid", pd.Series(dtype="object")).nunique(), "unique_visitors": group.get("_visitorid", pd.Series(dtype="object")).nunique(), "recordings_with_observed_goal": group.loc[group.get("is_goal_completed", pd.Series(False, index=group.index)).eq(True), "_recordingid"].nunique(), "goal_status": "Observed flags only; missing does not mean no conversion."})
+        web_rows.append({"page_group": page_group or "Unknown", "recorded_rows": len(group), "unique_recordings": group.get("_recordingid", pd.Series(dtype="object")).nunique(), "unique_visitors": group.get("_visitorid", pd.Series(dtype="object")).nunique(), "recordings_with_observed_contact_activity": group.loc[group.get("is_goal_completed", pd.Series(False, index=group.index)).eq(True), "_recordingid"].nunique(), "recording_definition": "Distinct recording IDs; equivalence to sessions unverified", "unknown_contact_flag_rows": int(group.get("is_goal_completed", pd.Series(pd.NA, index=group.index)).isna().sum()), "goal_status": "Observed contact flags only; missing does not mean no conversion."})
     return rankings, pd.DataFrame(meta_rows), bundles, pd.DataFrame(email_rows), pd.DataFrame(web_rows)
 
 
@@ -254,7 +284,7 @@ def attribution(opps: pd.DataFrame, touches: pd.DataFrame) -> tuple[pd.DataFrame
             modeled = pd.DataFrame(credits).groupby("channel", as_index=False).agg(attributed_amount=("amount", "sum"), attributed_won_amount=("won_amount", "sum"))
             modeled["share_of_linked_amount"] = modeled["attributed_amount"] / modeled["attributed_amount"].sum()
             modeled["rank"] = modeled["attributed_amount"].rank(method="min", ascending=False).astype(int)
-            modeled["lookback_days"] = lookback; modeled["model"] = model; modeled["linked_opportunities"] = len(ids)
+            modeled["lookback_days"] = lookback; modeled["model"] = model; modeled["window_linked_population"] = len(ids)
             sens_rows.extend(records(modeled))
     journey = []
     if not linked365.empty:
@@ -284,16 +314,20 @@ def decomposition(opps: pd.DataFrame, dimension: str) -> pd.DataFrame:
     for value in sorted(set(a[dimension].fillna("Unknown")) | set(b[dimension].fillna("Unknown"))):
         ga, gb = a[a[dimension].fillna("Unknown").eq(value)], b[b[dimension].fillna("Unknown").eq(value)]
         wa, wb = pct(len(ga), len(a)) or 0, pct(len(gb), len(b)) or 0
-        ra, rb = pct(int(ga["won"].sum()), len(ga)) or 0, pct(int(gb["won"].sum()), len(gb)) or 0
-        rows.append({"dimension": dimension, "group": value, "period_a_resolved": len(ga), "period_b_resolved": len(gb), "period_a_win_rate": ra if len(ga) else None, "period_b_win_rate": rb if len(gb) else None, "mix_effect_pp": (wb - wa) * (ra + rb) / 2 * 100, "within_effect_pp": (rb - ra) * (wa + wb) / 2 * 100, "total_effect_pp": ((wb - wa) * (ra + rb) / 2 + (rb - ra) * (wa + wb) / 2) * 100})
+        ra, rb = pct(int(ga["won"].sum()), len(ga)), pct(int(gb["won"].sum()), len(gb))
+        common = ra is not None and rb is not None
+        mix = (wb - wa) * (ra + rb) / 2 * 100 if common else None
+        within = (rb - ra) * (wa + wb) / 2 * 100 if common else None
+        total = (wb * (rb or 0) - wa * (ra or 0)) * 100
+        rows.append({"dimension": dimension, "group": value, "period_a_resolved": len(ga), "period_b_resolved": len(gb), "period_a_win_rate": ra, "period_b_win_rate": rb, "mix_effect_pp": mix, "within_effect_pp": within, "entry_exit_effect_pp": 0.0 if common else total, "total_effect_pp": total, "support": "Common support" if common else "Group entry or exit"})
     return pd.DataFrame(rows).sort_values("total_effect_pp")
 
 
 def audience(opps: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     accounts = pd.read_parquet(CLEAN / "accounts.parquet").copy()
     icp = pd.read_parquet(CLEAN / "icp_database.parquet").copy()
-    accounts["domain"] = accounts.get("domain__c", pd.Series("", index=accounts.index)).fillna("").astype(str).str.strip().str.lower().replace("", np.nan)
-    icp["domain"] = icp.get("_domain", pd.Series("", index=icp.index)).fillna("").astype(str).str.strip().str.lower().replace("", np.nan)
+    accounts["domain"] = normalize_domain(accounts.get("domain__c", pd.Series("", index=accounts.index)))
+    icp["domain"] = normalize_domain(icp.get("_domain", pd.Series("", index=icp.index)))
     icp_target = icp.groupby("domain")["_target_accounts"].max().rename("icp_target")
     base = accounts.dropna(subset=["domain"]).copy().groupby("domain", as_index=False).agg(account_type=("type", lambda x: "|".join(sorted(set(x.dropna().astype(str))))), segment=("segment__c", lambda x: "|".join(sorted(set(x.dropna().astype(str))))), fit=("accountprofilefit6sense__c", lambda x: "|".join(sorted(set(x.dropna().astype(str))))))
     base = base.merge(icp_target, on="domain", how="left")
@@ -328,8 +362,20 @@ def experiments(audience_count: int) -> pd.DataFrame:
             numerator = (1.96 * math.sqrt(2 * pbar * (1 - pbar)) + 0.8416 * math.sqrt(baseline * (1 - baseline) + p2 * (1 - p2))) ** 2
             per_arm = math.ceil(numerator / lift**2)
             feasible = audience_count >= per_arm * 2
-            rows.append({"scenario": f"{baseline:.0%} baseline / {lift:.0%} absolute lift", "baseline_90d_rate": baseline, "baseline_rate": baseline, "absolute_lift": lift, "required_per_arm": per_arm, "required_total": per_arm * 2, "eligible_audience": audience_count, "feasible": feasible, "feasibility": "Feasible" if feasible else "Insufficient audience for this scenario", "assumption": "Two-sided alpha .05, power .80, equal allocation"})
+            rows.append({"scenario": f"{baseline:.0%} hypothetical baseline / +{lift*100:.0f}pp lift", "baseline_90d_rate": baseline, "baseline_rate": baseline, "absolute_lift": lift, "required_per_arm": per_arm, "required_total": per_arm * 2, "eligible_audience": audience_count, "feasible": feasible, "feasibility": "Feasible" if feasible else "Insufficient audience for this scenario", "assumption": "Two-sided alpha .05, power .80, equal allocation"})
     return pd.DataFrame(rows)
+
+
+def build_appendix(summary: dict) -> list[dict]:
+    topics = [
+        ("Population and source coverage", f"The canonical non-deleted population contains {summary['opportunities']:,} opportunities, {summary['resolved']:,} resolved outcomes and {summary['won']:,} wins. CRM history spans 2018–2024; marketing logs cover 2024. Domain and timestamp eligibility must precede weekly touch normalization.", ["population_reconciliation", "source_coverage"], "opportunities.parquet; accounts.parquet; email_engagements.parquet; web_engagements.parquet; 6sense_campaign.parquet", "Deleted latest snapshots are excluded; short marketing windows do not measure full-history tracking completeness.", "How do populations and source windows reconcile?"),
+        ("Metric definitions and unavailable denominators", "Win rate is won opportunities divided by resolved opportunities, excluding active outcomes. Recorded pipeline is the sum of source-recorded amount. Email events lack sent and delivered denominators; conditional engagement shares cannot establish delivery, open or click-through rates.", ["summary", "content_metadata_coverage", "email_content"], "opportunities.parquet; email_engagements.parquet; ad_metrics.parquet", "Zero amounts limit recorded revenue comparisons. CTR uses clicks divided by impressions; event composition is not a send-based email rate.", "Which denominators are unavailable?"),
+        ("Attribution models, windows, and shared-domain sensitivity", "First touch and last touch use the earliest or latest retained weekly presence, after keeping the last eligible event per channel/week; ties share credit. This intentionally differs from first raw event; linear credit uses channel presence and time decay weights weekly presence with a 30-day half-life. Compare 30/90/180/365-day windows. Shared-domain linkage uses a normalized domain and may link multiple account opportunities.", ["attribution_model_sensitivity", "attribution_year_coverage", "attribution_overlap"], "opportunities.parquet; accounts.parquet; email_engagements.parquet; web_engagements.parquet; 6sense_campaign.parquet", "Filter the opportunity window before weekly compression. Shared domain does not prove a particular contact or opportunity was influenced; all allocations remain descriptive.", "How do attribution models and shared-domain linkage change interpretation?"),
+        ("Conversion decomposition and loss reasons", "Compare resolved opportunity cohorts in 2022 H1 and 2024 H1. Common-support groups separate mix from within-group changes; groups absent from one period use an explicit entry or exit component. Loss reason mapping is unavailable pending a versioned rule for free text.", ["conversion_decomposition", "loss_reason_summary"], "opportunities.parquet", "Missing-period rates remain unavailable. The decomposition reconciles an observed change and does not identify a causal driver.", "How are absent-period groups and loss reasons handled?"),
+        ("Targeting eligibility and sample uncertainty", f"Exclude customer, partner, competitor and private-equity accounts, active opportunity domains, non-ICP targets and conflicting or missing profiles. {summary['eligible_domains']:,} eligible domains remain. Equal allocation means 50/50 randomization. At 80% power, 5% baseline and +2pp lift require 4,426 domains, so feasibility fails for that scenario.", ["audience_exclusions", "audience_priority", "experiment_scenarios"], "accounts.parquet; icp_database.parquet; opportunities.parquet", "Baseline and lift are assumptions. Current-fit historical associations have sample uncertainty and cannot establish incremental prospect conversion. Plan one comparison before adding channel overlays.", "Is the audience large enough for the proposed test?"),
+        ("Model diagnostics and limitations", "Read AUC, Brier score, calibration and false positive / false negative counts together for the time-based holdout. Training labels must resolve before the cutoff. Creation-calendar features avoid unverified latest-snapshot attributes; the baseline is exploratory and conditional on resolved outcomes within its stated horizon.", ["model_diagnostics", "model_score_bands"], "opportunities.parquet; model_stats.parquet; model_calibration.parquet; win_probability.parquet", "The supplied historical timestamps and a restricted feature set limit operating usefulness. Scores are exploratory; mature resolved-sample validation is not unconditional forecasting of active opportunities.", "What does the model actually validate?"),
+    ]
+    return [{"id": f"appendix-{i:02d}", "sequence": "appendix", "order": i, "title": title, "layout": "methods", "finding_ids": [], "chart_refs": refs, "metric_refs": [], "scope": "Methods and evidence boundaries", "body": body, "source_footer": sources, "visible_caveat": caveat, "speaker_notes": {"say": body, "why": f"Make {title.lower()} inspectable before using the main decision.", "do_not_claim": caveat, "transition": "Return to the main decision with this evidence boundary.", "judge_question": question, "answer": body + " " + caveat, "sources": sources.split('; ')}, "target_duration_seconds": 0} for i, (title, body, refs, sources, caveat, question) in enumerate(topics, 1)]
 
 
 def build_contract() -> dict:
@@ -355,7 +401,7 @@ def build_contract() -> dict:
     model_bands = pd.DataFrame()
     if (INTEGRATED / "win_probability.parquet").exists():
         model = pd.read_parquet(INTEGRATED / "win_probability.parquet")
-        model["band"] = pd.cut(model["win_probability"], bins=[-0.01, .25, .5, .75, 1], labels=["0–25%", "25–50%", "50–75%", "75–100%"])
+        model["band"] = score_bins(model["win_probability"])
         model_bands = model.groupby("band", observed=False).agg(active_opportunities=("_opportunity_id", "count"), mean_score=("win_probability", "mean")).reset_index()
     primary_score = scorecard[(scorecard["scope"].eq("All history")) & scorecard["business_motion"].eq("Acquisition")].sort_values("recorded_won_amount", ascending=False)
     top_channel = primary_score.iloc[0] if len(primary_score) else None
@@ -363,14 +409,14 @@ def build_contract() -> dict:
     summary = {"opportunities": len(opps), "resolved": int(opps["resolved"].sum()), "won": int(opps["won"].sum()), "recorded_pipeline": float(opps["amount"].sum()), "recorded_won_amount": float(opps.loc[opps["won"], "amount"].sum()), "linked_365": int(linked["_opportunity_id"].nunique()), "linked_share": pct(int(linked["_opportunity_id"].nunique()), len(opps)), "eligible_domains": eligible_total, "top_channel": str(top_channel["channel"]) if top_channel is not None else "Unavailable", "top_channel_win_rate": float(top_channel["win_rate"]) if top_channel is not None and pd.notna(top_channel["win_rate"]) else None, "bundle_label": f"{top_bundle['_copyassettype']} / {top_bundle['_copymessaging']} / {top_bundle['_copytone']}" if top_bundle is not None else "Unavailable", "bundle_ctr": float(top_bundle["ctr"]) if top_bundle is not None else None}
     findings = [
         {"id": "f-channel", "question_id": "channels", "headline": f"{summary['top_channel']} leads recorded acquisition won amount in the available CRM history", "summary": "Channel rankings describe recorded CRM outcomes. They do not estimate incremental channel value.", "evidence_status": "Observed", "metric_refs": ["summary.top_channel"], "chart_refs": ["channel_scorecard"], "source_ids": ["opportunities.parquet"], "population": "Canonical non-deleted opportunities", "period": "All available history", "caveats": ["Recorded amounts have material zero-value coverage."], "recommended_action_ids": ["r-channel"]},
-        {"id": "f-content", "question_id": "content", "headline": "Creative metadata supports bundle-level hypotheses only", "summary": f"The strongest labeled bundle is {summary['bundle_label']} at {percent(summary['bundle_ctr'])}, but only five ads contain complete format/message/tone labels.", "evidence_status": "Limited", "metric_refs": ["summary.bundle_ctr"], "chart_refs": ["creative_bundles"], "source_ids": ["ad_metrics.parquet"], "population": "Labeled ads only", "period": "2023–2024 ad records", "caveats": ["Format, message, tone, and CTA are confounded."], "recommended_action_ids": ["r-content"]},
+        {"id": "f-content", "question_id": "content", "headline": "Creative metadata supports bundle-level hypotheses only", "summary": f"The strongest labeled bundle is {summary['bundle_label']} at {percent(summary['bundle_ctr'], 3)}, but only five ads contain complete format/message/tone labels.", "evidence_status": "Limited", "metric_refs": ["summary.bundle_ctr"], "chart_refs": ["creative_bundles"], "source_ids": ["ad_metrics.parquet"], "population": "Labeled ads only", "period": "2023–2024 ad records", "caveats": ["Format, message, tone, and CTA are confounded."], "recommended_action_ids": ["r-content"]},
         {"id": "f-attribution", "question_id": "attribution", "headline": "Touchpoint evidence is bounded by 2024 marketing-log coverage", "summary": f"{summary['linked_365']:,} opportunities link to eligible 365-day touches. The percentage is not a measure of full-history tracking completeness.", "evidence_status": "Observed", "metric_refs": ["summary.linked_share"], "chart_refs": ["attribution_overlap", "attribution_year_coverage"], "source_ids": ["email_engagements.parquet", "web_engagements.parquet", "6sense_campaign.parquet"], "population": "Canonical opportunities with usable domain/date/amount", "period": "Lookback-specific", "caveats": ["Marketing sources begin in 2024."], "recommended_action_ids": ["r-measurement"]},
         {"id": "f-audience", "question_id": "strategy", "headline": f"{eligible_total:,} explicit ICP target domains remain eligible for a controlled coverage test", "summary": "The audience excludes current customers, active opportunities, non-target accounts, and conflicting profiles.", "evidence_status": "Observed", "metric_refs": ["summary.eligible_domains"], "chart_refs": ["audience_exclusions", "audience_priority"], "source_ids": ["accounts.parquet", "icp_database.parquet", "opportunities.parquet"], "population": "Normalized account-domain universe", "period": "Current account snapshot", "caveats": ["Current fit is an association, not historical causal evidence."], "recommended_action_ids": ["r-test"]},
     ]
     recommendations = [
-        {"id": "r-channel", "decision": "Maintain and measure the strongest observed acquisition channels", "audience": "Acquisition opportunities by CRM source", "channel": summary["top_channel"], "content_or_creative_bundle": "Use channel-specific creative tests", "supporting_finding_ids": ["f-channel"], "evidence_limitations": ["Observed outcomes are not causal channel effects."], "owner_role": "Demand generation lead", "immediate_next_step": "Review the scorecard by 2023 and 2024 before expanding spend.", "primary_success_measure": "Resolved win rate and recorded pipeline in a comparable scope", "scale_stop_rule": "Do not reallocate budget from historical ratios alone.", "confidence_status": "Observed"},
-        {"id": "r-content", "decision": "Run a balanced creative-bundle test", "audience": "Eligible account campaign audience", "channel": "Paid media", "content_or_creative_bundle": "Create matched variants that isolate format, message, and tone", "supporting_finding_ids": ["f-content"], "evidence_limitations": ["Existing labeled ads confound multiple creative dimensions."], "owner_role": "Creative strategy lead", "immediate_next_step": "Run controlled variants with the same audience and delivery window.", "primary_success_measure": "Platform-specific CTR and downstream account engagement", "scale_stop_rule": "Keep claims exploratory until variants isolate one dimension.", "confidence_status": "Hypothesis"},
-        {"id": "r-test", "decision": "Run a 90-day account coverage experiment", "audience": "Eligible ICP target domains", "channel": "Separate email-first and 6sense-overlay tests", "content_or_creative_bundle": "Pre-registered outreach package", "supporting_finding_ids": ["f-audience", "f-attribution"], "evidence_limitations": ["Observed reached-account rates may reflect selection and seller activity."], "owner_role": "ABM lead", "immediate_next_step": "Randomize domains 50/50 within segment/fit cells.", "primary_success_measure": "New CRM opportunity creation within 90 days", "scale_stop_rule": "Scale only after a feasible scenario shows incremental qualified opportunities.", "confidence_status": "Hypothesis"},
+        {"id": "r-channel", "decision": "Maintain and measure the strongest observed acquisition channels", "audience": "Acquisition opportunities by CRM source", "channel": summary["top_channel"], "content_or_creative_bundle": "Use channel-specific creative tests", "supporting_finding_ids": ["f-channel"], "evidence_limitations": ["Observed outcomes are not causal channel effects."], "owner_role": "Demand generation lead", "immediate_next_step": "Review all-motion observed-year cohorts and classification coverage; 2024 acquisition comparison is unavailable. Use controlled tests before expansion.", "primary_success_measure": "Resolved win rate and recorded pipeline in a comparable scope", "scale_stop_rule": "Do not reallocate budget from historical ratios alone.", "confidence_status": "Observed"},
+        {"id": "r-content", "decision": "Run a balanced creative-bundle test", "audience": "Eligible account campaign audience", "channel": "Paid media", "content_or_creative_bundle": "Create matched variants that isolate format, message, and tone", "supporting_finding_ids": ["f-content"], "evidence_limitations": ["Existing labeled ads confound multiple creative dimensions."], "owner_role": "Creative strategy lead", "immediate_next_step": "Run controlled variants with the same audience and delivery window.", "primary_success_measure": "Incremental qualified opportunities with account-engagement and cost guardrails; CTR is a secondary diagnostic", "scale_stop_rule": "Scale or retire only after a matched randomized test meets pre-registered qualified-outcome, quality and cost guardrails; CTR alone cannot decide.", "confidence_status": "Hypothesis"},
+        {"id": "r-test", "decision": "Run a 90-day account coverage experiment", "audience": "Eligible ICP target domains", "channel": "One pre-registered email-first comparison; test overlays separately", "content_or_creative_bundle": "Pre-registered outreach package", "supporting_finding_ids": ["f-audience", "f-attribution"], "evidence_limitations": ["Reached-account figures are historical opportunity prevalence; many outcomes predate reach. They cannot serve as prospective conversion baselines."], "owner_role": "ABM lead", "immediate_next_step": "Exclude customers and active pipeline at enrollment; randomize eligible domains 50/50 within segment/fit cells, record exposure time-zero, then observe new qualified outcomes over 90 days.", "primary_success_measure": "New CRM opportunity creation within 90 days", "scale_stop_rule": "Scale only after a feasible scenario shows incremental qualified opportunities.", "confidence_status": "Hypothesis"},
         {"id": "r-measurement", "decision": "Report source and journey evidence separately", "audience": "CMO operating review", "channel": "All tracked marketing channels", "content_or_creative_bundle": "N/A", "supporting_finding_ids": ["f-attribution"], "evidence_limitations": ["Attribution does not estimate incremental lift."], "owner_role": "Marketing operations lead", "immediate_next_step": "Publish overlap, coverage, and model/window sensitivity together.", "primary_success_measure": "Complete attribution report with explicit population coverage", "scale_stop_rule": "Do not use linked influence as a universal revenue total.", "confidence_status": "Observed"},
     ]
     slides = []
@@ -382,8 +428,8 @@ def build_contract() -> dict:
         "CRM history begins in 2018. Marketing activity logs begin in 2024, so historic attribution coverage has a bounded observation window.",
         "Acquisition, renewal, and unknown opportunity motions stay separate. Existing-client source labels do not substitute for a motion definition.",
         f"{summary['top_channel']} leads the current acquisition scorecard by recorded won amount. Read the scorecard with zero-amount coverage and rate intervals.",
-        "Compare complete calendar years rather than treating short marketing logs as a multi-year channel performance record.",
-        "The 2022 H1 to 2024 H1 rate change is decomposed into changing mix and within-group conversion changes. Neither component alone establishes cause.",
+        "Compare observed creation-date cohorts with motion-classification coverage: 2024 acquisition is unavailable because no motion is classified; neither year is asserted complete.",
+        "The 2022 H1 to 2024 H1 rate change separates mix and within-group changes on common support, with group entry and exit reported separately. Neither component alone establishes cause.",
         f"Only a small labeled creative subset exists. {summary['bundle_label']} is a bundle hypothesis, not proof that one creative attribute wins.",
         "Email reports conditional engagement from supplied event logs. Web contact-page activity has an observed flag but does not prove completed acquisition.",
         "Sourced and touch-linked populations overlap. The four exclusive groups prevent adding different attribution definitions together.",
@@ -391,21 +437,78 @@ def build_contract() -> dict:
         f"{eligible_total:,} eligible ICP target domains remain after customer, pipeline, target, and profile exclusions.",
         "Actions distinguish what to maintain, what to test, and what remains insufficiently supported.",
         "Randomize eligible domains 50/50. Measure new CRM opportunity creation after 90 days before evaluating broader commercial outcomes.",
-        "Historical tracked spend is context. Sample feasibility and cost per enrolled treatment account determine the planning budget.",
+        "A planning budget is unavailable until cost per enrolled treatment account is supplied. Choose a feasible single-comparison sample first; historical tracked spend is context.",
         "The CMO decision is to approve measurement-ready channel and creative tests, then review the resulting incrementality evidence.",
     ]
-    chart_refs = [[], [], ["source_coverage"], ["channel_scorecard"], ["channel_scorecard"], ["channel_trends"], ["conversion_decomposition"], ["creative_bundles"], ["email_content", "web_content"], ["attribution_overlap"], ["attribution_model_sensitivity", "journey_outcomes"], ["audience_exclusions", "audience_priority"], ["recommendations"], ["experiment_scenarios"], ["experiment_scenarios"], ["recommendations"]]
+    chart_refs = [[], [], ["source_coverage"], ["motion_classification_coverage", "channel_scorecard"], ["channel_scorecard"], ["motion_classification_coverage", "channel_scorecard"], ["conversion_decomposition"], ["creative_bundles"], ["email_content", "web_content"], ["attribution_overlap"], ["attribution_model_sensitivity", "journey_outcomes"], ["audience_exclusions", "audience_priority"], ["recommendations"], ["experiment_scenarios"], ["experiment_scenarios"], ["recommendations"]]
     for index, (subject, duration, body, refs) in enumerate(zip(main_subjects, durations, bodies, chart_refs), start=1):
-        slides.append({"id": f"main-{index:02d}", "sequence": "main", "order": index, "title": subject, "layout": "evidence" if refs else "statement", "finding_ids": ["f-channel", "f-content", "f-attribution", "f-audience"], "chart_refs": refs, "metric_refs": [], "scope": "Fixed analysis scope", "body": body, "source_footer": "Validated cleaned and integrated source extracts", "visible_caveat": "Read the evidence status and denominator beside each view.", "speaker_notes": {"say": body, "why": "Connect the evidence to a CMO decision.", "do_not_claim": "Do not describe observational evidence as causal lift.", "transition": "Move to the next evidence layer.", "judge_question": "What is the denominator and source window?", "answer": "The visible caption and appendix define both.", "sources": refs}, "target_duration_seconds": duration})
-    appendix_subjects = ["Population and source coverage", "Metric definitions", "Attribution methods", "Conversion decomposition", "Targeting and sample uncertainty", "Model diagnostics"]
-    for index, subject in enumerate(appendix_subjects, start=1):
-        slides.append({"id": f"appendix-{index:02d}", "sequence": "appendix", "order": index, "title": subject, "layout": "methods", "finding_ids": [], "chart_refs": [], "metric_refs": [], "scope": "Appendix", "body": "Supporting methodology, definitions, and limitations for judge questions.", "source_footer": "Validated source extracts", "visible_caveat": "This slide supports interpretation; it does not change the main decision.", "speaker_notes": {"say": "Use this only when a judge asks for methodological detail.", "why": "Make the evidence auditable.", "do_not_claim": "Do not generalize beyond the supplied source windows.", "transition": "Return to the main decision.", "judge_question": "How was this calculated?", "answer": "The visible definitions and source references document the method.", "sources": []}, "target_duration_seconds": 0})
+        slides.append({"id": f"main-{index:02d}", "sequence": "main", "order": index, "title": subject, "layout": "evidence" if refs else "statement", "finding_ids": [], "chart_refs": refs, "metric_refs": [], "scope": "Fixed analysis scope", "body": body, "source_footer": "Validated cleaned and integrated source extracts", "visible_caveat": "Read the evidence status and denominator beside each view.", "speaker_notes": {"say": body, "why": "Connect the evidence to a CMO decision.", "do_not_claim": "Do not describe observational evidence as causal lift.", "transition": "Move to the next evidence layer.", "judge_question": "What is the denominator and source window?", "answer": "The visible caption and appendix define both.", "sources": refs}, "target_duration_seconds": duration})
+    slide_sources = {
+        3: "opportunities.parquet; accounts.parquet; email_engagements.parquet; web_engagements.parquet; 6sense_campaign.parquet",
+        4: "opportunities.parquet", 5: "opportunities.parquet", 6: "opportunities.parquet", 7: "opportunities.parquet",
+        8: "ad_metrics.parquet", 9: "email_engagements.parquet; web_engagements.parquet",
+        10: "opportunities.parquet; accounts.parquet; email_engagements.parquet; web_engagements.parquet; 6sense_campaign.parquet",
+        11: "opportunities.parquet; accounts.parquet; email_engagements.parquet; web_engagements.parquet; 6sense_campaign.parquet",
+        12: "accounts.parquet; icp_database.parquet; opportunities.parquet",
+        14: "accounts.parquet; icp_database.parquet; opportunities.parquet", 15: "accounts.parquet; icp_database.parquet; opportunities.parquet; ad_metrics.parquet",
+    }
+    caveats = {
+        3: "CRM history is longer than 2024 activity windows; unlinked does not mean untouched.",
+        4: "CRM motion is supplied opportunity type; unknown motion remains separate.",
+        5: "All-history known-motion acquisition subset, mainly older classified opportunities; unknown motion and amount completeness constrain comparison.",
+        6: "Observed creation-year cohorts; classification coverage differs and 2024 acquisition is unavailable, not zero.",
+        7: "Resolved 2022 H1 versus 2024 H1; absent groups use entry/exit rather than invented rates.",
+        8: "Five labeled ads; creative attributes are confounded and CTR does not measure downstream causal revenue.",
+        9: "Email lacks sent/delivered denominators; website session flags are not completed acquisitions.",
+        10: "Four exclusive groups partition the canonical population; source and touch credit are not additive causal effects.",
+        11: "Eligible pre-creation account-domain touches; models and 30/90/180/365-day windows allocate observed recorded amounts.",
+        12: "Current ICP profile and explicit exclusions; historical-fit associations are exploratory.",
+        14: "One two-arm comparison at alpha .05 and 80% power. Baseline/lift assumptions are hypothetical; 2,032 is below the default 4,426 requirement.",
+        15: "No cost per enrolled account was supplied. No planning dollars or incremental return forecast can be established.",
+    }
+    for slide in slides:
+        i = slide["order"]
+        slide["source_footer"] = slide_sources.get(i, "opportunities.parquet; accounts.parquet; icp_database.parquet; ad_metrics.parquet; email_engagements.parquet; web_engagements.parquet; 6sense_campaign.parquet")
+        slide["visible_caveat"] = caveats.get(i, "Actions follow descriptive evidence; authorize scaling only after a feasible controlled measurement plan.")
+        related = {4:["f-channel"],5:["f-channel"],6:["f-channel"],7:["f-channel"],8:["f-content"],9:["f-content"],10:["f-attribution"],11:["f-attribution"],12:["f-audience"],13:["f-channel","f-content"],14:["f-audience"],15:["f-audience"],16:["f-channel","f-content","f-audience"]}
+        slide["finding_ids"] = related.get(i, [])
+        slide["scope"] = {8:"Supplied platform/ad observations",9:"Supplied email event and web recording activity",10:"Canonical source/touch overlap",11:"Eligible linked opportunity/channel/week presence",12:"Current account-domain eligibility",14:"Hypothetical prospective experiment",15:"Hypothetical sample and unavailable unit cost"}.get(i,"Canonical observed CRM creation cohorts; see classification coverage")
+        slide["speaker_notes"]["answer"] = slide["body"] + " " + slide["visible_caveat"]
+        slide["speaker_notes"]["do_not_claim"] = slide["visible_caveat"]
+        slide["speaker_notes"]["sources"] = slide["source_footer"].split("; ")
+    slides.extend(build_appendix(summary))
     hashes = source_hashes()
-    snapshot_id = hashlib.sha256((METHOD_VERSION + json.dumps(hashes, sort_keys=True)).encode()).hexdigest()[:16]
-    datasets = {"population_reconciliation": records(reconciliation), "source_coverage": records(coverage), "channel_scorecard": records(scorecard), "channel_trends": records(channel_trends), "content_metadata_coverage": records(metadata), "ad_rankings": records(rankings), "creative_bundles": records(bundles), "email_content": records(email_content), "web_content": records(web_content), "attribution_overlap": records(overlap), "attribution_model_sensitivity": records(sensitivity), "attribution_year_coverage": records(yearly), "journey_outcomes": records(journeys), "conversion_decomposition": records(pd.concat([channel_decomp, segment_decomp], ignore_index=True)), "loss_reason_summary": [], "audience_exclusions": records(exclusions), "audience_priority": records(priority), "experiment_scenarios": records(scenarios), "model_score_bands": records(model_bands), "model_diagnostics": records(model_stats), "summary": [summary]}
+    derived_hashes = {name: hashlib.sha256((INTEGRATED / name).read_bytes()).hexdigest()[:16] for name in ["model_stats.parquet", "model_calibration.parquet", "win_probability.parquet"] if (INTEGRATED / name).exists()}
+    snapshot_id = hashlib.sha256((METHOD_VERSION + json.dumps(hashes, sort_keys=True) + json.dumps(derived_hashes, sort_keys=True)).encode()).hexdigest()[:16]
+    datasets = {"population_reconciliation": records(reconciliation), "source_coverage": records(coverage), "channel_scorecard": records(scorecard), "motion_classification_coverage": records(motion_coverage(opps)), "channel_trends": records(channel_trends), "content_metadata_coverage": records(metadata), "ad_rankings": records(rankings), "creative_bundles": records(bundles), "email_content": records(email_content), "web_content": records(web_content), "attribution_overlap": records(overlap), "attribution_model_sensitivity": records(sensitivity), "attribution_year_coverage": records(yearly), "journey_outcomes": records(journeys), "conversion_decomposition": records(pd.concat([channel_decomp, segment_decomp], ignore_index=True)), "loss_reason_summary": [], "audience_exclusions": records(exclusions), "audience_priority": records(priority), "experiment_scenarios": records(scenarios), "model_score_bands": records(model_bands), "model_diagnostics": records(model_stats), "summary": [summary]}
     statuses = {key: {"status": "available", "reason": "Generated from the canonical analytical population.", "source_ids": [], "population": "See dataset definition", "period": "Static snapshot"} for key in datasets}
     statuses.update({"creative_bundles": {"status": "limited", "reason": "Only five ads have complete creative metadata; dimensions are confounded.", "source_ids": ["ad_metrics.parquet"], "population": "Labeled ads", "period": "2023–2024"}, "email_content": {"status": "limited", "reason": "No sent or delivered denominators.", "source_ids": ["email_engagements.parquet"], "population": "Recorded engagement events", "period": "2024"}, "attribution_model_sensitivity": {"status": "limited", "reason": "Touchpoint sources have 2024 observation windows.", "source_ids": ["email_engagements.parquet", "web_engagements.parquet", "6sense_campaign.parquet"], "population": "Eligible linked opportunities", "period": "Lookback-specific"}, "loss_reason_summary": {"status": "unavailable", "reason": "A versioned loss-reason mapping has not been established for the supplied free text.", "source_ids": ["opportunities.parquet"], "population": "Resolved losses", "period": "All available history"}})
-    return {"schema_version": 3, "meta": {"title": "CMO Marketing Decision Brief", "period": "CRM history 2018–2024; marketing logs observed in 2024", "generated_at": pd.Timestamp.now(tz="UTC"), "snapshot_id": snapshot_id, "method_version": METHOD_VERSION, "source_hashes": hashes, "source_freshness": "Static analytical snapshot generated from supplied files."}, "metric_definitions": {"resolved_win_rate": "won opportunities / resolved opportunities", "recorded_pipeline": "sum of source-recorded opportunity amount", "touch_linkage": "eligible pre-opportunity touches within a stated lookback; not causal lift", "email_metrics": "conditional on supplied engagement events, not sent or delivered messages"}, "datasets": datasets, "dataset_status": statuses, "findings": findings, "recommendations": recommendations, "presentation": {"target_duration_seconds": 1080, "slides": slides}, "manifest": {"case_questions": ["Customer acquisition", "Recorded revenue", "Engagement", "Channels", "Content formats", "Attribution", "Marketing strategy"], "sections": ["s-summary", "s-channels", "s-content", "s-attribution", "s-trends", "s-audience", "s-strategy", "s-evidence"], "legacy_archive": "/full-analysis"}}
+    for name in ["model_diagnostics", "model_score_bands"]:
+        statuses[name] = {"status": "limited" if datasets[name] else "unavailable", "reason": "Exploratory calendar-only baseline, conditional on resolved outcomes and explicit temporal eligibility; not validated operating probabilities.", "source_ids": ["opportunities.parquet", "model_stats.parquet", "win_probability.parquet"], "population": "Canonical active scores or eligible mature resolved validation sample", "period": "See model diagnostics cutoff and horizon"}
+    provenance = {
+        "content_metadata_coverage": (["ad_metrics.parquet"], "platform/creative field", "Observed ad dates", "nonempty supplied creative labels"),
+        "ad_rankings": (["ad_metrics.parquet"], "platform/ad", "Observed ad dates", "all ads; eligibility >=10000 impressions"),
+        "creative_bundles": (["ad_metrics.parquet"], "platform/complete creative bundle", "Observed ad dates", "all four creative labels present"),
+        "email_content": (["email_engagements.parquet"], "content title / engagement events and distinct people", "Supplied email timestamp bounds", "all recorded engagements; ID with valid email fallback"),
+        "web_content": (["web_engagements.parquet"], "page group / event rows, recording IDs and visitors", "Supplied web timestamp bounds", "observed contact flag; missing status unknown"),
+        "source_coverage": (["email_engagements.parquet","web_engagements.parquet","6sense_campaign.parquet"], "source/channel", "actual min_timestamp / max_timestamp", "usable explicit normalized domain and timestamp"),
+        "audience_exclusions": (["accounts.parquet","icp_database.parquet","opportunities.parquet"], "normalized account domain / exclusion reason", "Current supplied snapshot", "customer/active pipeline/target/profile exclusions"),
+        "audience_priority": (["accounts.parquet","icp_database.parquet","opportunities.parquet"], "segment/current fit", "Current supplied snapshot plus historical outcomes", "eligible domain counts; exploratory historical association"),
+        "experiment_scenarios": (["accounts.parquet","icp_database.parquet","opportunities.parquet"], "hypothetical baseline/lift scenario", "Prospective 90-day outcome horizon", "hypothetical rates; actual eligible audience"),
+    }
+    for name in datasets:
+        sources, grain, period, predicate = provenance.get(name, (["opportunities.parquet"], "canonical opportunity aggregates", "Observed CRM history or explicit creation cohort", "canonical latest nondeleted opportunities; see row scope"))
+        if name.startswith("attribution") or name == "journey_outcomes":
+            sources = ["opportunities.parquet","accounts.parquet","email_engagements.parquet","web_engagements.parquet","6sense_campaign.parquet"]
+            grain, period, predicate = "model/window/channel or opportunity outcome aggregates", "30/90/180/365-day precreation windows", "eligible domain/time window before latest weekly-presence compression"
+        if name.startswith("model"):
+            sources = ["opportunities.parquet","model_stats.parquet","win_probability.parquet"]
+            grain, period, predicate = "aggregate exploratory model diagnostics/score bins", "declared as-of cutoff and 180-day horizon", "calendar-only model; eligible mature resolved evaluation; active scores operationally unvalidated"
+        statuses[name].update(source_ids=sources, grain=grain, period=period, predicate=predicate, population=grain)
+    run_meta_path = ROOT / "outputs" / "run_metadata.json"
+    run_metadata = json.loads(run_meta_path.read_text(encoding="utf-8")) if run_meta_path.exists() else {"status":"unavailable", "reason":"No coordinated run metadata yet"}
+    run_metadata = {key: value for key, value in run_metadata.items() if key not in {"release_status", "completed_at"}}
+    return {"schema_version": 3, "meta": {"title": "CMO Marketing Decision Brief", "run_metadata": run_metadata, "period": "CRM history 2018–2024; marketing logs observed in 2024", "generated_at": pd.Timestamp.now(tz="UTC"), "snapshot_id": snapshot_id, "method_version": METHOD_VERSION, "source_hashes": hashes, "derived_hashes": derived_hashes, "source_freshness": "Static analytical snapshot generated from supplied files."}, "metric_definitions": {"positional_attribution": "First/last retained latest eligible channel-week presence, not first raw event; ties share credit. Linear uses distinct channel presence; time decay sums retained weekly presence with 30-day half-life.","historical_opportunity_prevalence": "All-history opportunity-domain presence associated with supplied-window reach; not post-exposure conversion","resolved_win_rate": "won opportunities / resolved opportunities", "recorded_pipeline": "sum of source-recorded opportunity amount", "touch_linkage": "eligible pre-opportunity touches within a stated lookback; not causal lift", "email_metrics": "conditional on supplied engagement events, not sent or delivered messages"}, "datasets": datasets, "dataset_status": statuses, "findings": findings, "recommendations": recommendations, "presentation": {"target_duration_seconds": 1080, "slides": slides}, "manifest": {"case_questions": ["Customer acquisition", "Recorded revenue", "Engagement", "Channels", "Content formats", "Attribution", "Marketing strategy"], "logical_categories": ["summary", "channels", "content", "attribution", "trends", "audience", "strategy", "evidence"], "legacy_archive": "./full-analysis/"}}
 
 
 def main() -> None:

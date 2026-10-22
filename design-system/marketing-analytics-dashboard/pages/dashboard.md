@@ -1,4 +1,6 @@
-# Dashboard page override
+# Archived Dashboard Page Override
+
+> **Status:** Superseded. Use the current Revenue Command Center rules in [`DESIGN.md`](../../../DESIGN.md). The color and typography directions below describe an earlier concept and must not be applied to the current product.
 
 - Preserve the Signal Atlas decision-brief character: **Newsreader Variable** for display headlines and narrative moments; **Manrope Variable** for navigation, controls, labels, body copy, tables, and chart text. Do not introduce a third display or UI family.
 - Structure the story as **evidence → implication → action**. Lead with the recommendation and confidence limits, interpret each analytical section, and end with a measurable experiment or decision.

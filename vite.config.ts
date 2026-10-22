@@ -30,6 +30,7 @@ export default defineConfig({
     outDir: outputDirectory,
     emptyOutDir: true,
     sourcemap: false,
+    manifest: true,
     modulePreload: false,
     rollupOptions: {
       output: {

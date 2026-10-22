@@ -1,50 +1,287 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-05T23:41:22.0063206+08:00",
+  "generatedAt": "2026-10-03T01:31:40.912897+00:00",
   "title": "Design System: Revenue Command Center",
   "extensions": {
     "conceptSeed": "83de77a9",
     "colorMeta": {
-      "canvas": { "role": "primary", "displayName": "Command Black", "canonical": "#070708", "tonalRamp": ["#070708", "#111113", "#171719", "#242122", "#332f30", "#5f5859", "#aaa1a2", "#f7f4f4"] },
-      "paper": { "role": "neutral", "displayName": "Evidence Plane", "canonical": "#111113", "tonalRamp": ["#070708", "#111113", "#171719", "#242122", "#433a3b", "#777071", "#bcb3b4", "#f7f4f4"] },
-      "carbon": { "role": "primary", "displayName": "Command Black", "canonical": "#070708", "tonalRamp": ["#070708", "#111113", "#251013", "#43151b", "#7b1620", "#b70f1c", "#e12636", "#ff7b84"] },
-      "ink": { "role": "neutral", "displayName": "Warm White Ink", "canonical": "#f7f4f4", "tonalRamp": ["#070708", "#171719", "#332f30", "#5f5859", "#91888a", "#c2babb", "#ded8d9", "#f7f4f4"] },
-      "body": { "role": "neutral", "displayName": "Quiet Silver", "canonical": "#c2babb", "tonalRamp": ["#111113", "#242122", "#433a3b", "#6e6667", "#91888a", "#aaa1a2", "#c2babb", "#f7f4f4"] },
-      "line": { "role": "neutral", "displayName": "Charcoal Rule", "canonical": "#2d2829", "tonalRamp": ["#070708", "#111113", "#171719", "#2d2829", "#433a3b", "#6e6667", "#aaa1a2", "#ded8d9"] },
-      "crimson": { "role": "primary", "displayName": "Registration Crimson", "canonical": "#e12636", "tonalRamp": ["#301216", "#58131a", "#8c111b", "#b70f1c", "#e12636", "#ff6672", "#ff9aa2", "#ffdadd"] },
-      "scarlet": { "role": "secondary", "displayName": "Comparative Scarlet", "canonical": "#ff7b84", "tonalRamp": ["#29171a", "#532228", "#8c3840", "#c4515b", "#ff7b84", "#ffa2a9", "#ffc7cb", "#fff0f1"] },
-      "graphite": { "role": "secondary", "displayName": "Validation White", "canonical": "#f2eeee", "tonalRamp": ["#111113", "#242122", "#433a3b", "#6e6667", "#91888a", "#bcb3b4", "#ded8d9", "#f2eeee"] },
-      "oxblood": { "role": "tertiary", "displayName": "Measured Oxblood", "canonical": "#c4616a", "tonalRamp": ["#29171a", "#4d2328", "#71343b", "#9f4a52", "#c4616a", "#df8f96", "#efbcc0", "#ffe8ea"] },
-      "risk": { "role": "tertiary", "displayName": "Risk Crimson", "canonical": "#ff4f5d", "tonalRamp": ["#301216", "#5e151c", "#981421", "#cf1c2b", "#ff4f5d", "#ff7d87", "#ffadb4", "#ffe0e3"] },
-      "burgundy": { "role": "tertiary", "displayName": "Model Burgundy", "canonical": "#9f5660", "tonalRamp": ["#241316", "#432027", "#63313a", "#82444e", "#9f5660", "#bf7f87", "#ddaeb3", "#f5e4e7"] }
+      "canvas": {
+        "role": "primary",
+        "displayName": "Command Black",
+        "canonical": "#070708",
+        "tonalRamp": [
+          "#070708",
+          "#111113",
+          "#171719",
+          "#242122",
+          "#332f30",
+          "#5f5859",
+          "#aaa1a2",
+          "#f7f4f4"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Evidence Plane",
+        "canonical": "#111113",
+        "tonalRamp": [
+          "#070708",
+          "#111113",
+          "#171719",
+          "#242122",
+          "#433a3b",
+          "#777071",
+          "#bcb3b4",
+          "#f7f4f4"
+        ]
+      },
+      "carbon": {
+        "role": "primary",
+        "displayName": "Command Black",
+        "canonical": "#070708",
+        "tonalRamp": [
+          "#070708",
+          "#111113",
+          "#251013",
+          "#43151b",
+          "#7b1620",
+          "#b70f1c",
+          "#e12636",
+          "#ff7b84"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Warm White Ink",
+        "canonical": "#f7f4f4",
+        "tonalRamp": [
+          "#070708",
+          "#171719",
+          "#332f30",
+          "#5f5859",
+          "#91888a",
+          "#c2babb",
+          "#ded8d9",
+          "#f7f4f4"
+        ]
+      },
+      "body": {
+        "role": "neutral",
+        "displayName": "Quiet Silver",
+        "canonical": "#c2babb",
+        "tonalRamp": [
+          "#111113",
+          "#242122",
+          "#433a3b",
+          "#6e6667",
+          "#91888a",
+          "#aaa1a2",
+          "#c2babb",
+          "#f7f4f4"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Charcoal Rule",
+        "canonical": "#2d2829",
+        "tonalRamp": [
+          "#070708",
+          "#111113",
+          "#171719",
+          "#2d2829",
+          "#433a3b",
+          "#6e6667",
+          "#aaa1a2",
+          "#ded8d9"
+        ]
+      },
+      "crimson": {
+        "role": "primary",
+        "displayName": "Registration Crimson",
+        "canonical": "#e12636",
+        "tonalRamp": [
+          "#301216",
+          "#58131a",
+          "#8c111b",
+          "#b70f1c",
+          "#e12636",
+          "#ff6672",
+          "#ff9aa2",
+          "#ffdadd"
+        ]
+      },
+      "scarlet": {
+        "role": "secondary",
+        "displayName": "Comparative Scarlet",
+        "canonical": "#ff7b84",
+        "tonalRamp": [
+          "#29171a",
+          "#532228",
+          "#8c3840",
+          "#c4515b",
+          "#ff7b84",
+          "#ffa2a9",
+          "#ffc7cb",
+          "#fff0f1"
+        ]
+      },
+      "graphite": {
+        "role": "secondary",
+        "displayName": "Validation White",
+        "canonical": "#f2eeee",
+        "tonalRamp": [
+          "#111113",
+          "#242122",
+          "#433a3b",
+          "#6e6667",
+          "#91888a",
+          "#bcb3b4",
+          "#ded8d9",
+          "#f2eeee"
+        ]
+      },
+      "oxblood": {
+        "role": "tertiary",
+        "displayName": "Measured Oxblood",
+        "canonical": "#c4616a",
+        "tonalRamp": [
+          "#29171a",
+          "#4d2328",
+          "#71343b",
+          "#9f4a52",
+          "#c4616a",
+          "#df8f96",
+          "#efbcc0",
+          "#ffe8ea"
+        ]
+      },
+      "risk": {
+        "role": "tertiary",
+        "displayName": "Risk Crimson",
+        "canonical": "#ff4f5d",
+        "tonalRamp": [
+          "#301216",
+          "#5e151c",
+          "#981421",
+          "#cf1c2b",
+          "#ff4f5d",
+          "#ff7d87",
+          "#ffadb4",
+          "#ffe0e3"
+        ]
+      },
+      "burgundy": {
+        "role": "tertiary",
+        "displayName": "Model Burgundy",
+        "canonical": "#9f5660",
+        "tonalRamp": [
+          "#241316",
+          "#432027",
+          "#63313a",
+          "#82444e",
+          "#9f5660",
+          "#bf7f87",
+          "#ddaeb3",
+          "#f5e4e7"
+        ]
+      }
     },
     "typographyMeta": {
-      "display": { "displayName": "Ledger Display", "purpose": "Section theses in the single self-hosted Manrope voice." },
-      "headline": { "displayName": "Decision Headline", "purpose": "Executive memo and conclusion statements." },
-      "title": { "displayName": "Evidence Title", "purpose": "Charts, tables, methods, and ledger modules." },
-      "body": { "displayName": "Evidence Body", "purpose": "Operational explanation and analytical interpretation." },
-      "label": { "displayName": "Register Label", "purpose": "Compact metadata, scope, state, and navigation labels." },
-      "numericRule": { "displayName": "Tabular Numerals", "purpose": "All KPIs, tables, chart labels, and quantitative ledgers use tabular numerals." }
+      "display": {
+        "displayName": "Ledger Display",
+        "purpose": "Dashboard headings use bundled Manrope Variable; findings presentation headings use bundled Newsreader Variable under its surface brief."
+      },
+      "headline": {
+        "displayName": "Decision Headline",
+        "purpose": "Executive memo and conclusion statements."
+      },
+      "title": {
+        "displayName": "Evidence Title",
+        "purpose": "Charts, tables, methods, and ledger modules."
+      },
+      "body": {
+        "displayName": "Evidence Body",
+        "purpose": "Operational explanation and analytical interpretation."
+      },
+      "label": {
+        "displayName": "Register Label",
+        "purpose": "Compact metadata, scope, state, and navigation labels."
+      },
+      "numericRule": {
+        "displayName": "Tabular Numerals",
+        "purpose": "All KPIs, tables, chart labels, and quantitative ledgers use tabular numerals."
+      }
     },
     "shadows": [
-      { "name": "panel-low", "value": "0 12px 34px rgba(0, 0, 0, .32)", "purpose": "Low resting depth for the joined executive schedule." },
-      { "name": "panel-hover", "value": "0 18px 48px rgba(0, 0, 0, .48)", "purpose": "Inspection feedback on chart cards and the utility menu." },
-      { "name": "spine", "value": "8px 0 28px rgba(0, 0, 0, .38)", "purpose": "Separates the fixed command spine from the evidence field." },
-      { "name": "drawer", "value": "-18px 0 42px rgba(0, 0, 0, .55)", "purpose": "Directional depth for the modal caveats drawer." }
+      {
+        "name": "panel-low",
+        "value": "0 12px 34px rgba(0, 0, 0, .32)",
+        "purpose": "Low resting depth for the joined executive schedule."
+      },
+      {
+        "name": "panel-hover",
+        "value": "0 18px 48px rgba(0, 0, 0, .48)",
+        "purpose": "Inspection feedback on chart cards and the utility menu."
+      },
+      {
+        "name": "spine",
+        "value": "8px 0 28px rgba(0, 0, 0, .38)",
+        "purpose": "Separates the fixed command spine from the evidence field."
+      },
+      {
+        "name": "drawer",
+        "value": "-18px 0 42px rgba(0, 0, 0, .55)",
+        "purpose": "Directional depth for the modal caveats drawer."
+      }
     ],
     "motion": [
-      { "name": "ease-standard", "value": "cubic-bezier(.16, 1, .3, 1)", "purpose": "Short control, drawer, and layout state changes." },
-      { "name": "duration-fast", "value": "180ms", "purpose": "Hover, focus-adjacent, and compact control feedback." },
-      { "name": "duration-drawer", "value": "260ms", "purpose": "Mobile spine slide-in transition." },
-      { "name": "duration-layout", "value": "320ms", "purpose": "Progress and presentation-mode continuity." },
-      { "name": "reduced-motion", "value": ".01ms; one iteration; scroll-behavior auto", "purpose": "Preserves final state while removing motion-led transitions and smooth scrolling." }
+      {
+        "name": "ease-standard",
+        "value": "cubic-bezier(.16, 1, .3, 1)",
+        "purpose": "Short control, drawer, and layout state changes."
+      },
+      {
+        "name": "duration-fast",
+        "value": "180ms",
+        "purpose": "Hover, focus-adjacent, and compact control feedback."
+      },
+      {
+        "name": "duration-drawer",
+        "value": "260ms",
+        "purpose": "Mobile spine slide-in transition."
+      },
+      {
+        "name": "duration-layout",
+        "value": "320ms",
+        "purpose": "Progress and presentation-mode continuity."
+      },
+      {
+        "name": "reduced-motion",
+        "value": ".01ms; one iteration; scroll-behavior auto",
+        "purpose": "Preserves final state while removing motion-led transitions and smooth scrolling."
+      }
     ],
     "breakpoints": [
-      { "name": "spine-compact", "value": "1320px" },
-      { "name": "schedule-stack", "value": "1120px" },
-      { "name": "drawer", "value": "900px" },
-      { "name": "ledger-stack", "value": "680px" },
-      { "name": "narrow-mobile", "value": "520px" }
+      {
+        "name": "spine-compact",
+        "value": "1320px"
+      },
+      {
+        "name": "schedule-stack",
+        "value": "1120px"
+      },
+      {
+        "name": "drawer",
+        "value": "900px"
+      },
+      {
+        "name": "ledger-stack",
+        "value": "680px"
+      },
+      {
+        "name": "narrow-mobile",
+        "value": "520px"
+      }
     ],
     "layout": {
       "desktopSpine": "240px fixed carbon-black spine; 224px below 1320px",
@@ -97,7 +334,17 @@
       "chartDefinitions": 21,
       "sortableTables": 6,
       "dataSource": "dashboard-data.json",
-      "preservedPaths": ["CSV export", "print all", "hash deep links", "presentation mode", "/full-analysis archive"]
+      "preservedPaths": [
+        "CSV export",
+        "print all",
+        "hash deep links",
+        "presentation mode",
+        "/full-analysis archive"
+      ]
+    },
+    "surfaceBriefs": {
+      "dashboard": ".impeccable/surfaces/dashboard.md",
+      "presentation": ".impeccable/surfaces/presentation.md"
     }
   },
   "components": [
@@ -166,11 +413,31 @@
       "Dense evidence remains inspectable, accessible, printable, and traceable to source data."
     ],
     "rules": [
-      { "name": "The Accountable Color Rule", "body": "Crimson means primary evidence; graphite means validated or neutral comparison; oxblood means limitation; dark crimson means material risk; burgundy means the fourth analytical series. Reinforce every meaning with text, iconography, pattern, or shape.", "section": "colors" },
-      { "name": "The Black Majority Rule", "body": "Black and charcoal occupy most of every screen. White establishes hierarchy; crimson is registration and semantics, never decoration.", "section": "colors" },
-      { "name": "The One-Voice Rule", "body": "Do not add a serif, display face, or chart-specific font. Use Manrope's variable weight and tight spacing to separate interpretation from metadata.", "section": "typography" },
-      { "name": "The Content-Preservation Rule", "body": "Responsive, presentation, and print modes may reflow or focus the evidence, but must retain the ten-section order, denominators, caveats, accessible summaries, Data/Chart alternatives, downloads, and sortable tables.", "section": "layout" },
-      { "name": "The Ruled-First Rule", "body": "Prefer a border, shared divider, or paper-tone change before adding shadow. Never build a floating-card wall.", "section": "elevation" }
+      {
+        "name": "The Accountable Color Rule",
+        "body": "Crimson means primary evidence; graphite means validated or neutral comparison; oxblood means limitation; dark crimson means material risk; burgundy means the fourth analytical series. Reinforce every meaning with text, iconography, pattern, or shape.",
+        "section": "colors"
+      },
+      {
+        "name": "The Black Majority Rule",
+        "body": "Black and charcoal occupy most of every screen. White establishes hierarchy; crimson is registration and semantics, never decoration.",
+        "section": "colors"
+      },
+      {
+        "name": "The One-Voice Rule",
+        "body": "Do not add a serif, display face, or chart-specific font. Use Manrope's variable weight and tight spacing to separate interpretation from metadata.",
+        "section": "typography"
+      },
+      {
+        "name": "The Content-Preservation Rule",
+        "body": "Responsive, presentation, and print modes may reflow or focus the evidence, but must retain the ten-section order, denominators, caveats, accessible summaries, Data/Chart alternatives, downloads, and sortable tables.",
+        "section": "layout"
+      },
+      {
+        "name": "The Ruled-First Rule",
+        "body": "Prefer a border, shared divider, or paper-tone change before adding shadow. Never build a floating-card wall.",
+        "section": "elevation"
+      }
     ],
     "dos": [
       "Lead with the operating decision, then preserve the evidence → implication → action chain.",

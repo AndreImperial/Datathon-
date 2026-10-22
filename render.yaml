@@ -1,9 +1,8 @@
 services:
   - type: web
     name: marketing-analytics-dashboard
-    runtime: python
+    runtime: docker
     plan: free
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "gunicorn app:app"
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /health
     pullRequestPreviewsEnabled: false

@@ -6,7 +6,7 @@ export default {
     "./node_modules/@tremor/**/*.{js,ts,jsx,tsx}",
   ],
   safelist: [
-    "fill-blue-500", "stroke-blue-500",
+    "fill-blue-500", "stroke-blue-500", "fill-teal-500", "stroke-teal-500", "bg-teal-500",
     "fill-cyan-500", "stroke-cyan-500",
     "fill-emerald-500", "stroke-emerald-500",
     "fill-slate-500", "stroke-slate-500",
@@ -24,7 +24,7 @@ export default {
           600: "#a24750",
           DEFAULT: "#c4616a",
         },
-        teal: "#f2eeee",
+        teal: { DEFAULT: "#f2eeee", 500: "#f2eeee", 600: "#d7cfd0" },
         canvas: "#070708",
         blue: {
           500: "#e12636",

@@ -1,0 +1,7 @@
+raw selected matches 3288 amount differences 0 row differences 0
+CANONICAL 3245 2834 1070
+WEEK EFFECT 682 684 lost opportunities 2 lost pipeline 54082.0 lost won 1 lost won amount 39082.0 linked opp-channel counts 940 942
+   _opportunity_id      domain                created_at  amount   won
+006UW000007UlBxYAK metlife.com 2024-05-01 00:00:00+00:00 15000.0 False
+006UW000007UzObYAK metlife.com 2024-05-01 00:00:00+00:00 39082.0  True
+LINKED WIN 126 127

@@ -18,6 +18,8 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+from analytics_case_study.utils.population import canonical_opportunities
+from analytics_case_study.utils.cleaning_helpers import normalize_domain
 from analytics_case_study.config import (
     ANALYSIS_DIR,
     CHANNEL_LEADSOURCE_MAP,
@@ -127,7 +129,7 @@ def build_touchpoints() -> pd.DataFrame:
     tp_df = pd.DataFrame(rows)
     tp_df["touchpoint_date"] = pd.to_datetime(tp_df["touchpoint_date"], utc=True, errors="coerce")
     tp_df = tp_df.dropna(subset=["domain", "touchpoint_date"])
-    tp_df["domain"] = tp_df["domain"].astype(str).str.lower().str.strip()
+    tp_df["domain"] = normalize_domain(tp_df["domain"])
 
     quality = (
         tp_df.groupby(["channel", "is_marketing_touch"], dropna=False)
@@ -138,20 +140,9 @@ def build_touchpoints() -> pd.DataFrame:
 
     marketing = tp_df[tp_df["is_marketing_touch"]].copy()
     raw_marketing_rows = len(marketing)
-    # Normalize the source grain before cross-channel weighting: at most one
-    # presence per account, channel, and calendar week.  This prevents 6sense
-    # impression-row density from overwhelming email actions purely because the
-    # source systems log at different grains.
-    marketing["touchpoint_week"] = marketing["touchpoint_date"].dt.strftime("%G-W%V")
-    marketing = (
-        marketing.sort_values("touchpoint_date")
-        .drop_duplicates(["domain", "channel", "touchpoint_week"], keep="last")
-        .drop(columns=["touchpoint_week"])
-    )
-    print(
-        f"  Built normalized marketing touchpoints: {len(marketing):,} account-channel-weeks "
-        f"from {raw_marketing_rows:,} raw marketing rows across {marketing['domain'].nunique():,} domains"
-    )
+    # Retain raw valid rows: eligibility differs for each opportunity. A later
+    # weekly touch must not displace an earlier eligible pre-creation touch.
+    print(f"  Built {raw_marketing_rows:,} raw marketing touchpoints")
     excluded = len(tp_df) - raw_marketing_rows
     if excluded:
         print(f"  Excluded {excluded:,} unclassified web rows from marketing attribution")
@@ -167,8 +158,12 @@ def link_touchpoints_to_opps(tp_df: pd.DataFrame, window_days: int = ATTRIBUTION
     within the requested lookback window before the opportunity create date.
     Returns: one row per (opportunity_id, touchpoint), with opportunity_amount.
     """
-    opps = pd.read_parquet(os.path.join(CLEANED_DATA_DIR, "opportunities.parquet"))
+    opps = canonical_opportunities(pd.read_parquet(os.path.join(CLEANED_DATA_DIR, "opportunities.parquet")))
     accts = pd.read_parquet(os.path.join(CLEANED_DATA_DIR, "accounts.parquet"))
+    if "_domain" in opps:
+        opps["_domain"] = normalize_domain(opps["_domain"])
+    if "domain__c" in accts:
+        accts["domain__c"] = normalize_domain(accts["domain__c"])
 
     # Resolve opportunity domain: use _domain from opp if available, else join via account
     opp_date_col = next((c for c in opps.columns if "createdate" in c.lower()), None)
@@ -192,7 +187,7 @@ def link_touchpoints_to_opps(tp_df: pd.DataFrame, window_days: int = ATTRIBUTION
         acct_id = row.get("_account_id", "")
         return acct_domain.get(str(acct_id), "")
 
-    opps["opp_domain"] = opps.apply(resolve_opp_domain, axis=1)
+    opps["opp_domain"] = normalize_domain(opps.apply(resolve_opp_domain, axis=1))
     opps_with_domain = opps[
         opps["opp_domain"].notna() & (opps["opp_domain"] != "") &
         opps["_opp_create_date"].notna() & opps["_amount"].notna()
@@ -222,6 +217,13 @@ def link_touchpoints_to_opps(tp_df: pd.DataFrame, window_days: int = ATTRIBUTION
         merged["days_before_opp"].between(0, window_days)
     ].copy()
 
+    # Latest eligible timestamp represents each opportunity/channel/ISO week.
+    # First-touch therefore means first normalized weekly presence, not first
+    # raw event; time-decay weights repeated weekly presence.
+    in_window["touchpoint_week"] = in_window["touchpoint_date"].dt.strftime("%G-W%V")
+    in_window = (in_window.sort_values("touchpoint_date", kind="stable")
+                 .drop_duplicates(["_opportunity_id", "channel", "touchpoint_week"], keep="last")
+                 .drop(columns="touchpoint_week"))
     print(f"  Touchpoints linked within {window_days}-day window: {len(in_window):,}")
     return in_window, opps
 
@@ -296,25 +298,26 @@ def apply_attribution_models(linked: pd.DataFrame, opps_full: pd.DataFrame) -> d
         print("  No linked touchpoints — skipping first/last/linear/time-decay models")
         return results
 
-    # --- First-Touch ---
-    ft_df = linked.sort_values("touchpoint_date").groupby("_opportunity_id").first().reset_index()
-    ft = ft_df.groupby("channel").agg(
-        attributed_pipeline=("_amount", "sum"),
-        deal_count=("_opportunity_id", "count"),
-    ).reset_index()
-    ft["attributed_won"] = ft_df.groupby("channel").apply(lambda g: _won_sum(g)).reindex(ft["channel"]).fillna(0).values
-    ft["attribution_model"] = "First-Touch"
-    results["First-Touch"] = ft
-
-    # --- Last-Touch ---
-    lt_df = linked.sort_values("touchpoint_date").groupby("_opportunity_id").last().reset_index()
-    lt = lt_df.groupby("channel").agg(
-        attributed_pipeline=("_amount", "sum"),
-        deal_count=("_opportunity_id", "count"),
-    ).reset_index()
-    lt["attributed_won"] = lt_df.groupby("channel").apply(lambda g: _won_sum(g)).reindex(lt["channel"]).fillna(0).values
-    lt["attribution_model"] = "Last-Touch"
-    results["Last-Touch"] = lt
+    # First/last timestamps may tie across channels. Split each opportunity's
+    # credit equally across distinct tied channels, regardless of duplicate rows.
+    for model_name, extreme in [("First-Touch", "min"), ("Last-Touch", "max")]:
+        dates = linked.groupby("_opportunity_id")["touchpoint_date"].transform(extreme)
+        tied = linked.loc[linked["touchpoint_date"].eq(dates)].drop_duplicates(
+            ["_opportunity_id", "channel"]
+        ).copy()
+        channels = tied.groupby("_opportunity_id")["channel"].transform("nunique")
+        tied["attributed_pipeline"] = tied["_amount"] / channels
+        tied["attributed_won"] = np.where(
+            tied[iswon_linked].eq(True) if iswon_linked else False,
+            tied["attributed_pipeline"], 0,
+        )
+        result = tied.groupby("channel").agg(
+            attributed_pipeline=("attributed_pipeline", "sum"),
+            attributed_won=("attributed_won", "sum"),
+            deal_count=("_opportunity_id", "nunique"),
+        ).reset_index()
+        result["attribution_model"] = model_name
+        results[model_name] = result
 
     # --- Linear (equal credit per unique channel per opportunity) ---
     linear_rows = []
@@ -344,7 +347,7 @@ def apply_attribution_models(linked: pd.DataFrame, opps_full: pd.DataFrame) -> d
         results["Linear"] = lin
 
     # --- Time-Decay (half-life = 30 days, exponential weighting) ---
-    # ``linked`` is already normalized to account-channel-week grain, so the
+    # ``linked`` is already normalized to opportunity-channel-week grain, so the
     # weights measure repeated weekly presence rather than raw source-row volume.
     HALF_LIFE = 30
     ld = linked.copy()

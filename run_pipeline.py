@@ -8,9 +8,15 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
+import platform
+from datetime import datetime, timezone
+from importlib.metadata import version
 import subprocess
 import sys
 from pathlib import Path
+from source_control import check_source_schema
 
 
 ROOT = Path(__file__).resolve().parent
@@ -36,6 +42,15 @@ def main() -> int:
     parser.add_argument("--dry-run", action="store_true", help="Print steps without running them.")
     args = parser.parse_args()
 
+    if not args.dry_run:
+        source_status = check_source_schema(ROOT)
+        sources = []
+        for source in sorted((ROOT / "Analytics Case Study").glob("*.xlsx")):
+            sources.append({"source_id": source.name, "sha256": hashlib.sha256(source.read_bytes()).hexdigest(), "bytes": source.stat().st_size})
+        metadata = {"python": platform.python_version(), "dependencies": {name: version(name) for name in ["pandas", "numpy", "scikit-learn", "pyarrow", "plotly", "openpyxl"]}, "started_at": datetime.now(timezone.utc).isoformat(), "source_files": sources, "source_freshness_status": "historical supplied extract; production expected-date/refresh policy pending", "release_status": "running", "source_control": source_status}
+        metadata_path = ROOT / "outputs" / "run_metadata.json"
+        metadata_path.parent.mkdir(exist_ok=True)
+        metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     for label, script in STEPS:
         script_path = ROOT / script
         if args.dry_run:
@@ -48,6 +63,10 @@ def main() -> int:
             print(f"\nPipeline stopped at: {label}", file=sys.stderr)
             return result.returncode
 
+    if not args.dry_run:
+        metadata["release_status"] = "validated"
+        metadata["completed_at"] = datetime.now(timezone.utc).isoformat()
+        metadata_path.write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     print("\nPipeline completed successfully.")
     return 0
 

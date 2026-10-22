@@ -1,0 +1,88 @@
+{
+  "../node_modules/@fontsource-variable/manrope/files/manrope-cyrillic-wght-normal.woff2": {
+    "file": "assets/manrope-cyrillic-wght-normal-Dvxsihut.woff2",
+    "src": "../node_modules/@fontsource-variable/manrope/files/manrope-cyrillic-wght-normal.woff2"
+  },
+  "../node_modules/@fontsource-variable/manrope/files/manrope-greek-wght-normal.woff2": {
+    "file": "assets/manrope-greek-wght-normal-DL7QRZyv.woff2",
+    "src": "../node_modules/@fontsource-variable/manrope/files/manrope-greek-wght-normal.woff2"
+  },
+  "../node_modules/@fontsource-variable/manrope/files/manrope-latin-ext-wght-normal.woff2": {
+    "file": "assets/manrope-latin-ext-wght-normal-Ch3YOpNY.woff2",
+    "src": "../node_modules/@fontsource-variable/manrope/files/manrope-latin-ext-wght-normal.woff2"
+  },
+  "../node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2": {
+    "file": "assets/manrope-latin-wght-normal-DHIcAJRg.woff2",
+    "src": "../node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2"
+  },
+  "../node_modules/@fontsource-variable/manrope/files/manrope-vietnamese-wght-normal.woff2": {
+    "file": "assets/manrope-vietnamese-wght-normal-usUDDRr7.woff2",
+    "src": "../node_modules/@fontsource-variable/manrope/files/manrope-vietnamese-wght-normal.woff2"
+  },
+  "../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-ext-wght-normal.woff2": {
+    "file": "assets/newsreader-latin-ext-wght-normal-C-3rgBeH.woff2",
+    "src": "../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-ext-wght-normal.woff2"
+  },
+  "../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2": {
+    "file": "assets/newsreader-latin-wght-normal-CCVVNp6i.woff2",
+    "src": "../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-wght-normal.woff2"
+  },
+  "../node_modules/@fontsource-variable/newsreader/files/newsreader-vietnamese-wght-normal.woff2": {
+    "file": "assets/newsreader-vietnamese-wght-normal-Czsa-EzN.woff2",
+    "src": "../node_modules/@fontsource-variable/newsreader/files/newsreader-vietnamese-wght-normal.woff2"
+  },
+  "_motion-BauMSZyy.js": {
+    "file": "assets/motion-BauMSZyy.js",
+    "name": "motion"
+  },
+  "_recharts-CB_07E35.js": {
+    "file": "assets/recharts-CB_07E35.js",
+    "name": "recharts"
+  },
+  "_tremor-OSbuuNc7.js": {
+    "file": "assets/tremor-OSbuuNc7.js",
+    "name": "tremor",
+    "imports": [
+      "_recharts-CB_07E35.js"
+    ]
+  },
+  "index.html": {
+    "file": "assets/index-CToIfVV5.js",
+    "name": "index",
+    "src": "index.html",
+    "isEntry": true,
+    "imports": [
+      "_tremor-OSbuuNc7.js",
+      "_recharts-CB_07E35.js",
+      "_motion-BauMSZyy.js"
+    ],
+    "dynamicImports": [
+      "src/components/Charts.tsx"
+    ],
+    "css": [
+      "assets/index-Brt0fA7h.css"
+    ],
+    "assets": [
+      "assets/manrope-cyrillic-wght-normal-Dvxsihut.woff2",
+      "assets/manrope-greek-wght-normal-DL7QRZyv.woff2",
+      "assets/manrope-vietnamese-wght-normal-usUDDRr7.woff2",
+      "assets/manrope-latin-ext-wght-normal-Ch3YOpNY.woff2",
+      "assets/manrope-latin-wght-normal-DHIcAJRg.woff2",
+      "assets/newsreader-vietnamese-wght-normal-Czsa-EzN.woff2",
+      "assets/newsreader-latin-ext-wght-normal-C-3rgBeH.woff2",
+      "assets/newsreader-latin-wght-normal-CCVVNp6i.woff2"
+    ]
+  },
+  "src/components/Charts.tsx": {
+    "file": "assets/Charts-C2uCNtvm.js",
+    "name": "Charts",
+    "src": "src/components/Charts.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_tremor-OSbuuNc7.js",
+      "index.html",
+      "_recharts-CB_07E35.js",
+      "_motion-BauMSZyy.js"
+    ]
+  }
+}

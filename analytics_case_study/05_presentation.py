@@ -45,6 +45,7 @@ def _records(frame: pd.DataFrame, columns: list[str]) -> list[dict]:
 
 
 def build_payload() -> dict:
+    raise RuntimeError("Historical PPTX generator is deprecated: use the validated schema-v3 browser deck. Existing PPTX is an unvalidated historical archive.")
     opps = _load(CLEANED_DATA_DIR, "opportunities")
     email = _load(CLEANED_DATA_DIR, "email_engagements")
     quality = _load(INTEGRATED_DATA_DIR, "data_quality_summary")
@@ -182,4 +183,7 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    raise SystemExit("Deprecated historical PPTX generator: existing deck is archival only. Use the current browser deck; no historical regeneration is permitted.")
+
+if False:
     main()

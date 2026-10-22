@@ -1,0 +1,28 @@
+
+> marketing-analytics-decision-dashboard@2.0.0 test
+> node --test tests/frontend*.test.mjs frontend/tests/*.test.mjs
+
+✔ raw numeric sort puts missing last in both directions (1.9126ms)
+✔ missing and malformed values do not become measured zero (0.5209ms)
+✔ explicit units distinguish ratios dollars fractions and pp (0.3789ms)
+✔ spreadsheet formulas escaped while numeric negatives survive (0.2937ms)
+✔ Space keeps native button activation and PageDown keeps evidence scrolling (167.889ms)
+✔ overview makes background inert and Escape from its focused button closes it (34.6287ms)
+✔ unknown routes canonicalize and a known hash change updates the visible slide (124.7354ms)
+✔ attribution lookback changes the whole-window population without repeating it per channel (32.5189ms)
+✔ rapid next commands use latest state and sequence switching uses new list (1.4624ms)
+✔ pause uses event time and refresh state remains valid (0.4065ms)
+✔ invalid routes and malformed messages are rejected (0.3912ms)
+✔ blocked storage falls back without throwing (0.2821ms)
+✔ numeric amounts sort by magnitude with missing last in either direction (1.7283ms)
+✔ CSV neutralizes textual formulas and preserves numeric negatives/opaque identifiers (0.9438ms)
+✔ actual contract keys preserve coverage, counts, dollar costs and percentage fields (32.365ms)
+✔ the downloaded CSV serializer retains snapshot, units, source and supplied row order (0.957ms)
+ℹ tests 16
+ℹ suites 0
+ℹ pass 16
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1194.2094

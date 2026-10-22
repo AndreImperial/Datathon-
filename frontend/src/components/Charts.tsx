@@ -1,3 +1,4 @@
+import { formatField } from "../evidence";
 import {
   AreaChart as TremorAreaChart,
   BarChart as TremorBarChart,
@@ -38,8 +39,8 @@ export const COLORS = {
 };
 
 const money = (value: number) => {
-  if (!Number.isFinite(value)) return "$0";
-  if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (!Number.isFinite(value)) return "—";
+  if (Math.abs(value) >= 999_500) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (Math.abs(value) >= 1_000) return `$${Math.round(value / 1_000)}K`;
   return `$${Math.round(value).toLocaleString()}`;
 };
@@ -67,7 +68,7 @@ export function PipelineChart({ data, won = false }: { data: DataRow[]; won?: bo
   }));
   if (!shaped.length) return <EmptyChart />;
   return <ChartShell minHeight={Math.max(300, shaped.length * 28)}><ResponsiveContainer width="100%" height={Math.max(300, shaped.length * 28)}><ComposedChart data={shaped} layout="vertical" margin={{ left: 8, right: 76, top: 8, bottom: 20 }}>
-    <CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={money} tick={axisTick} /><YAxis type="category" dataKey="channel" width={136} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [money(value), won ? "Won revenue" : "Pipeline"]} />
+    <CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={money} tick={axisTick} /><YAxis type="category" dataKey="channel" width={136} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [formatField("recorded_amount", value), won ? "Won revenue" : "Pipeline"]} />
     <Bar dataKey="amount" fill={won ? COLORS.teal : COLORS.blue} barSize={17} radius={[0, 4, 4, 0]} isAnimationActive={false}><LabelList dataKey="amount" position="right" formatter={(value: number) => money(value)} fill={COLORS.ink} fontSize={10} /></Bar>
   </ComposedChart></ResponsiveContainer></ChartShell>;
 }
@@ -88,7 +89,7 @@ export function MonthlyPipelineChart({ data }: { data: DataRow[] }) {
     const row: Record<string, string | number> = { month };
     orderedChannels.forEach((channel) => {
       const match = data.find((item) => textValue(item, "month") === month && textValue(item, "channel") === channel);
-      row[channel] = match ? numberValue(match, "pipeline") : 0;
+      row[channel] = match ? numberValue(match, "pipeline") : Number.NaN;
     });
     return row;
   });
@@ -100,7 +101,7 @@ export function MonthlyPipelineChart({ data }: { data: DataRow[] }) {
     index="month"
     categories={orderedChannels}
     colors={palette.slice(0, orderedChannels.length)}
-    valueFormatter={(value) => money(value)}
+    valueFormatter={(value) => formatField("recorded_amount", value)}
     stack
     showLegend
     showGridLines={false}
@@ -131,7 +132,7 @@ export function CohortChart({ data }: { data: DataRow[] }) {
   const pipelineRows = rows.map((row) => ({ quarter: textValue(row, "quarter"), Pipeline: numberValue(row, "pipeline") }));
   return <div className="chart-stack">
     <div className="mini-chart-label">Pipeline created</div>
-    <ChartShell minHeight={170}><TremorBarChart className="tremor-chart compact" data={pipelineRows} index="quarter" categories={["Pipeline"]} colors={["blue"]} valueFormatter={money} showLegend={false} showGridLines={false} showAnimation={false} /></ChartShell>
+    <ChartShell minHeight={170}><TremorBarChart className="tremor-chart compact" data={pipelineRows} index="quarter" categories={["Pipeline"]} colors={["blue"]} valueFormatter={(value) => formatField("recorded_amount", value)} showLegend={false} showGridLines={false} showAnimation={false} /></ChartShell>
     <div className="mini-chart-label">Closed-deal quality and cohort maturity</div>
     <ChartShell minHeight={190}>
       <ResponsiveContainer width="100%" height={190}>
@@ -140,8 +141,8 @@ export function CohortChart({ data }: { data: DataRow[] }) {
           <XAxis dataKey="quarter" tick={axisTick} interval="preserveStartEnd" />
           <YAxis domain={[0, 100]} tickFormatter={(value) => `${value}%`} tick={axisTick} width={42} />
           <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${value.toFixed(0)}%`, ""]} />
-          <Line type="monotone" dataKey="Closed-deal win rate" stroke={COLORS.amber} strokeWidth={2.5} dot={(props: { cx?: number; cy?: number; payload?: { is_mature?: boolean } }) => <circle cx={props.cx} cy={props.cy} r={props.payload?.is_mature ? 2.8 : 4.5} fill={props.payload?.is_mature ? COLORS.amber : COLORS.pale} stroke={COLORS.amber} strokeWidth={props.payload?.is_mature ? 1 : 2} strokeDasharray={props.payload?.is_mature ? undefined : "2 2"} />} activeDot={{ r: 4 }} connectNulls isAnimationActive={false}><ErrorBar dataKey="winError" direction="y" width={4} stroke={COLORS.amber} /></Line>
-          <Line type="monotone" dataKey="Resolved share" stroke={COLORS.teal} strokeWidth={2.5} dot={{ r: 2.5, fill: COLORS.teal }} activeDot={{ r: 4 }} connectNulls isAnimationActive={false} />
+          <Line type="monotone" dataKey="Closed-deal win rate" stroke={COLORS.amber} strokeWidth={2.5} dot={(props: { cx?: number; cy?: number; payload?: { is_mature?: boolean } }) => <circle cx={props.cx} cy={props.cy} r={props.payload?.is_mature ? 2.8 : 4.5} fill={props.payload?.is_mature ? COLORS.amber : COLORS.pale} stroke={COLORS.amber} strokeWidth={props.payload?.is_mature ? 1 : 2} strokeDasharray={props.payload?.is_mature ? undefined : "2 2"} />} activeDot={{ r: 4 }} connectNulls={false} isAnimationActive={false}><ErrorBar dataKey="winError" direction="y" width={4} stroke={COLORS.amber} /></Line>
+          <Line type="monotone" dataKey="Resolved share" stroke={COLORS.teal} strokeWidth={2.5} dot={{ r: 2.5, fill: COLORS.teal }} activeDot={{ r: 4 }} connectNulls={false} isAnimationActive={false} />
         </ComposedChart>
       </ResponsiveContainer>
     </ChartShell>
@@ -160,7 +161,7 @@ export function ContributionChart({ data, totalPipeline }: { data: DataRow[]; to
     <CartesianGrid {...gridProps} />
     <XAxis type="number" domain={[0, Math.max(totalPipeline, ...rows.map((row) => row.amount))]} tickFormatter={money} tick={axisTick} />
     <YAxis type="category" dataKey="metric" width={132} tick={axisTick} />
-    <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [money(value), "Pipeline"]} />
+    <Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [formatField("recorded_amount", value), "Pipeline"]} />
     <ReferenceLine x={totalPipeline} stroke={COLORS.slate} strokeDasharray="4 4" label={{ value: "Total pipeline", fill: COLORS.muted, fontSize: 10, position: "insideTopRight" }} />
     <Bar dataKey="amount" radius={[0, 5, 5, 0]} barSize={25} isAnimationActive={false}>
       {rows.map((row) => <Cell key={row.metric} fill={row.fill} />)}
@@ -184,10 +185,10 @@ export function CoverageChart({ data }: { data: DataRow[] }) {
       <CartesianGrid {...gridProps} /><XAxis dataKey="tier" tick={axisTick} angle={-16} textAnchor="end" height={48} /><YAxis tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [value.toLocaleString(), "Accounts"]} />
       <Bar dataKey="accounts" fill={COLORS.blue} radius={[5, 5, 0, 0]} barSize={34} isAnimationActive={false}><LabelList dataKey="accounts" position="top" formatter={(value: number) => value.toLocaleString()} fill={COLORS.ink} fontSize={11} /></Bar>
     </ComposedChart></ResponsiveContainer></ChartShell>
-    <div className="mini-chart-label">Observed opportunity rate · 95% Wilson interval</div>
+    <div className="mini-chart-label">Historical opportunity prevalence · 95% Wilson interval</div>
     <ChartShell minHeight={190}><ResponsiveContainer width="100%" height={190}><ComposedChart data={rows} margin={{ left: 0, right: 20, top: 18, bottom: 34 }}>
-      <CartesianGrid {...gridProps} /><XAxis dataKey="tier" tick={axisTick} angle={-16} textAnchor="end" height={48} /><YAxis domain={[0, 60]} tickFormatter={(value) => `${value}%`} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${value.toFixed(1)}%`, "Opportunity rate"]} />
-      <Line dataKey="rate" name="Opportunity rate" stroke="transparent" strokeWidth={0} dot={{ fill: COLORS.teal, r: 5, stroke: COLORS.teal, strokeWidth: 1 }} activeDot={{ r: 7 }} isAnimationActive={false}><ErrorBar dataKey="error" direction="y" width={5} stroke={COLORS.slate} /><LabelList dataKey="rate" position="top" formatter={(value: number) => `${value.toFixed(1)}%`} fill={COLORS.ink} fontSize={10} /></Line>
+      <CartesianGrid {...gridProps} /><XAxis dataKey="tier" tick={axisTick} angle={-16} textAnchor="end" height={48} /><YAxis domain={[0, 60]} tickFormatter={(value) => `${value}%`} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${value.toFixed(1)}%`, "Historical opportunity prevalence"]} />
+      <Line dataKey="rate" name="Historical opportunity prevalence" stroke="transparent" strokeWidth={0} dot={{ fill: COLORS.teal, r: 5, stroke: COLORS.teal, strokeWidth: 1 }} activeDot={{ r: 7 }} isAnimationActive={false}><ErrorBar dataKey="error" direction="y" width={5} stroke={COLORS.slate} /><LabelList dataKey="rate" position="top" formatter={(value: number) => `${value.toFixed(1)}%`} fill={COLORS.ink} fontSize={10} /></Line>
     </ComposedChart></ResponsiveContainer></ChartShell>
   </div>;
 }
@@ -213,7 +214,7 @@ export function AttributionComparison({ data }: { data: DataRow[] }) {
       <pattern id="attr-stripe-amber" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill={COLORS.amber} /><rect width="6" height="2" fill="#ffffff" fillOpacity=".42" /></pattern>
       <pattern id="attr-dot-violet" width="6" height="6" patternUnits="userSpaceOnUse"><rect width="6" height="6" fill={COLORS.violet} /><circle cx="2" cy="2" r="1.1" fill="#ffffff" fillOpacity=".58" /></pattern>
     </defs>
-    <CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={money} tick={axisTick} /><YAxis type="category" dataKey="channel" width={120} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [money(value)]} />
+    <CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={money} tick={axisTick} /><YAxis type="category" dataKey="channel" width={120} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [formatField("recorded_amount", value)]} />
     {models.map((model, index) => <Bar key={model} dataKey={model} fill={[COLORS.blue, "url(#attr-stripe-teal)", "url(#attr-stripe-amber)", "url(#attr-dot-violet)"][index]} barSize={10} radius={[0, 3, 3, 0]} isAnimationActive={false} />)}
   </ComposedChart></ResponsiveContainer></ChartShell><div className="chart-legend" aria-label="Attribution model legend"><span><i className="attr-swatch attr-ft" />FT · First-Touch</span><span><i className="attr-swatch attr-lt" />LT · Last-Touch</span><span><i className="attr-swatch attr-lin" />LIN · Linear</span><span><i className="attr-swatch attr-td" />TD · Time-Decay</span></div></>;
 }
@@ -223,7 +224,7 @@ export function CreditShiftChart({ data }: { data: DataRow[] }) {
   const rows = channels.map((channel) => ({ channel, delta: data.filter((row) => textValue(row, "channel") === channel && textValue(row, "attribution_model") === "Last-Touch").reduce((sum, row) => sum + numberValue(row, "attributed_pipeline"), 0) - data.filter((row) => textValue(row, "channel") === channel && textValue(row, "attribution_model") === "First-Touch").reduce((sum, row) => sum + numberValue(row, "attributed_pipeline"), 0) })).sort((a, b) => a.delta - b.delta);
   if (!rows.length) return <EmptyChart />;
   return <ChartShell minHeight={Math.max(280, rows.length * 30)}><ResponsiveContainer width="100%" height={Math.max(280, rows.length * 30)}><ComposedChart data={rows} layout="vertical" margin={{ left: 12, right: 70, top: 10, bottom: 22 }}>
-    <CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={money} tick={axisTick} /><YAxis type="category" dataKey="channel" width={120} tick={axisTick} /><ReferenceLine x={0} stroke={COLORS.ink} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [money(value), "Credit shift"]} />
+    <CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={money} tick={axisTick} /><YAxis type="category" dataKey="channel" width={120} tick={axisTick} /><ReferenceLine x={0} stroke={COLORS.ink} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [formatField("recorded_amount", value), "Credit shift"]} />
     <Bar dataKey="delta" barSize={18} radius={[0, 4, 4, 0]} isAnimationActive={false}><LabelList dataKey="delta" position="right" formatter={(value: number) => `${value >= 0 ? "+" : "−"}${money(Math.abs(value))}`} fill={COLORS.ink} fontSize={10} />{rows.map((row) => <Cell key={row.channel} fill={row.delta >= 0 ? COLORS.teal : COLORS.amber} />)}</Bar>
   </ComposedChart></ResponsiveContainer></ChartShell>;
 }
@@ -243,9 +244,9 @@ export function RoiChart({ data }: { data: DataRow[] }) {
 export function ActivityVolumesChart({ data }: { data: DataRow[] }) {
   const channelNames: Record<string, string> = { "Email Event Mix": "Email events", "All Opportunity Outcomes": "CRM outcomes", "Marketing-Sourced Outcomes": "Sourced outcomes" };
   const stageNames: Record<string, string> = { "Influenced Form Fills": "Form fills", "Goal Completions": "Goals", "Closed Won (All)": "Closed won", "Marketing-Sourced Opps": "Opps", "Marketing-Sourced Won": "Won" };
-  const rows = data.map((row) => { const channel = textValue(row, "channel"); const stage = textValue(row, "stage"); return { label: `${channelNames[channel] ?? channel} · ${stageNames[stage] ?? stage}`, count: numberValue(row, "count") }; }).sort((a, b) => a.count - b.count);
+  const rows = data.map((row) => { const channel = textValue(row, "channel"); const stage = textValue(row, "stage"); return { label: `${channelNames[channel] ?? channel} · ${stageNames[stage] ?? stage}`, count: numberValue(row, "count") }; }).filter(row => Number.isFinite(row.count) && row.count > 0).sort((a, b) => a.count - b.count);
   if (!rows.length) return <EmptyChart />;
-  return <><div className="mini-chart-label">Count · logarithmic scale · separate populations</div><ChartShell minHeight={Math.max(330, rows.length * 30)}><ResponsiveContainer width="100%" height={Math.max(330, rows.length * 30)}><ComposedChart data={rows} layout="vertical" margin={{ left: 8, right: 62, top: 10, bottom: 20 }}>
+  return <><div className="mini-chart-label">Positive measured counts · logarithmic scale · separate populations; zero/unavailable rows remain in Show data</div><ChartShell minHeight={Math.max(330, rows.length * 30)}><ResponsiveContainer width="100%" height={Math.max(330, rows.length * 30)}><ComposedChart data={rows} layout="vertical" margin={{ left: 8, right: 62, top: 10, bottom: 20 }}>
     <CartesianGrid {...gridProps} /><XAxis type="number" scale="log" domain={[1, "auto"]} tickFormatter={(value) => Number(value).toLocaleString()} tick={axisTick} /><YAxis type="category" dataKey="label" width={138} tick={{ ...axisTick, fontSize: 10 }} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [value.toLocaleString(), "Count"]} /><Bar dataKey="count" fill={COLORS.blue} radius={[0, 4, 4, 0]} barSize={15} isAnimationActive={false} />
   </ComposedChart></ResponsiveContainer></ChartShell></>;
 }
@@ -255,9 +256,9 @@ export function Heatmap({ data, xKey, yKey, valueKey, valueFormatter = (value: n
   const ys = Array.from(new Set(data.map((row) => textValue(row, yKey))));
   if (!xs.length || !ys.length) return <EmptyChart />;
   const [min, max] = domain;
-  return <div className="heatmap" style={{ gridTemplateColumns: `minmax(104px, 1.25fr) repeat(${xs.length}, minmax(64px, 1fr))` }}>
-    <div className="heatmap-corner" />{xs.map((x) => <div className="heatmap-x" key={x} title={x}>{x}</div>)}
-    {ys.map((y) => <div className="heatmap-row" key={y}><div className="heatmap-y" title={y}>{y}</div>{xs.map((x) => { const row = data.find((item) => textValue(item, yKey) === y && textValue(item, xKey) === x); const value = row ? numberValue(row, valueKey) : 0; const ratio = max > min ? Math.max(0, Math.min(1, (value - min) / (max - min))) : 0; const low = lowSampleKey && row ? numberValue(row, lowSampleKey) < 30 : false; return <div className={`heatmap-cell${low ? " is-low" : ""}`} key={`${y}-${x}`} style={{ backgroundColor: `rgba(225,38,54,${0.10 + ratio * 0.78})`, color: COLORS.ink }} title={`${y} · ${x}: ${valueFormatter(value)}${low ? " · Low n" : ""}`}>{row ? <><strong>{valueFormatter(value)}</strong>{low && <small>Low n</small>}</> : <span>—</span>}</div>; })}</div>)}
+  return <div className="heatmap" role="table" aria-label={`${valueKey}; scale ${valueFormatter(min)} to ${valueFormatter(max)}; values beyond endpoints saturate; dash means unavailable; Low n means below 30`} style={{ gridTemplateColumns: `minmax(104px, 1.25fr) repeat(${xs.length}, minmax(64px, 1fr))` }}>
+    <div className="heatmap-corner">{valueFormatter(min)} → {valueFormatter(max)}<small> · saturated endpoints</small></div>{xs.map((x) => <div className="heatmap-x" role="columnheader" key={x} title={x}>{x}</div>)}
+    {ys.map((y) => <div className="heatmap-row" role="row" key={y}><div className="heatmap-y" role="rowheader" title={y}>{y}</div>{xs.map((x) => { const row = data.find((item) => textValue(item, yKey) === y && textValue(item, xKey) === x); const value = row ? numberValue(row, valueKey) : Number.NaN; const ratio = max > min ? Math.max(0, Math.min(1, (value - min) / (max - min))) : 0; const low = lowSampleKey && row ? numberValue(row, lowSampleKey) < 30 : false; return <div className={`heatmap-cell${low ? " is-low" : ""}`} key={`${y}-${x}`} style={{ backgroundColor: Number.isFinite(value) ? `rgba(225,38,54,${0.10 + ratio * 0.78})` : "transparent", color: COLORS.ink }} role="cell" aria-label={`${y} · ${x}: ${Number.isFinite(value) ? formatField(valueKey, value) : "Unavailable"}${low ? " · Low n" : ""}`} title={`${y} · ${x}: ${Number.isFinite(value) ? formatField(valueKey, value) : "Unavailable"}${low ? " · Low n" : ""}`}>{row && Number.isFinite(value) ? <><strong>{valueFormatter(value)}</strong>{low && <small>Low n</small>}</> : <span>—</span>}</div>; })}</div>)}
   </div>;
 }
 
@@ -265,32 +266,31 @@ export function SegmentWinRateChart({ data }: { data: DataRow[] }) {
   const rows = data.map((row) => { const rate = numberValue(row, "win_rate"); const deals = numberValue(row, "deals"); const avg = numberValue(row, "avg_deal"); return { segment: textValue(row, "segment__c"), rate: rate * 100, error: [Math.max(0, (rate - numberValue(row, "ci_low", rate)) * 100), Math.max(0, (numberValue(row, "ci_high", rate) - rate) * 100)], deals, avg, display: `n=${deals.toLocaleString()} · avg ${money(avg)}` }; }).sort((a, b) => a.rate - b.rate);
   if (!rows.length) return <EmptyChart />;
   return <ChartShell minHeight={Math.max(230, rows.length * 54)}><ResponsiveContainer width="100%" height={Math.max(230, rows.length * 54)}><ComposedChart data={rows} layout="vertical" margin={{ left: 8, right: 90, top: 12, bottom: 20 }}>
-    <CartesianGrid {...gridProps} /><XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} tick={axisTick} /><YAxis type="category" dataKey="segment" width={110} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [name === "rate" ? `${value.toFixed(1)}%` : value, name === "rate" ? "Win rate" : name]} /><Line dataKey="rate" name="Win rate" stroke="transparent" strokeWidth={0} dot={{ fill: COLORS.blue, r: 5, stroke: COLORS.blue, strokeWidth: 1 }} activeDot={{ r: 7 }} isAnimationActive={false}><ErrorBar dataKey="error" direction="x" width={6} stroke={COLORS.slate} /><LabelList dataKey="display" position="right" offset={14} fill={COLORS.muted} fontSize={10} /></Line>
+    <CartesianGrid {...gridProps} /><XAxis type="number" domain={[0, 100]} tickFormatter={(value) => `${value}%`} tick={axisTick} /><YAxis type="category" dataKey="segment" width={110} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [name === "Win rate" ? `${value.toFixed(1)}%` : value, name === "Win rate" ? "Win rate" : name]} /><Line dataKey="rate" name="Win rate" stroke="transparent" strokeWidth={0} dot={{ fill: COLORS.blue, r: 5, stroke: COLORS.blue, strokeWidth: 1 }} activeDot={{ r: 7 }} isAnimationActive={false}><ErrorBar dataKey="error" direction="x" width={6} stroke={COLORS.slate} /><LabelList dataKey="display" position="right" offset={14} fill={COLORS.muted} fontSize={10} /></Line>
   </ComposedChart></ResponsiveContainer></ChartShell>;
 }
 
 export function CreativeCtrChart({ data }: { data: DataRow[] }) {
   const platforms = Array.from(new Set(data.map((row) => textValue(row, "platform"))));
   if (!platforms.length) return <EmptyChart />;
-  return <div className="facet-grid">{platforms.map((platform) => { const rows = data.filter((row) => textValue(row, "platform") === platform).sort((a, b) => numberValue(a, "ctr") - numberValue(b, "ctr")); return <div className="facet" key={platform}><div className="mini-chart-label">{platform}: top high-volume ads</div><ChartShell minHeight={Math.max(180, rows.length * 34)}><ResponsiveContainer width="100%" height={Math.max(180, rows.length * 34)}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 60, top: 4, bottom: 15 }}><CartesianGrid {...gridProps} /><XAxis type="number" domain={[0, "auto"]} tickFormatter={(value) => `${(value * 100).toFixed(1)}%`} tick={axisTick} /><YAxis type="category" dataKey="ad_name" width={125} tick={{ ...axisTick, fontSize: 10 }} tickFormatter={(value) => short(String(value), 18)} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${(value * 100).toFixed(2)}%`, "CTR"]} /><Bar dataKey="ctr" fill={platform === "6sense" ? COLORS.amber : COLORS.blue} barSize={14} radius={[0, 4, 4, 0]} isAnimationActive={false} /></ComposedChart></ResponsiveContainer></ChartShell></div>; })}</div>;
+  return <div className="facet-grid">{platforms.map((platform) => { const rows = data.filter((row) => textValue(row, "platform") === platform).sort((a, b) => numberValue(a, "ctr") - numberValue(b, "ctr")); return <div className="facet" key={platform}><div className="mini-chart-label">{platform}: top high-volume ads</div><ChartShell minHeight={Math.max(180, rows.length * 34)}><ResponsiveContainer width="100%" height={Math.max(180, rows.length * 34)}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 60, top: 4, bottom: 15 }}><CartesianGrid {...gridProps} /><XAxis type="number" domain={[0, "auto"]} tickFormatter={(value) => `${(value * 100).toFixed(2)}%`} tick={axisTick} /><YAxis type="category" dataKey="ad_name" width={125} tick={{ ...axisTick, fontSize: 10 }} tickFormatter={(value) => short(String(value), 18)} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [`${(value * 100).toFixed(4)}%`, "CTR"]} /><Bar dataKey="ctr" fill={platform === "6sense" ? COLORS.amber : COLORS.blue} barSize={14} radius={[0, 4, 4, 0]} isAnimationActive={false} /></ComposedChart></ResponsiveContainer></ChartShell></div>; })}</div>;
 }
 
 export function SimpleRankedChart({ data, labelKey, valueKey, color = COLORS.blue, formatter = (value: number) => value.toLocaleString(), suffixKey }: { data: DataRow[]; labelKey: string; valueKey: string; color?: string; formatter?: (value: number) => string; suffixKey?: string }) {
-  const rows = data.map((row) => ({ label: textValue(row, labelKey), value: numberValue(row, valueKey), suffix: suffixKey ? textValue(row, suffixKey) : "" })).sort((a, b) => a.value - b.value);
+  const rows = data.map((row) => ({ label: textValue(row, labelKey), value: numberValue(row, valueKey), suffix: suffixKey ? (suffixKey === "pipeline" ? money(numberValue(row, suffixKey)) : `${textValue(row, suffixKey)} ${suffixKey.replaceAll("_", " ")}`) : "" })).sort((a, b) => a.value - b.value);
   if (!rows.length) return <EmptyChart />;
-  return <ChartShell minHeight={Math.max(230, rows.length * 32)}><ResponsiveContainer width="100%" height={Math.max(230, rows.length * 32)}><ComposedChart data={rows} layout="vertical" margin={{ left: 8, right: 74, top: 10, bottom: 18 }}><CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={formatter} tick={axisTick} /><YAxis type="category" dataKey="label" width={150} tick={{ ...axisTick, fontSize: 10 }} tickFormatter={(value) => short(String(value), 24)} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [formatter(value), valueKey]} /><Bar dataKey="value" fill={color} radius={[0, 4, 4, 0]} barSize={17} isAnimationActive={false}><LabelList dataKey="value" position="right" formatter={(value: number, entry: { payload?: { suffix?: string } }) => `${formatter(value)}${entry?.payload?.suffix ? ` · ${entry.payload.suffix}` : ""}`} fill={COLORS.ink} fontSize={10} /></Bar></ComposedChart></ResponsiveContainer></ChartShell>;
+  return <><ChartShell minHeight={Math.max(230, rows.length * 32)}><ResponsiveContainer width="100%" height={Math.max(230, rows.length * 32)}><ComposedChart data={rows} layout="vertical" margin={{ left: 8, right: 74, top: 10, bottom: 18 }}><CartesianGrid {...gridProps} /><XAxis type="number" tickFormatter={formatter} tick={axisTick} /><YAxis type="category" dataKey="label" width={150} tick={{ ...axisTick, fontSize: 10 }} tickFormatter={(value) => short(String(value), 24)} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [formatField(valueKey, value), valueKey]} /><Bar dataKey="value" fill={color} radius={[0, 4, 4, 0]} barSize={17} isAnimationActive={false}><LabelList dataKey="value" position="right" content={(props: { x?: string | number; y?: string | number; width?: string | number; height?: string | number; index?: number }) => { const row = rows[props.index ?? 0]; return <text x={Number(props.x) + Number(props.width) + 8} y={Number(props.y) + Number(props.height) / 2} dominantBaseline="middle" fill={COLORS.ink} fontSize={10}>{formatter(row.value)}</text>; }} fill={COLORS.ink} fontSize={10} /></Bar></ComposedChart></ResponsiveContainer></ChartShell>{suffixKey && <div className="ranked-samples" aria-label="Supporting sample and amount labels">{rows.map(row => <span key={row.label}><b>{row.label}:</b> {row.suffix}</span>)}</div>}</>;
 }
 
 export function BudgetChart({ data }: { data: DataRow[] }) {
   const order = ["Status Quo", "10% Holdout", "Measurement First"];
   const rows = order.map((scenario) => { const group = data.filter((row) => textValue(row, "Scenario") === scenario); return { scenario, activated: group.reduce((sum, row) => sum + numberValue(row, "Active Spend ($)"), 0), holdout: group.reduce((sum, row) => sum + numberValue(row, "Holdout Reserve ($)"), 0), experiment: group.reduce((sum, row) => sum + numberValue(row, "Experiment Pool ($)"), 0) }; });
-  return <><ChartShell minHeight={320}><ResponsiveContainer width="100%" height={320}><ComposedChart data={rows} margin={{ left: 12, right: 24, top: 18, bottom: 42 }}><CartesianGrid {...gridProps} /><XAxis dataKey="scenario" tick={axisTick} angle={-12} textAnchor="end" height={55} /><YAxis tickFormatter={money} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [money(value), name]} /><Bar dataKey="activated" stackId="budget" fill={COLORS.blue} name="Activated media" isAnimationActive={false} /><Bar dataKey="holdout" stackId="budget" fill={COLORS.amber} name="Holdout reserve" isAnimationActive={false} /><Bar dataKey="experiment" stackId="budget" fill={COLORS.teal} name="Experiment pool" isAnimationActive={false} /></ComposedChart></ResponsiveContainer></ChartShell><div className="chart-legend" aria-label="Budget allocation legend"><span><i style={{ background: COLORS.blue }} />Activated media</span><span><i style={{ background: COLORS.amber }} />Holdout reserve</span><span><i style={{ background: COLORS.teal }} />Experiment pool</span></div></>;
+  return <><ChartShell minHeight={320}><ResponsiveContainer width="100%" height={320}><ComposedChart data={rows} margin={{ left: 12, right: 24, top: 18, bottom: 42 }}><CartesianGrid {...gridProps} /><XAxis dataKey="scenario" tick={axisTick} angle={-12} textAnchor="end" height={55} /><YAxis tickFormatter={money} tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number, name: string) => [formatField("recorded_amount", value), name]} /><Bar dataKey="activated" stackId="budget" fill={COLORS.blue} name="Activated media" isAnimationActive={false} /><Bar dataKey="holdout" stackId="budget" fill={COLORS.amber} name="Holdout reserve" isAnimationActive={false} /><Bar dataKey="experiment" stackId="budget" fill={COLORS.teal} name="Experiment pool" isAnimationActive={false} /></ComposedChart></ResponsiveContainer></ChartShell><div className="chart-legend" aria-label="Budget allocation legend"><span><i style={{ background: COLORS.blue }} />Activated media</span><span><i style={{ background: COLORS.amber }} />Holdout reserve</span><span><i style={{ background: COLORS.teal }} />Experiment pool</span></div></>;
 }
 
 export function ProbabilityHistogram({ data }: { data: DataRow[] }) {
-  const values = data.map((row) => numberValue(row, "win_probability")).filter((value) => Number.isFinite(value));
-  if (!values.length) return <EmptyChart />;
-  const bins = Array.from({ length: 10 }, (_, index) => ({ bucket: `${index * 10}–${index * 10 + 10}%`, count: values.filter((value) => value >= index / 10 && (index === 9 ? value <= 1 : value < (index + 1) / 10)).length }));
+  if (!data.length) return <EmptyChart />;
+  const bins = data.map((row) => ({ bucket: textValue(row, "score_band"), count: numberValue(row, "active_opportunities") }));
   return <ChartShell minHeight={290}><ResponsiveContainer width="100%" height={290}><ComposedChart data={bins} margin={{ left: 10, right: 20, top: 18, bottom: 42 }}><CartesianGrid {...gridProps} /><XAxis dataKey="bucket" tick={{ ...axisTick, fontSize: 10 }} angle={-28} textAnchor="end" height={54} /><YAxis tick={axisTick} /><Tooltip contentStyle={tooltipStyle} formatter={(value: number) => [value.toLocaleString(), "Active deals"]} /><Bar dataKey="count" fill={COLORS.blue} radius={[4, 4, 0, 0]} isAnimationActive={false} /></ComposedChart></ResponsiveContainer></ChartShell>;
 }
 
@@ -316,7 +316,7 @@ export function ChartRenderer({ id, data, totalPipeline, coverageMix }: { id: st
     case "c-attrib-waterfall": return <CreditShiftChart data={data.attribution} />;
     case "c-spend-pipeline": return <RoiChart data={data.channel_pipeline} />;
     case "c-funnel": return <ActivityVolumesChart data={data.funnel_metrics} />;
-    case "c-seg-heatmap": return <Heatmap data={data.segment_industry} xKey="segment__c" yKey="industry" valueKey="total_pipeline" valueFormatter={money} domain={[0, Math.max(...data.segment_industry.map((row) => numberValue(row, "total_pipeline")), 1)]} />;
+    case "c-seg-heatmap": return <Heatmap data={data.segment_industry} xKey="segment__c" yKey="industry" valueKey="total_pipeline" valueFormatter={(value) => formatField("recorded_amount", value)} domain={[0, Math.max(...data.segment_industry.map((row) => numberValue(row, "total_pipeline")), 1)]} />;
     case "c-seg-winrate": return <SegmentWinRateChart data={data.segment_win_rate} />;
     case "c-creative-ctr": return <CreativeCtrChart data={data.creative_ctr} />;
     case "c-creative-attr": return <SimpleRankedChart data={data.creative_tone} labelKey="_copytone" valueKey="ctr" color={COLORS.blue} formatter={(value) => `${(value * 100).toFixed(2)}%`} suffixKey="impressions" />;
@@ -325,7 +325,7 @@ export function ChartRenderer({ id, data, totalPipeline, coverageMix }: { id: st
     case "c-feat-imp": return <SimpleRankedChart data={data.feature_importance} labelKey="feature" valueKey="importance" formatter={(value) => value.toFixed(3)} />;
     case "c-win-prob": return <ProbabilityHistogram data={data.win_probability} />;
     case "c-deal-velocity": return <VelocityChart data={data.deal_velocity} />;
-    case "c-journey": { const rows = data.journey_sequences.reduce<DataRow[]>((acc, row) => { const key = textValue(row, "sequence_2ch"); const current = acc.find((item) => textValue(item, "sequence_2ch") === key); if (current) { current.deals = numberValue(current, "deals") + 1; current.pipeline = numberValue(current, "pipeline") + numberValue(row, "amount"); } else acc.push({ sequence_2ch: key, deals: 1, pipeline: numberValue(row, "amount") }); return acc; }, []).sort((a, b) => numberValue(a, "deals") - numberValue(b, "deals")).slice(-10); return <SimpleRankedChart data={rows} labelKey="sequence_2ch" valueKey="deals" formatter={(value) => value.toLocaleString()} suffixKey="pipeline" />; }
+    case "c-journey": return <SimpleRankedChart data={data.journey_sequences} labelKey="sequence_2ch" valueKey="deals" formatter={(value) => value.toLocaleString()} suffixKey="pipeline" />;
     case "c-targeting-matrix": return <TargetingHeatmap data={data.targeting} />;
     default: return id === "coverage-mix" ? <CoverageMixChart data={coverageMix} /> : <EmptyChart />;
   }

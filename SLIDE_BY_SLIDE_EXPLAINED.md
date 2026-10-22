@@ -1,86 +1,78 @@
-# Executive Deck Talk Track
+# Browser Deck Talk Track
 
-The canonical deck is `outputs/presentation/Marketing_Analytics_Executive_Deck.pptx`. Every slide contains `[Sources]` and `[Methodology]` speaker notes.
+The current local presentation is the browser findings deck at `/#present/main-01`. Its deployment entry is `public/index.html#present/main-01`, with 16 timed main slides and six appendix slides. Read the exact local snapshot from `public/dashboard-data-v3.json` → `meta.snapshot_id`; this guide does not freeze a generated snapshot. The previously configured [Render address](https://marketing-analytics-dashboard-saoj.onrender.com/#present/main-01) has no verified deployment revision/time in this repair. Local validation does not establish the published version. The existing PowerPoint at `outputs/presentation/Marketing_Analytics_Executive_Deck.pptx` is a historical archive with retired definitions; its generator is disabled.
 
-## Slide 1 — Targeted growth is credible. Blanket scaling is not—yet.
+## Main sequence — 18 minutes
 
-Lead with the answer. The business has meaningful recorded pipeline and a large unreached audience, but CRM completeness and measurement coverage are not strong enough for blanket budget claims.
+### main-01 — The case question (45 seconds)
 
-Key numbers: $25.0M recorded pipeline, $5.4M recorded won revenue, 447 active opportunities, and 67.9% of CRM account domains unreached.
+Frame the question: which channels and content formats support acquisition, recorded revenue, and engagement? The answer is to make measured channel decisions and run controlled tests. Keep each claim beside its population and denominator.
 
-## Slide 2 — Scale learning before spend
+### main-02 — Marketing strategy (60 seconds)
 
-Present the three decisions:
+Maintain observed channel performance, test creative bundles, and use a randomized account-coverage experiment before expanding spend. Attribution can generate hypotheses; only a controlled comparison can establish incremental lift.
 
-1. Protect pipeline quality.
-2. Expand strong-fit account coverage.
-3. Reserve budget for causal measurement.
+### main-03 — Evidence scope (60 seconds)
 
-State the gate: scale only after incremental qualified opportunities or pipeline are demonstrated without degrading closed-deal quality.
+CRM history begins in 2018, while observed marketing activity begins in 2024. Historic opportunity records therefore have a bounded marketing observation window. Separate what the CRM records from what the activity logs can link.
 
-## Slide 3 — Four evidence boundaries
+### main-04 — Business motion (60 seconds)
 
-Explain why the recommendations are cautious:
+Keep acquisition, renewal, and unknown opportunity motions separate. An existing-client source label does not itself define an opportunity as renewal business.
 
-- 65.3% of won opportunities have zero amount.
-- 11.7% of won opportunities link to eligible touches.
-- only two paid channels have tracked spend;
-- delivered-email counts are unavailable.
+### main-05 — Channel effectiveness (90 seconds)
 
-This slide builds trust by distinguishing decision-grade observations from directional evidence.
+The current canonical population has 3,245 opportunities, $24.9M in recorded pipeline, and $5.4M in recorded won amount. Referral leads the acquisition scorecard by won amount. Interpret channel rates with resolved counts and intervals, and keep zero-amount coverage visible; recorded value is not complete realized revenue.
 
-## Slide 4 — Pipeline growth is outpacing conversion quality
+### main-06 — Channel trends (60 seconds)
 
-Use only mature cohorts. Closed-deal win rate moved from 38% in 2022 Q1 to 22% in 2024 Q2, while the latter cohort recorded $3.5M of pipeline. Keep 2024 Q3 and Q4 provisional because they are not yet 80% resolved.
+Compare complete calendar years. Marketing logs only cover observed 2024 activity, so do not turn them into a multi-year channel-performance history.
 
-Decision: audit ICP fit, qualification, and source mix before increasing broad acquisition.
+### main-07 — Conversion drivers (90 seconds)
 
-## Slide 5 — Source credit and linked influence
+The 2022 H1 to 2024 H1 conversion-rate change is decomposed into mix shifts and within-group conversion changes. Both components are descriptive: neither one alone identifies a cause.
 
-Marketing sourced answers “where did CRM assign origin credit?” Linked influence answers “which linked opportunities had eligible prior marketing touches?”
+### main-08 — Advertising content (90 seconds)
 
-Always say that 695 of 3,288 opportunities and 126 of 1,073 wins were linked. Influenced attribution is useful context for that subset, not universal or causal credit.
+Only five ads have complete creative metadata. Treat Blog / Problem / FOMO as a bundle hypothesis, not evidence that any one creative attribute wins. Compare ads within platform and prioritize metadata completion before making broader creative claims.
 
-## Slide 6 — Email and 6sense play different journey roles
+### main-09 — Email and website engagement (75 seconds)
 
-Within linked paths, email receives more first-touch credit, while 6sense display receives more last-touch and time-decay credit. This pattern suggests an experiment, not a proven sequence.
+Email results describe conditional engagement in the supplied event logs; no delivered-message denominator supports a standard send-based rate. A web contact-page activity flag records observed behavior but does not prove completed acquisition.
 
-Test a 6sense overlay after email engagement against a holdout.
+### main-10 — Source and touch overlap (60 seconds)
 
-## Slide 7 — Account coverage is the largest test opportunity
+CRM source credit and touch-linked populations overlap. The four exclusive groups make that overlap explicit, so differently defined attribution totals are not added together.
 
-There are 3,256 unreached CRM account domains. Reached tiers show higher observed opportunity rates, but those groups were not randomized. Use the Wilson intervals to show uncertainty and acknowledge selection effects.
+### main-11 — Attribution and journeys (75 seconds)
 
-Decision: randomize strong-fit unreached accounts and measure opportunity creation.
+Channel rankings change by attribution model and lookback window. The journey views describe linked paths before opportunity creation, not causal contribution. Read the 684 linked opportunities against the full 3,245-opportunity population.
 
-## Slide 8 — Email measures event composition
+### main-12 — Target audience (60 seconds)
 
-The file contains 17,130 event rows and 5,557 unique engaged email addresses. The 4.5% click-event share means clicks divided by all engagement-event rows. It is not a send-based campaign rate.
+After customer, pipeline, target, and profile exclusions, 2,032 eligible ICP domains remain for a coverage test. Observed reach differences are not randomized results; use this eligible population to design the experiment.
 
-Decision: acquire sent, delivered, unique-open, unique-click, bounce, and unsubscribe denominators.
+### main-13 — Channel and content actions (75 seconds)
 
-## Slide 9 — Compare creative within platform
+Separate actions into maintain, test, and insufficiently supported. Maintain measurable channels, test matched creative bundles, and keep any broader content or channel winner claim behind evidence thresholds.
 
-LinkedIn and 6sense have different delivery mechanics and baseline CTR. Rank ads within platform, require sufficient impressions, and look for downstream account movement before scaling.
+### main-14 — Controlled experiment (75 seconds)
 
-Do not make copy-tone claims until unknown metadata is backfilled.
+Randomize eligible domains 50/50 and measure new CRM opportunity creation after 90 days before evaluating broader commercial outcomes. At a 5% baseline and a +2 percentage-point lift, the design requires 4,426 domains; only 2,032 are available, so that target is infeasible at the current population size. Use the delivered power scenarios to choose a detectable effect or a longer accumulation plan.
 
-## Slide 10 — A useful model baseline
+### main-15 — Budget implications (45 seconds)
 
-The leakage-reduced model records ROC AUC 0.712, precision 61.0%, recall 44.4%, and Brier score 0.182 on a time-based holdout. It then scores all 447 active opportunities.
+Treat historical tracked spend as context. Size the planning budget from sample feasibility and cost per enrolled treatment account; do not present it as a revenue forecast.
 
-Decision: pilot score bands with sales and measure conversion by band before choosing a cutoff.
+### main-16 — CMO decisions (60 seconds)
 
-## Slide 11 — Use budget to create evidence
+Approve measurement-ready channel, creative, and account-coverage tests, then review the resulting incrementality evidence. Expand only when the controlled results support it.
 
-The plans preserve the same tracked budget. Recommend Measurement First: 80% activated media, 10% holdout, and 10% experiment pool.
+## On-demand appendix
 
-Do not present a revenue forecast. The decision gate is incremental qualified pipeline with stable closed-deal quality.
-
-## Slide 12 — 30 / 60 / 90 operating plan
-
-- 30 days: repair amount completeness, spend reconciliation, email denominators, and attribution definitions.
-- 60 days: launch randomized strong-fit account coverage and channel-overlay tests.
-- 90 days: scale only when incremental pipeline, closed-deal quality, holdout integrity, and model band performance meet the gates.
-
-Close with: targeted, measured growth can win once the data can distinguish activity from incrementality.
+- `appendix-01` — Population and source coverage: source populations, observation windows, and linkage coverage.
+- `appendix-02` — Metric definitions: denominators and outcome definitions used in the main story.
+- `appendix-03` — Attribution methods: model, lookback-window, and touch-processing details.
+- `appendix-04` — Conversion decomposition: mix and within-group components behind the rate change.
+- `appendix-05` — Targeting and sample uncertainty: eligible audience, uncertainty, and experiment feasibility.
+- `appendix-06` — Model diagnostics: calibration and related diagnostic evidence.

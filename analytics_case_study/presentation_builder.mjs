@@ -1,3 +1,4 @@
+throw new Error("Deprecated historical PPTX builder: use the validated schema-v3 browser deck; existing PPTX is archival only.");
 import fs from "node:fs/promises";
 import path from "node:path";
 import { Presentation, PresentationFile } from "@oai/artifact-tool";

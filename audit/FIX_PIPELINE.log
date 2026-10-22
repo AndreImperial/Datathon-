@@ -1,0 +1,228 @@
+============================================================
+Phase 1: Data Cleaning
+============================================================
+
+[1/8] Opportunity Log
+  Reading Datathon_db_opportunity_log.xlsx ... 16,421 rows
+  Selected 3,288 latest whole-row opportunity snapshots
+  Saved -> C:\Users\andre\Downloads\Datathon\data\cleaned\opportunities.parquet
+
+[2/8] Account Log
+  Reading Datathon_db_account_log.xlsx ... 5,264 rows
+  Deduplicated to 5,264 unique accounts
+  Saved -> C:\Users\andre\Downloads\Datathon\data\cleaned\accounts.parquet
+
+[3/8] 6sense Campaign Accounts
+  Reading Datathon_db_6sense_campaign_accounts.xlsx ... 63,096 rows
+  Saved -> C:\Users\andre\Downloads\Datathon\data\cleaned\6sense_campaign.parquet
+
+[4/8] Ad Metrics
+  Reading Datathon_db_ad_metrics.xlsx ... 4,626 rows
+  Saved -> C:\Users\andre\Downloads\Datathon\data\cleaned\ad_metrics.parquet
+
+[5/8] Email Engagements
+  Reading Datathon_db_email_engagements_log.xlsx ... 17,130 rows
+  Saved -> C:\Users\andre\Downloads\Datathon\data\cleaned\email_engagements.parquet
+
+[6/8] Web Engagements
+  Reading Datathon_db_web_engagements_log.xlsx ... 36,931 rows
+  Saved -> C:\Users\andre\Downloads\Datathon\data\cleaned\web_engagements.parquet
+
+[7/8] ICP Database
+  Reading Datathon_db_icp_database_log.xlsx ... 37,207 rows
+  Filtered 347 free-email-domain records from _domain
+  Saved -> C:\Users\andre\Downloads\Datathon\data\cleaned\icp_database.parquet
+
+[8/8] 6sense Segments
+  Reading Datathon_db_6sense_segments.xlsx ... 7,934 rows
+  Saved -> C:\Users\andre\Downloads\Datathon\data\cleaned\6sense_segments.parquet
+
+OK All datasets cleaned and saved to C:\Users\andre\Downloads\Datathon\data\cleaned
+============================================================
+Phase 2: Data Integration
+============================================================
+  Loaded accounts: 5,264 rows
+  Loaded 6sense_segments: 7,934 rows
+  Loaded 6sense_campaign: 63,096 rows
+  Loaded email_engagements: 17,130 rows
+  Loaded web_engagements: 36,931 rows
+  Loaded opportunities: 3,245 rows
+  Loaded icp_database: 36,860 rows
+  Loaded ad_metrics: 4,626 rows
+
+  Building master_account ...
+  master_account: 5,264 rows, 64 columns
+  Saved master_account -> C:\Users\andre\Downloads\Datathon\data\integrated
+
+  Building channel_pipeline ...
+  Saved channel_pipeline -> C:\Users\andre\Downloads\Datathon\data\integrated
+
+  Building funnel_metrics ...
+  Saved funnel_metrics -> C:\Users\andre\Downloads\Datathon\data\integrated
+
+  Building creative_performance ...
+  Saved creative_performance -> C:\Users\andre\Downloads\Datathon\data\integrated
+
+OK Integration complete -> C:\Users\andre\Downloads\Datathon\data\integrated
+============================================================
+Phase 3: Analysis
+============================================================
+
+[1/6] Channel ROI
+  Saved -> C:\Users\andre\Downloads\Datathon\outputs\analysis\channel_roi.xlsx
+
+[2/6] Segment Conversion
+  Saved -> C:\Users\andre\Downloads\Datathon\outputs\analysis\segment_conversion.xlsx
+
+[3/6] Creative Performance
+  Saved -> C:\Users\andre\Downloads\Datathon\outputs\analysis\creative_performance.xlsx
+
+[4/6] Email Campaign Performance
+  Saved -> C:\Users\andre\Downloads\Datathon\outputs\analysis\email_campaign_performance.xlsx
+
+[5/6] Budget Recommendation
+  Saved -> C:\Users\andre\Downloads\Datathon\outputs\analysis\budget_recommendation.xlsx
+
+[6/6] Data Quality and Source Reconciliation
+  Saved -> C:\Users\andre\Downloads\Datathon\outputs\analysis\data_quality_report.xlsx
+
+OK Analysis complete -> C:\Users\andre\Downloads\Datathon\outputs\analysis
+============================================================
+Phase 3b: Multi-Touch Attribution
+============================================================
+
+[1/4] Building touchpoint table ...
+  Built 80,198 raw marketing touchpoints
+  Excluded 302 unclassified web rows from marketing attribution
+
+[2/4] Linking touchpoints to opportunities ...
+  Opportunities with domain + create date: 3,129
+  Touchpoints linked within 365-day window: 5,802
+
+[3/4] Applying attribution models ...
+
+[4/4] Writing outputs ...
+  Saved -> C:\Users\andre\Downloads\Datathon\outputs\analysis\attribution_models.xlsx
+  Attribution parquet saved -> C:\Users\andre\Downloads\Datathon\data\integrated
+
+--- Attribution Summary ---
+        channel  First-Touch  Last-Touch     Linear  Marketing Influenced  Marketing Sourced   Time-Decay
+ 6sense_channel         0.00        0.00       0.00                  0.00          1535086.0 0.000000e+00
+ 6sense_display   2320941.82  3255957.40 2745194.20            2745194.20            89016.0 3.341530e+06
+   6sense_event         0.00        0.00       0.00                  0.00           624991.0 0.000000e+00
+      email_mqa   4035119.54  3100103.96 3610867.16            3610867.16            57033.0 3.014532e+06
+          event         0.00        0.00       0.00                  0.00           677725.0 0.000000e+00
+       linkedin         0.00        0.00       0.00                  0.00            30000.0 0.000000e+00
+other_marketing         0.00        0.00       0.00                  0.00            15409.0 0.000000e+00
+    web_inbound         0.00        0.00       0.00                  0.00          1090230.0 0.000000e+00
+        webinar         0.00        0.00       0.00                  0.00            39232.0 0.000000e+00
+
+OK Attribution complete
+============================================================
+Phase 3c: Advanced Analytics
+============================================================
+
+[1/7] Exploratory calendar baseline (as-of validation) ...
+  Resolved deals (train/evaluate): 2,834  |  Active deals (score): 411
+  Time-based holdout AUC: 0.516 | Brier: 0.217 | precision: 0.0% | recall: 0.0%
+  Calibration: mean absolute gap 19.6% across 1 score bands
+
+[2/7] Account Coverage Analysis ...
+  Total account domains: 4,776
+    Not Reached         : 3,232 (67.7%)  opp_rate=17.6%
+    Email Only          :   735 (15.4%)  opp_rate=45.6%
+    Both Channels       :   526 (11.0%)  opp_rate=42.4%
+    6sense Only         :   283 (5.9%)  opp_rate=28.6%
+
+[3/7] Deal Velocity Analysis ...
+  Won deal velocity by channel (median days to close):
+    other_marketing     :    26 days median  (n=1)
+    existing_client     :    27 days median  (n=700)
+    referral            :    51 days median  (n=81)
+Traceback (most recent call last):
+  File "C:\Users\andre\Downloads\Datathon\analytics_case_study\03c_advanced_analytics.py", line 761, in <module>
+    other               :    58 days median  (n=182)
+    web_inbound         :    64 days median  (n=24)
+    6sense_event        :    71 days median  (n=5)
+    webinar             :    72 days median  (n=2)
+    event               :    84 days median  (n=5)
+    6sense_channel      :    98 days median  (n=14)
+  Won deal velocity by segment (median days):
+    Commercial     :    29 days  (n=396)
+    Enterprise     :    39 days  (n=454)
+    Mid            :    48 days  (n=160)
+
+[4/7] Journey Sequence Analysis ...
+  Won deals with touchpoint sequences: 127
+  Top winning 2-channel sequences:
+    email_mqa                          : 94 deals  $434,674
+    email_mqa -> 6sense_display        : 18 deals  $149,314
+    6sense_display                     : 8 deals  $135,853
+    6sense_display -> email_mqa        : 7 deals  $106,630
+  First touch for won deals:
+    email_mqa           : 112 deals
+    6sense_display      : 15 deals
+
+[5/7] 6QA Account Performance ...
+  6QA vs Non-6QA performance:
+    Non-6QA        : deals=2245  win_rate=36.6%  pipeline=$  13,695,715
+    6QA Accounts   : deals= 589  win_rate=42.1%  pipeline=$   4,154,847
+  Profile Fit performance:
+    Moderate  : deals= 892  win_rate=39.6%  pipeline=$   5,941,434
+    Strong    : deals= 505  win_rate=38.2%  pipeline=$   2,463,231
+    Weak      : deals=1341  win_rate=37.7%  pipeline=$   9,022,232
+
+[6/7] Targeting Priority Matrix ...
+  Targeting Priority Matrix (Segment x Profile Fit):
+  Segment         Profile    Resolved Win%   Pos Med    Priority
+  Commercial      Strong        360   50% $   14,054      6.9
+  Commercial      Moderate      331   46% $   15,000      6.9
+  Mid             Strong          6    0% $   18,750      6.5
+  Commercial      Weak          152   41% $   15,000      6.2
+  Enterprise      Weak          988   39% $   14,000      5.4
+  Enterprise      Strong         23   39% $   12,500      5.1
+  Enterprise      Moderate      283   34% $   14,170      4.9
+  Mid             Moderate      215   48% $   10,000      4.8
+  Mid             Weak          148   41% $   10,550      4.3
+
+[7/7] Cohort Analysis ...
+  Pipeline created by quarter:
+    2022Q1: deals=  86  resolved=99%  pipeline=$   398,549  closed_win_rate=38%  mktg%=5%
+    2022Q2: deals= 102  resolved=95%  pipeline=$   777,906  closed_win_rate=38%  mktg%=13%
+    2022Q3: deals= 134  resolved=98%  pipeline=$   487,862  closed_win_rate=37%  mktg%=7%
+    2022Q4: deals= 124  resolved=94%  pipeline=$ 1,107,924  closed_win_rate=44%  mktg%=26%
+    2023Q1: deals= 161  resolved=96%  pipeline=$ 1,250,346  closed_win_rate=30%  mktg%=38%
+    2023Q2: deals= 155  resolved=92%  pipeline=$ 1,313,200  closed_win_rate=31%  mktg%=30%
+    2023Q3: deals= 166  resolved=96%  pipeline=$ 1,423,474  closed_win_rate=33%  mktg%=19%
+    2023Q4: deals= 172  resolved=99%  pipeline=$ 1,554,444  closed_win_rate=28%  mktg%=22%
+    2024Q1: deals= 293  resolved=85%  pipeline=$ 2,115,668  closed_win_rate=23%  mktg%=36%
+    2024Q2: deals= 281  resolved=91%  pipeline=$ 3,436,242  closed_win_rate=22%  mktg%=23%
+    2024Q3: deals= 306  resolved=73%  pipeline=$ 3,875,742  closed_win_rate=28%  mktg%=11%
+    2024Q4: deals= 311  resolved=37%  pipeline=$ 4,789,095  closed_win_rate=40%  mktg%=7%
+    main()
+  File "C:\Users\andre\Downloads\Datathon\analytics_case_study\03c_advanced_analytics.py", line 754, in main
+    df.to_excel(writer, sheet_name=sheet_name[:31], index=False)
+  File "C:\Users\andre\Downloads\Datathon\.venv\Lib\site-packages\pandas\core\generic.py", line 2312, in to_excel
+    formatter.write(
+  File "C:\Users\andre\Downloads\Datathon\.venv\Lib\site-packages\pandas\io\formats\excel.py", line 1012, in write
+    writer._write_cells(
+  File "C:\Users\andre\Downloads\Datathon\.venv\Lib\site-packages\pandas\io\excel\_xlsxwriter.py", line 262, in _write_cells
+    for cell in cells:
+  File "C:\Users\andre\Downloads\Datathon\.venv\Lib\site-packages\pandas\io\formats\excel.py", line 875, in get_formatted_cells
+    cell.val = self._format_value(cell.val)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\andre\Downloads\Datathon\.venv\Lib\site-packages\pandas\io\formats\excel.py", line 601, in _format_value
+    raise ValueError(
+ValueError: Excel does not support datetimes with timezones. Please ensure that datetimes are timezone unaware before writing to Excel.
+
+
+==> Clean raw data
+
+==> Build integrated marts
+
+==> Export core analysis
+
+==> Run attribution models
+
+==> Run advanced analytics
+Pipeline stopped at: Run advanced analytics

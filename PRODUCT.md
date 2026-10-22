@@ -35,7 +35,7 @@ The dashboard is used for executive review, analyst exploration, presentation, a
 
 ## Evidence on Hand
 
-Validated cleaned and integrated Parquet marts under `data/`, analytical workbooks under `outputs/analysis/`, the executive presentation under `outputs/presentation/`, and automated checks in `analytics_case_study/06_validate_metrics.py`.
+Validated cleaned and integrated Parquet marts under `data/`, analytical workbooks under `outputs/analysis/`, the schema-v3 browser presentation bundled into the dashboard, and automated checks in `analytics_case_study/06_validate_metrics.py`. The editable PPTX under `outputs/presentation/` is a historical archive with retired analytical definitions, not the current presentation contract.
 
 ## Product Principles
 

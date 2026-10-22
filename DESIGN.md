@@ -112,7 +112,7 @@ components:
 
 The interface behaves like a black-glass executive command room crossed with an auditor's decision ledger. A fixed near-black spine holds navigation, search, archive access, and validation status; charcoal evidence planes carry an asymmetric record of ruled schedules, charts, ledgers, and action notes. Warm-white type supplies clarity while crimson registration marks create urgency without overpowering the evidence. It is compact, exacting, and calm—more accountable instrument than decorative dashboard.
 
-The opening composition is deliberately singular: a dark decision memo joined to a four-cell KPI schedule, followed by a horizontal evidence → implication → action strip. The main analytical spread gives the strongest evidence most of the width and pairs it with smaller evidence ledgers and an action queue. Across all ten sections, preserve the real `dashboard-data.json` contract, 24 chart placements backed by 21 reusable chart definitions, six sortable tables, chart/data parity, export and print paths, deep links, presentation mode, and the `/full-analysis` archive.
+The opening composition is deliberately singular: a dark decision memo joined to a four-cell KPI schedule, followed by a horizontal evidence → implication → action strip. The main analytical spread gives the strongest evidence most of the width and pairs it with smaller evidence ledgers and an action queue. Across all ten sections, preserve the real `dashboard-data.json` contract, 24 chart placements backed by 21 reusable chart definitions, six sortable tables, chart/data parity, export and print paths, deep links, analyst presentation mode, and the `/full-analysis` archive. Alongside the dashboard, a dedicated browser findings deck provides the guided 16-slide main story and six-slide appendix at `#present/main-01`; this is an additive presentation system, not a replacement for the ten-section dashboard.
 
 **Key Characteristics:**
 
@@ -182,9 +182,9 @@ Desktop uses a fixed 240px black command spine, narrowing to 224px below 1320px,
 
 Evidence layouts use a 12-column grid and 14px gutters. A primary chart can span all 12 columns; paired charts each span six. Joined evidence, priority, and conclusion ledgers share borders rather than repeating disconnected cards. Section introductions split thesis from explanation before collapsing to one column.
 
-At 1120px the command schedule and primary analytical spread stack. At 900px the spine becomes a slide-in modal drawer and charts become single-column. At 680px the story strip stacks into one ruled panel and multi-cell ledgers stack. At 520px top-bar utilities move into the overflow menu, all exposed actions become at least 44px, and outer gutters reduce to 12px. Presentation mode removes the spine, expands the sheet to 1740px, and privileges the evidence canvas. Print mode reveals all ten sections, removes navigation and utilities, returns dark fields to ink-safe paper, and avoids breaks inside evidence modules.
+At 1120px the command schedule and primary analytical spread stack. At 900px the spine becomes a slide-in modal drawer and charts become single-column. At 680px the story strip stacks into one ruled panel and multi-cell ledgers stack. At 520px top-bar utilities move into the overflow menu, all exposed actions become at least 44px, and outer gutters reduce to 12px. The dashboard's analyst presentation mode removes the spine, expands the sheet to 1740px, and privileges the evidence canvas. The dedicated browser findings deck has its own slide navigation, overview, timing, and appendix flow. Print mode reveals all ten dashboard sections, removes navigation and utilities, returns dark fields to ink-safe paper, and avoids breaks inside evidence modules.
 
-**The Content-Preservation Rule.** Responsive, presentation, and print modes may reflow or focus the evidence, but must retain the ten-section order, denominators, caveats, accessible summaries, Data/Chart alternatives, downloads, and sortable tables.
+**The Content-Preservation Rule.** Responsive, analyst presentation, and print modes may reflow or focus dashboard evidence, but must retain the ten-section order, denominators, caveats, accessible summaries, Data/Chart alternatives, downloads, and sortable tables. The dedicated browser deck may guide the executive story independently while preserving direct access to the full dashboard and appendix.
 
 ## Elevation & Depth
 
@@ -252,7 +252,7 @@ Joined schedules remove interior radii and use shared one-pixel rules. Registrat
 
 - **Do** lead with the operating decision, then preserve the evidence → implication → action chain.
 - **Do** use shared rules, asymmetric schedules, and ledgers to show relationships.
-- **Do** keep all ten sections, 24 chart placements, six sortable tables, real data, deep links, export, print, presentation, and archive access intact.
+- **Do** keep all ten dashboard sections, 24 chart placements, six sortable tables, real data, deep links, export, print, analyst presentation mode, and archive access intact; retain the dedicated browser findings deck as the guided presentation entry point.
 - **Do** keep visible caveats, accessible chart summaries, explicit Data/Chart toggles, keyboard focus, and 44px narrow-mobile targets.
 - **Do** honor reduced motion by collapsing durations, disabling smooth scroll, and preserving the final state.
 
@@ -262,4 +262,14 @@ Joined schedules remove interior radii and use shared one-pixel rules. Registrat
 - **Don't** replace the working-paper composition with a generic KPI-card grid, use any blue/green/purple accents, add glassmorphism, decorative gradients, pill-heavy controls, or ornamental 3D.
 - **Don't** use semantic colors decoratively or make color the only carrier of meaning.
 - **Don't** hide sections, alter denominators, detach charts from caveats/data, or overstate observational evidence as causal.
-- **Don't** let presentation, mobile, or print modes remove evidence or break the original analytical order.
+- **Don't** let analyst presentation, mobile, or print modes remove dashboard evidence or break its analytical order; keep the browser findings deck additive to the dashboard.
+
+
+## Shared brand and surface authority (2026-10-03)
+Revenue Command is the shared brand. The dashboard retains its incumbent black canvas and crimson accent: this is an Operate surface for analysts. The presentation is a Read surface using ivory paper, dark ink and muted green analytical marks; this deliberate paper exception supports long-form evidence and print. Both use locally bundled Manrope Variable for UI. Presentation headings use locally bundled Newsreader Variable; Georgia remains only the loading fallback. The generic NORTHSTAR label is deprecated in favor of Revenue Command.
+
+Channel stack order is stable within a dataset: channels ranked by recorded pipeline, Other last. Attribution model marks retain explicit FT/LT/LIN/TD labels and distinct stripe/dot patterns. Missing measurements use a dash and unavailable description; zero remains zero. Colors never substitute for labels. Dashboard legacy teal means neutral light graphite, now supplied as shade 500/600 for Tremor utilities.
+
+Evidence tables use tabular numbers, exact identifiers, complete contract columns, focusable scrolling and missing-last sorting of raw values. Compact route headers avoid repeating the story strip outside the essential overview. Motion is limited to route orientation and active-navigation continuity; reduced motion preserves visible final content.
+
+Verification policy: type checks and semantic fixtures support implementation claims. Actual browser keyboard, 320px clientWidth, text zoom, contrast, print-PDF and performance profiling remain separate receipts; no blanket accessibility or runtime-performance claim follows from source changes.
