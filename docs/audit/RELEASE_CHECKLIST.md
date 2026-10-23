@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 76 checks — 75 pass (14 of them after fixes), 0 fail, 1 not verified (H4).**
+**Result: 81 checks — 80 pass (19 of them after fixes), 0 fail, 1 not verified (H4).**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -40,7 +40,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 | B8 | Two pipeline runs give identical results | PASS | Contract identical apart from timestamps; all 18 integrated parquets byte-identical including row order; workbook cells identical |
 | B9 | Withdrawn model absent from every published artifact | PASS (fixed) | No model datasets anywhere. The archive's withdrawal note quoted "AUC about 0.52"; reworded to "near-chance holdout that predicted no wins" |
 | B10 | No private fields in public JSON | PASS | `assert_public_fields` passes on all 7 public JSON files; no emails, Salesforce IDs or domains |
-| B11 | Text figures match the contract | PASS (fixed) | All docs and UI figures match. Fixed: a test fixture still used 2,032, and slide 14's caveat hard-coded 4,426 (now read from the scenario table). Residual: a few explanation captions in `App.tsx` quote channel totals as text; they are currently correct |
+| B11 | Text figures match the contract | PASS (fixed) | All docs and UI figures match. Fixed: a test fixture still used 2,032; slide 14's caveat hard-coded 4,426 (now read from the scenario table); chart captions in `App.tsx` quoted totals as text and are now computed from the data, which also corrected the Won Revenue caption (Referral, not Existing Client, is second). A test now fails if a caption contains a literal amount, count or quarter |
 | B12 | Committed outputs are current | PASS | After a rerun the only differences are generated timestamps, workbook metadata and line endings; data and parquets are unchanged. Timestamps make every run differ by design |
 
 ## C. React dashboard (`/`)
@@ -125,7 +125,18 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 | H3 | No hard-coded figures in markup or script | PASS | Only years, section numbers and fixed method constants (95% interval, 80% power, 80% resolved) appear as literals |
 | H4 | The dashboard's own check reports no failures | NOT VERIFIED | The check runs only when someone opens the page; no run is recorded yet |
 
+## I. Accessibility, print and performance follow-up
+
+| ID | Check | Status | Evidence |
+|---|---|---|---|
+| I1 | Automated WCAG 2.1 AA audit of the dashboard (axe-core 4.11.4) | PASS (fixed) | 46 violation nodes before (progress rail roles, heatmap table roles, hover contrast, sidebar role, scrollable heatmap). 0 after, on all 10 sections at 1440 and 375, with the drawer, a data table and collapsible sections open (25 views) |
+| I2 | Automated WCAG 2.1 AA audit of the deck | PASS (fixed) | Skip-link target, snapshot-label contrast (3.39:1) and accessible names fixed. 0 violations on all 22 slides, the overview, the evidence drawer, the presenter console and 375 width (30 views); a separate contrast script also finds 0 |
+| I3 | All-sections print to PDF | PASS (fixed) | Was 6 pages of one section on a black background. Now 33 pages covering all 10 sections, on white, with dark chart text, tables within the page and exact heatmap colours. Page 18 holds only a reading note after a full-page heatmap (cosmetic) |
+| I4 | Chart tooltips anywhere over a chart | PASS (fixed) | 30/30 hover points on the three charts that showed 16–18/30 |
+| I5 | No oversized chunk on the first-paint path | PASS (fixed) | Build has no chunk over 500 kB. First-paint JavaScript fell from 305 kB to 191 kB (gzip); charts load lazily. The typecheck no longer writes a stale `vite.config.js` that Vite could load instead of the source |
+
 ## Not verified anywhere
 
-- A real screen reader pass, and an actual printed PDF of every section (only one section was printed to PDF).
-- H4 above.
+- A real screen-reader session (automated axe-core audits pass, but no assistive-technology user test was possible here).
+- Printing from the browser's own Ctrl+P (the Print button path is verified).
+- H4 above: the Claude Dashboard's own check leaves no record of a run.
