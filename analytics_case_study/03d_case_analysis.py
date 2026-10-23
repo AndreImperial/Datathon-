@@ -80,6 +80,9 @@ def date_col(frame: pd.DataFrame, needle: str) -> str | None:
     return next((column for column in frame.columns if needle.lower() in column.lower()), None)
 
 
+# One sentence shared by the dashboard hero, the deck open/close and the Claude Dashboard.
+BIG_IDEA = "Fix conversion before buying volume. Prove reach before scaling spend."
+
 SOURCE_GROUPS = ["Referral", "Marketing-sourced", "Sales proactive", "Inbound", "Existing client", "Other"]
 
 
@@ -485,7 +488,7 @@ def build_contract() -> dict:
     main_subjects = ["The case question", "Marketing strategy", "Evidence scope", "Business motion", "Channel effectiveness", "Recent conversion by source", "Conversion drivers", "Advertising content", "Email and website engagement", "Source and touch overlap", "Attribution and journeys", "Target audience", "Channel and content actions", "Controlled experiment", "Budget implications", "CMO decisions"]
     durations = [45, 60, 60, 60, 90, 60, 90, 90, 75, 60, 75, 60, 75, 75, 45, 60]
     bodies = [
-        f"Which channels and content formats support acquisition, recorded revenue, and engagement? {top_all_name} is the strongest new-logo source, and marketing-sourced deals convert {marketing_comparison}. Fix conversion and value capture, then test before scaling.",
+        f"Which channels and content formats support acquisition, recorded revenue, and engagement? {top_all_name} is the strongest new-logo source, and marketing-sourced deals convert {marketing_comparison}. {BIG_IDEA}",
         f"Protect {top_all_name.lower()} acquisition, fix marketing-sourced conversion before adding volume, record contract value on every win, and use controlled creative and account-coverage tests before expanding spend.",
         "CRM history begins in 2018. Email, web and 6sense logs cover 2024 and ad metrics span January 2023 to October 2024, so historic attribution coverage has a bounded observation window.",
         f"A deal counts as acquisition when its account had no earlier won deal. This classifies every year, including 2023–24, where the CRM type field is blank. Existing customers account for {percent(summary['existing_customer_win_share'])} of wins.",

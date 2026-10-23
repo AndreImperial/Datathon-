@@ -12,7 +12,7 @@
         "plotly": "6.7.0",
         "openpyxl": "3.1.5"
       },
-      "started_at": "2026-10-22T17:40:07.056281+00:00",
+      "started_at": "2026-10-23T08:05:36.253302+00:00",
       "source_files": [
         {
           "source_id": "Datathon_db_6sense_campaign_accounts.xlsx",
@@ -62,7 +62,7 @@
       }
     },
     "period": "CRM history 2018–2024; email, web and 6sense logs observed in 2024; ad metrics January 2023 to October 2024",
-    "generated_at": "2026-10-22T17:42:14.627098+00:00",
+    "generated_at": "2026-10-23T08:07:32.095857+00:00",
     "snapshot_id": "9c524ee116f41b8a",
     "method_version": "case-analysis-v3.3",
     "source_hashes": {
@@ -9553,16 +9553,16 @@
         "chart_refs": [],
         "metric_refs": [],
         "scope": "Canonical observed CRM creation cohorts; see classification coverage",
-        "body": "Which channels and content formats support acquisition, recorded revenue, and engagement? Referral is the strongest new-logo source, and marketing-sourced deals convert lowest. Fix conversion and value capture, then test before scaling.",
+        "body": "Which channels and content formats support acquisition, recorded revenue, and engagement? Referral is the strongest new-logo source, and marketing-sourced deals convert lowest. Fix conversion before buying volume. Prove reach before scaling spend.",
         "source_footer": "opportunities.parquet; accounts.parquet; icp_database.parquet; ad_metrics.parquet; email_engagements.parquet; web_engagements.parquet; 6sense_campaign.parquet",
         "visible_caveat": "Actions follow descriptive evidence; authorize scaling only after a feasible controlled measurement plan.",
         "speaker_notes": {
-          "say": "Which channels and content formats support acquisition, recorded revenue, and engagement? Referral is the strongest new-logo source, and marketing-sourced deals convert lowest. Fix conversion and value capture, then test before scaling.",
+          "say": "Which channels and content formats support acquisition, recorded revenue, and engagement? Referral is the strongest new-logo source, and marketing-sourced deals convert lowest. Fix conversion before buying volume. Prove reach before scaling spend.",
           "why": "Connect the evidence to a CMO decision.",
           "do_not_claim": "Actions follow descriptive evidence; authorize scaling only after a feasible controlled measurement plan.",
           "transition": "Move to the next evidence layer.",
           "judge_question": "What is the denominator and source window?",
-          "answer": "Which channels and content formats support acquisition, recorded revenue, and engagement? Referral is the strongest new-logo source, and marketing-sourced deals convert lowest. Fix conversion and value capture, then test before scaling. Actions follow descriptive evidence; authorize scaling only after a feasible controlled measurement plan.",
+          "answer": "Which channels and content formats support acquisition, recorded revenue, and engagement? Referral is the strongest new-logo source, and marketing-sourced deals convert lowest. Fix conversion before buying volume. Prove reach before scaling spend. Actions follow descriptive evidence; authorize scaling only after a feasible controlled measurement plan.",
           "sources": [
             "opportunities.parquet",
             "accounts.parquet",
