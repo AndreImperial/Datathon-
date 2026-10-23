@@ -13,14 +13,14 @@ await writeFile(output,compiled.outputFiles[0].text);
 const { PresentationApp } = await import(output.href);
 await unlink(output);
 const data=JSON.parse(await readFile('public/dashboard-data-v3.json','utf8'));
-async function mounted(hash, run) {
+async function mounted(hash, run, props={}) {
   const dom=new JSDOM('<div id="root"></div>',{url:'http://localhost/'+hash});
   const old={};
   for(const key of ['window','document','location','history','HTMLElement']) { old[key]=globalThis[key]; globalThis[key]=dom.window[key]; }
   const oldChannel=globalThis.BroadcastChannel; globalThis.BroadcastChannel=undefined;
   globalThis.IS_REACT_ACT_ENVIRONMENT=true;
   const root=createRoot(document.getElementById('root'));
-  try { await act(async()=>root.render(React.createElement(PresentationApp,{data}))); await run(dom); }
+  try { await act(async()=>root.render(React.createElement(PresentationApp,{data,...props}))); await run(dom); }
   finally { await act(async()=>root.unmount()); dom.window.close(); for(const key of Object.keys(old)) globalThis[key]=old[key]; globalThis.BroadcastChannel=oldChannel; }
 }
 const button = name => [...document.querySelectorAll('button')].find(x=>x.textContent.trim()===name || x.getAttribute('aria-label')===name);
@@ -70,3 +70,26 @@ test('overview groups slides by section with every slide reachable',async()=>mou
   assert.equal(document.querySelectorAll('.overview-groups button').length,22);
   assert.ok(document.querySelector('.overview-groups button[aria-current]').textContent.includes('Channel effectiveness'));
 }));
+test('the 16 main headlines are all computed takeaways and all distinct (horizontal logic)',async()=>mounted('#present/main-01',async()=>{
+  await act(async()=>button('Overview').click());
+  const main=data.presentation.slides.filter(s=>s.sequence==='main').sort((a,b)=>a.order-b.order);
+  const headlines=[...document.querySelectorAll('.overview-groups button span')].slice(0,16).map(x=>x.textContent);
+  assert.equal(new Set(headlines).size,16,headlines.join('\n'));
+  headlines.forEach((h,i)=>assert.notEqual(h,main[i].title,`main-${i+1} fell back to its topic title`));
+}));
+test('the deck opens and closes on the same big idea, and the ask names owner, first measure and review',async()=>mounted('#present/main-01',async(dom)=>{
+  const bigIdea=document.querySelector('h1').textContent;
+  assert.equal(bigIdea,'Fix conversion before buying volume. Prove reach before scaling spend.');
+  await act(async()=>{ location.hash='#present/main-16'; dom.window.dispatchEvent(new dom.window.HashChangeEvent('hashchange')); });
+  assert.equal(document.querySelector('.deck-bigidea').textContent.replace(/^The big idea/,''),bigIdea);
+  const rows=[...document.querySelectorAll('.deck-ask tbody tr')];
+  assert.equal(rows.length,3,`${rows.length} decisions`);
+  assert.match(rows[0].textContent,/marketing-sourced conversion/i); assert.match(rows[1].textContent,/90-day/); assert.match(rows[2].textContent,/contract value/i);
+  for(const row of rows) assert.ok([...row.children].every(cell=>cell.textContent.trim().length>0), row.textContent);
+  assert.deepEqual([...document.querySelectorAll('.deck-ask thead th')].map(x=>x.textContent),['Decision','Owner','First measure','Review']);
+}));
+test('presenter console keeps the big idea in view and bridges into the next headline',async()=>mounted('#presenter/r3test',async()=>{
+  const next=document.querySelector('.presenter-upnext h2').textContent;
+  assert.ok(document.querySelector('.presenter-transition').textContent.includes(next));
+  assert.ok(document.querySelector('.presenter-bigidea').textContent.includes(document.querySelector('.presenter-current h1').textContent));
+},{presenter:true}));
