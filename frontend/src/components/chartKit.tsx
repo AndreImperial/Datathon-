@@ -1,7 +1,7 @@
 // Shared chart primitives: palette semantics, axis presets, the one tooltip
 // used by every Recharts chart, hover-dimming and the entrance-motion shell.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactElement, ReactNode } from "react";
 
 export const COLORS = {
   ink: "#F7F4F4",
@@ -25,8 +25,89 @@ export const COLORS = {
 export const ACCENT = COLORS.blue;
 export const CONTEXT = "#6F6769";
 export const CONTEXT_LIGHT = COLORS.slate;
-export const GAIN = COLORS.teal;
-export const LOSS = COLORS.amber;
+/** Chart card surface (styles.css `--surface`); the palette validator runs against it. */
+export const SURFACE = "#111113";
+
+/**
+ * Categorical slots, fixed order, assigned by entity and never cycled.
+ * Validated with dataviz `validate_palette.js --mode dark --surface #111113`:
+ * lightness band, chroma floor, adjacent CVD (worst 8.4), normal-vision
+ * (worst 19.8) and 3:1 contrast all PASS for slots 1-5.  Slot 1 is the brand
+ * red.  A sixth series never gets a generated hue: it folds into NEUTRAL.
+ */
+export const SERIES = ["#E12636", "#3987E5", "#C98500", "#199E70", "#9085E9"] as const;
+/** Neutral for folded tails and context segments (>= 3:1 on the surface). */
+export const NEUTRAL = CONTEXT;
+
+/**
+ * Diverging pair: cool blue below / warm red above a neutral grey midpoint.
+ * Poles are the darker steps so white in-cell text clears 4.5:1.
+ */
+export const DIVERGE_LOW = "#1C5CAB";
+export const DIVERGE_HIGH = "#C1121F";
+export const DIVERGE_MID = "#2B2829";
+/** Sequential (one hue, dark surface -> brand red) for magnitude grids. */
+export const SEQ_LOW = "#1D1A1B";
+export const SEQ_HIGH = "#C1121F";
+/** Signed shifts are polarity, not good/bad: blue gains, red loses. */
+export const GAIN = SERIES[1];
+export const LOSS = SERIES[0];
+
+/** 2px surface gap between touching fills (stacked segments, adjacent bars). */
+export const surfaceGap = { stroke: SURFACE, strokeWidth: 2 } as const;
+
+/** Mix two hex colours (t = 0 -> a, 1 -> b) into an opaque hex. */
+export function mixHex(a: string, b: string, t: number): string {
+  const parse = (hex: string) => [1, 3, 5].map((index) => parseInt(hex.slice(index, index + 2), 16));
+  const [from, to] = [parse(a), parse(b)];
+  const k = Math.max(0, Math.min(1, t));
+  return `#${from.map((value, index) => Math.round(value + (to[index] - value) * k).toString(16).padStart(2, "0")).join("")}`;
+}
+
+/** WCAG relative luminance, used to pick white or ink text inside a fill. */
+export function luminance(hex: string): number {
+  const [r, g, b] = [1, 3, 5].map((index) => {
+    const c = parseInt(hex.slice(index, index + 2), 16) / 255;
+    return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+  });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
+type ShapeProps = Record<string, unknown>;
+
+/**
+ * Bar shape with a 4px rounded data end and a square baseline.  Negative
+ * bars (leftward) round their far end, so diverging bars stay anchored.
+ * `rounded` lets a stack round only its outermost segment.
+ */
+export function dataEndBar(orientation: "horizontal" | "vertical", radius = 4, rounded: (props: ShapeProps) => boolean = () => true) {
+  return function DataEndBar(input: unknown): ReactElement {
+    const props = (input ?? {}) as ShapeProps;
+    const rawX = Number(props.x ?? 0); const rawY = Number(props.y ?? 0);
+    const rawW = Number(props.width ?? 0); const rawH = Number(props.height ?? 0);
+    const x = Math.min(rawX, rawX + rawW); const w = Math.abs(rawW);
+    const y = Math.min(rawY, rawY + rawH); const h = Math.abs(rawH);
+    const common = { fill: props.fill as string | undefined, fillOpacity: props.fillOpacity as number | undefined, stroke: props.stroke as string | undefined, strokeWidth: props.strokeWidth as number | undefined };
+    if (!w || !h) return <g />;
+    if (!rounded(props)) return <rect x={x} y={y} width={w} height={h} {...common} />;
+    if (orientation === "horizontal") {
+      const r = Math.min(radius, w, h / 2);
+      if (rawW < 0) return <path d={`M${x + w},${y} H${x + r} Q${x},${y} ${x},${y + r} V${y + h - r} Q${x},${y + h} ${x + r},${y + h} H${x + w} Z`} {...common} />;
+      return <path d={`M${x},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h - r} Q${x + w},${y + h} ${x + w - r},${y + h} H${x} Z`} {...common} />;
+    }
+    const r = Math.min(radius, h, w / 2);
+    return <path d={`M${x},${y + h} V${y + r} Q${x},${y} ${x + r},${y} H${x + w - r} Q${x + w},${y} ${x + w},${y + r} V${y + h} Z`} {...common} />;
+  };
+}
+
+/** Legend key that mirrors the mark: rect for bars, short line for lines, ring for dots. */
+export function LegendKey({ color, kind = "bar", hollow = false }: { color: string; kind?: "bar" | "line" | "dot" | "dash"; hollow?: boolean }) {
+  const style: CSSProperties = kind === "line" ? { width: 14, height: 2, borderRadius: 2, background: color }
+    : kind === "dash" ? { width: 14, height: 0, borderRadius: 0, borderTop: `2px dashed ${color}`, background: "transparent" }
+    : kind === "dot" ? { width: 10, height: 10, borderRadius: 999, background: hollow ? SURFACE : color, border: hollow ? `2px solid ${color}` : undefined, boxSizing: "border-box" }
+    : { width: 10, height: 10, borderRadius: 2, background: color };
+  return <i aria-hidden="true" style={style} />;
+}
 
 export const TICK_SIZE = 12;
 export const LIMITED_N = 30;
@@ -84,13 +165,13 @@ export function tooltipContent(build: (datum: Record<string, unknown>, payload: 
       <div style={{ fontWeight: 700, fontSize: 13, marginBottom: spec.rows.length ? 6 : 0, overflowWrap: "anywhere" }}>{spec.title}</div>
       {spec.rows.length > 0 && <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", columnGap: 8, rowGap: 3, alignItems: "center" }}>
         {spec.rows.map((row, index) => [
-          <i key={`s${index}`} aria-hidden="true" style={{ width: 8, height: 8, borderRadius: 2, background: row.color ?? "transparent", display: "inline-block" }} />,
+          <i key={`s${index}`} aria-hidden="true" style={{ width: 12, height: 3, borderRadius: 2, background: row.color ?? "transparent", display: "inline-block" }} />,
           <span key={`l${index}`} style={{ color: COLORS.muted }}>{row.label}</span>,
           <span key={`v${index}`} style={{ textAlign: "right", fontWeight: row.strong ? 700 : 600, color: COLORS.ink, whiteSpace: "nowrap" }}>{row.value}</span>,
         ])}
       </div>}
       {spec.note && <div style={{ marginTop: 7, paddingTop: 6, borderTop: "1px solid #2D2829", color: COLORS.muted }}>{spec.note}</div>}
-      {spec.flag && <div style={{ marginTop: 5, color: COLORS.azure, fontWeight: 600 }}>{spec.flag}</div>}
+      {spec.flag && <div style={{ marginTop: 5, color: COLORS.pale, fontWeight: 600 }}><span aria-hidden="true">⚠ </span>{spec.flag}</div>}
     </div>;
   };
 }
@@ -105,7 +186,8 @@ export const tooltipBase = {
 // ComposedChart draws its cursor as a line, so keep it a faint hairline; charts
 // that dim the non-hovered marks pass cursor={false} instead.
 export const bandCursor = { stroke: "rgba(255,255,255,.16)", strokeWidth: 1 };
-export const lineCursor = { stroke: COLORS.slate, strokeDasharray: "3 3" };
+// Crosshair: a solid hairline snapping to the nearest category (never dashed).
+export const lineCursor = { stroke: "rgba(255,255,255,.28)", strokeWidth: 1 };
 
 export const limitedFlag = (n: number, unit: string) => n < LIMITED_N ? `Limited sample: n=${n.toLocaleString()} ${unit} (below ${LIMITED_N}) · directional only` : undefined;
 
