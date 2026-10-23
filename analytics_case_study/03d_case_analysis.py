@@ -132,7 +132,7 @@ def canonical_population() -> tuple[pd.DataFrame, pd.DataFrame]:
     created = date_col(active, "createdate")
     active["created_at"] = pd.to_datetime(active[created], utc=True, errors="coerce") if created else pd.NaT
     active["created_year"] = active["created_at"].dt.year.astype("Int64")
-    active["quarter"] = active["created_at"].dt.to_period("Q").astype(str)
+    active["quarter"] = active["created_at"].dt.tz_convert(None).dt.to_period("Q").astype(str)
     active["segment"] = active.get("segment__c", pd.Series("Unknown", index=active.index)).fillna("Unknown").astype(str).str.strip().replace({"Mid-Market": "Mid", "": "Unknown"})
     active["mrr"] = pd.to_numeric(active.get("mrr_amount__c"), errors="coerce")
     active["closed_at"] = pd.to_datetime(active.get("_close_date"), utc=True, errors="coerce")
