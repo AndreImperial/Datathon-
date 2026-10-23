@@ -27,7 +27,7 @@ class SourceSchemaTests(unittest.TestCase):
     def test_columns_and_missing_inventory_are_actionable(self):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
-            sources=root/'Analytics Case Study'; sources.mkdir()
+            sources=root/'data'/'raw'; sources.mkdir(parents=True)
             workbook=sources/'source.xlsx'
             pd.DataFrame({'date': [], 'value': []}).to_excel(workbook,index=False)
             (root/'source_schema.json').write_text(json.dumps({'sources':{'source.xlsx':{'Sheet1':['date','value']}}}))

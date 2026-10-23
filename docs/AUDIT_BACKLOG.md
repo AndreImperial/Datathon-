@@ -1,6 +1,6 @@
 # Audit Backlog
 
-The current consolidated work list is [Master fix backlog](C:/Users/andre/Downloads/Datathon/audit/MASTER_FIX_BACKLOG.md), with 59 prioritized work items, acceptance criteria and evidence references. Use that file to track remaining repairs, risks, polish and missing external inputs.
+The current consolidated work list is [Master fix backlog](audit/MASTER_FIX_BACKLOG.md), with 59 prioritized work items, acceptance criteria and evidence references. Use that file to track remaining repairs, risks, polish and missing external inputs.
 
 The material below is a historical record of the earlier decision-readiness pass. It is not a current readiness declaration: subsequent audits found additional defects, and local artifact generation does not verify the live deployment. Its five enhancement ideas are included in the master list.
 

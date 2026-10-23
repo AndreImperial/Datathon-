@@ -48,8 +48,6 @@ The browser presentation has 16 main slides totaling 1,080 seconds (18 minutes) 
 8. `04_react_dashboard.py` — export dashboard data, build the content-preserving React dashboard, and copy the legacy archive into the static deployment output.
 9. `06_validate_metrics.py` — validate the current schema-v3 contract and presentation references.
 
-The separate `05_presentation.py` generator is disabled. The existing PPTX is a historical archive with retired definitions and must not be presented as the current analysis.
-
 ## Cleaning and identity
 
 - Opportunities are deduplicated to one complete latest-state row per `_opportunity_id`; deleted latest snapshots are excluded from the canonical analytical population.
@@ -130,7 +128,7 @@ The validator checks that the schema-v3 contract has required datasets and datas
 - Generated legacy Plotly archive: `outputs/dashboard/Marketing_Analytics_Dashboard.html`; the deployment copy is `public/full-analysis/index.html`.
 - Generated workbooks: `outputs/analysis/`.
 - Cleaned and integrated data: `data/cleaned/` and `data/integrated/`.
-- Historical archived PPTX: `outputs/presentation/Marketing_Analytics_Executive_Deck.pptx`.
+- Raw source workbooks: `data/raw/`.
 
 ## Shared domains and conversion support
 

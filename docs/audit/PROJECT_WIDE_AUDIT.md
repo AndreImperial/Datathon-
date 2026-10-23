@@ -1,5 +1,7 @@
 # Project-wide follow-up audit
 
+> **Historical snapshot.** This report records the state of the project when it was written. The working logs, scratch scripts and notes it referenced were removed in the repository cleanup and remain available in git history (commit `4f14d8d`). Current status is in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+
 2026-10-03 · **Needs revision** · **Partial verification across the full project inventory**
 
 This review maps every major project area and identifies additional fixes after the prior repair. Application, analysis and generated deliverables were left unchanged. Only audit notes and evidence were added. Passing tests are retained evidence of the checks they cover, not a certification of every view.
@@ -111,11 +113,11 @@ Canonical totals remain 3,245 opportunities. Budget plans correctly use a $1,221
 
 Detailed reproducible evidence and line references:
 
-- [Numerical/methodological review](./followup-numbers.md)
-- [Frontend/accessibility/design review](./followup-ui.md)
-- [Engineering/deployment/privacy review](./followup-engineering.md)
-- [Independent lead recomputation](./followup-lead-check.py) and [aggregate results](./followup-lead-check.json)
-- [Current regression tests](./followup-tests.log) and [TypeScript check](./followup-typecheck.log)
+- `Numerical/methodological review`
+- `Frontend/accessibility/design review`
+- `Engineering/deployment/privacy review`
+- `Independent lead recomputation` and `aggregate results`
+- `Current regression tests` and `TypeScript check`
 
 No commit, push, deployment, external source write or application repair was performed in this follow-up audit. The prior repair receipt remains historical; this report supersedes any impression that passing its checks means the entire project is ready.
 

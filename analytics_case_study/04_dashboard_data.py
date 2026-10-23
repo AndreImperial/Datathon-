@@ -28,7 +28,7 @@ SECTION_SEQUENCE = [
     "s-creative", "s-budget", "s-advanced", "s-appendix", "s-conclusion",
 ]
 PRIMARY_NAVIGATION = [
-    "Essential View", "Attribution", "Channel ROI", "Recommendation", "Analyst Appendix",
+    "Essential View", "Attribution", "Channel ROI", "Analyst Appendix", "Recommendation",
 ]
 
 

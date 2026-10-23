@@ -8,7 +8,7 @@ web
 
 ## Stack
 
-React, TypeScript, Vite, Tailwind CSS, Tremor, selected Aceternity UI patterns, GSAP, Flask, and Render. The validated analytics pipeline remains Python and Parquet based.
+React, TypeScript, Vite, Tailwind CSS 4, Recharts, selected Aceternity UI patterns, GSAP, Flask, and Render. The validated analytics pipeline remains Python and Parquet based.
 
 ## Users
 

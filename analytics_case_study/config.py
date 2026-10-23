@@ -1,7 +1,7 @@
 import os
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-RAW_DATA_DIR = os.path.join(BASE_DIR, "Analytics Case Study")
+RAW_DATA_DIR = os.path.join(BASE_DIR, "data", "raw")
 CLEANED_DATA_DIR = os.path.join(BASE_DIR, "data", "cleaned")
 INTEGRATED_DATA_DIR = os.path.join(BASE_DIR, "data", "integrated")
 OUTPUTS_DIR = os.path.join(BASE_DIR, "outputs")

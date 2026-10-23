@@ -156,6 +156,7 @@ a { color: inherit; }
 .action-button, .mode-button { min-height: 34px; padding: 0 10px; white-space: nowrap; }
 .icon-button, .mobile-menu, .sidebar-close { width: 34px; height: 34px; padding: 0; }
 .sidebar-close, .mobile-menu { display: none; }
+.mobile-menu { flex: none; min-width: 44px; }
 .text-button { min-height: 30px; padding: 0 8px; border-color: transparent; color: var(--blue-dark); background: transparent; }
 .button { min-height: 38px; padding: 0 13px; }
 .button-small { min-height: 34px; }
@@ -841,4 +842,10 @@ footer p { margin: 0; max-width: 110ch; }
   .arc-strip, .ask-links { display: none !important; }
   .rank-card, .power-tiles, .decision-card { break-inside: avoid; box-shadow: none; }
 }
+}
+
+/* Touch-size screens: every control is at least 44px tall. */
+@media (max-width: 900px) {
+  .text-button, .button-small { min-height: 44px; }
+  .data-table th button, .sort-button, .rank-card th button { min-height: 44px; }
 }

@@ -45,7 +45,7 @@ def main() -> int:
     if not args.dry_run:
         source_status = check_source_schema(ROOT)
         sources = []
-        for source in sorted((ROOT / "Analytics Case Study").glob("*.xlsx")):
+        for source in sorted((ROOT / "data" / "raw").glob("*.xlsx")):
             sources.append({"source_id": source.name, "sha256": hashlib.sha256(source.read_bytes()).hexdigest(), "bytes": source.stat().st_size})
         metadata = {"python": platform.python_version(), "dependencies": {name: version(name) for name in ["pandas", "numpy", "scikit-learn", "pyarrow", "plotly", "openpyxl"]}, "started_at": datetime.now(timezone.utc).isoformat(), "source_files": sources, "source_freshness_status": "historical supplied extract; production expected-date/refresh policy pending", "release_status": "running", "source_control": source_status}
         metadata_path = ROOT / "outputs" / "run_metadata.json"

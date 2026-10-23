@@ -1068,6 +1068,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Marketing Analytics Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <script>{plotly_bundle}</script>
 <style>
   :root{{
@@ -2093,7 +2094,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <div id="s-segment" class="section">
     <h2 class="section-title">Segment & ICP Analysis</h2>
     <div class="section-desc">Which account segments and industries have the most pipeline and highest win rates - your best ABM targeting zones.</div>
-    <div class="section-takeaway"><strong>Segment takeaway:</strong> The best targeting decision balances revenue potential with win probability, not just the largest deal size. <span class="evidence-badge green">Commercial + Strong Fit wins most often</span></div>
+    <div class="section-takeaway"><strong>Segment takeaway:</strong> The best targeting decision balances revenue potential with win rate, not just the largest deal size. <span class="evidence-badge green">Commercial + Strong Fit wins most often</span></div>
     <div class="context-box">
       <strong>What is a "Segment" here?</strong> The CRM segment field groups opportunities into Commercial, Mid, and Enterprise markets. It is not a 6sense buying-stage label. The profile-fit field is analyzed separately, and win rates use resolved opportunities only.
     </div>
@@ -2204,7 +2205,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   <!-- Advanced Analytics -->
   <div id="s-advanced" class="section">
     <h2 class="section-title">Advanced Analytics</h2>
-    <div class="section-desc">Account coverage gap, deal velocity, journey sequences, and targeting matrix. A calendar-only win-probability baseline was withdrawn after a near-chance holdout (AUC about 0.52, no predicted wins).</div>
+    <div class="section-desc">Account coverage gap, deal velocity, journey sequences, and targeting matrix. A calendar-only win-probability baseline was withdrawn after a near-chance holdout that predicted no wins.</div>
     <div class="section-takeaway"><strong>Advanced takeaway:</strong> Coverage and targeting evidence point to the same action: focus sales and marketing on high-fit accounts that are not yet fully activated. <span class="evidence-badge orange">{unreached_pct} unreached</span></div>
     <div class="context-box">
       <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section adds coverage, velocity and targeting evidence; none of it establishes causal priority.
@@ -2317,9 +2318,9 @@ HTML_TEMPLATE = """<!DOCTYPE html>
         <button class="action-button" type="button" onclick="showAppendixSection('s-budget')"><i data-lucide="circle-dollar-sign" aria-hidden="true"></i><span>Open</span></button>
       </div>
       <div class="priority-card">
-        <div class="priority-tag">Modeling</div>
+        <div class="priority-tag">Diagnostics</div>
         <h3>Advanced Analytics</h3>
-        <p>Win probability, deal velocity, journey, and targeting matrix detail.</p>
+        <p>Account coverage, deal velocity, journey and targeting matrix detail.</p>
         <button class="action-button" type="button" onclick="showAppendixSection('s-advanced')"><i data-lucide="brain-circuit" aria-hidden="true"></i><span>Open</span></button>
       </div>
     </div>

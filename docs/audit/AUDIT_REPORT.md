@@ -1,5 +1,7 @@
 # Datathon audit — 3 October 2026
 
+> **Historical snapshot.** This report records the state of the project when it was written. The working logs, scratch scripts and notes it referenced were removed in the repository cleanup and remain available in git history (commit `4f14d8d`). Current status is in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+
 **Needs revision. Review coverage: Partial.** The descriptive CRM foundation is credible, but the delivered dashboard and browser presentation are not ready for submission. Their populations disagree, presentation evidence is broken or incomplete, and current model validation is overstated.
 
 Application code, source workbooks, and existing analytical deliverables were preserved. Only audit notes, scratch calculations, and evidence files were added under `audit/`. Existing working-tree changes predated this review. The full pipeline was not rerun because that would replace the artifacts being audited.
@@ -40,7 +42,7 @@ The dashboard reads schema v2 and presents 3,288 opportunities and $25,010,892.8
 
 **Fix (Proposed):** Apply one explicit canonical population before integration and analysis, regenerate dependent artifacts, and reconcile dashboard, presentation, exports and documentation. Clearly label any retained historical archive. Changing only the displayed headline would leave the underlying tables inconsistent.
 
-Evidence: `analytics_case_study/02_data_integration.py`, `03d_case_analysis.py:72–104`, `frontend/src/App.tsx:584`, and [metrics-check.txt](metrics-check.txt).
+Evidence: `analytics_case_study/02_data_integration.py`, `03d_case_analysis.py:72–104`, `frontend/src/App.tsx:584`, and `metrics-check.txt`.
 
 ### 2. P1 — Presentation charts do not render their intended evidence
 
@@ -64,7 +66,7 @@ Repeated label keys also produced residual `Unknown` content during observed sli
 
 **Fix (Proposed):** Replace the generic field mapping with tested, slide-specific adapters. Invalid bindings should produce a visible unavailable state, never a fabricated zero. Keep narrative scope aligned with visual scope.
 
-Evidence: `frontend/src/presentation/PresentationApp.tsx:13–43`, [presentation-bindings.json](presentation-bindings.json), local browser observations.
+Evidence: `frontend/src/presentation/PresentationApp.tsx:13–43`, `presentation-bindings.json`, local browser observations.
 
 ### 3. P1 — The claimed finished deck lacks presentation styling and substantive appendix evidence
 
@@ -82,7 +84,7 @@ Independently reconstructing the current split gives 2,267 training and 567 test
 
 **Fix (Proposed):** Define scoring time and outcome horizon; train only on outcomes known before the cutoff using as-of features; evaluate mature future cohorts. Regenerate diagnostics and active scores against the canonical population. Until then, mark the saved 0.712 AUC and scores as exploratory retrospective evidence.
 
-Evidence: `03c_advanced_analytics.py:103–132,163`, [model-check.txt](model-check.txt), [methods-evidence.md](methods-evidence.md).
+Evidence: `03c_advanced_analytics.py:103–132,163`, `model-check.txt`, `methods-evidence.md`.
 
 ### 5. P2 — Attribution compression removes eligible touches
 
@@ -90,7 +92,7 @@ Global domain/channel/week compression keeps the last weekly touch before checki
 
 **Fix (Proposed):** Retain raw valid touches until per-opportunity temporal filtering; then normalize the eligible grain. Establish the representative timestamp policy for first-touch and journey interpretation. Apply consistently to both attribution implementations.
 
-Evidence: `03d_case_analysis.py:136–148`, `03b_attribution.py`, [raw-linkage-check.txt](raw-linkage-check.txt).
+Evidence: `03d_case_analysis.py:136–148`, `03b_attribution.py`, `raw-linkage-check.txt`.
 
 ### 6. P2 — Decomposition treats missing-period rates as zero
 
@@ -106,7 +108,7 @@ Domain-level totals are merged onto account-ID rows. Shared domains repeat activ
 
 **Fix (Proposed):** Keep activity at domain grain, or adopt an explicit allocation/identity rule before summing across account IDs. Add conservation checks across joins.
 
-Evidence: `02_data_integration.py:61,74,94`, [audience-check.txt](audience-check.txt).
+Evidence: `02_data_integration.py:61,74,94`, `audience-check.txt`.
 
 ## What holds up
 

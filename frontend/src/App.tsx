@@ -55,16 +55,16 @@ const groups: SectionGroup[] = [
     ],
   },
   {
-    id: "recommendation-group",
-    label: "Recommendation",
-    icon: <Check size={16} />,
-    children: [{ id: "s-conclusion", label: "Conclusion & Action Plan" }],
-  },
-  {
     id: "appendix-group",
     label: "Analyst Appendix",
     icon: <Archive size={16} />,
     children: [{ id: "s-appendix", label: "Case Deliverable Coverage" }],
+  },
+  {
+    id: "recommendation-group",
+    label: "Recommendation",
+    icon: <Check size={16} />,
+    children: [{ id: "s-conclusion", label: "Conclusion & Action Plan" }],
   },
 ];
 
@@ -372,7 +372,7 @@ function downloadEvidence(data: DashboardData) {
   const datasetRows = (Object.entries(data.datasets) as Array<[string, DataRow[]]>).flatMap(([dataset, values]) => values.map((row) => ({ record_type: "dataset", source: dataset, ...row })));
   const chartRows = Object.entries(data.chart_data).flatMap(([chart, values]) => values.map((row) => ({ record_type: "chart", source: chart, ...row })));
   const tableRows = (Object.entries(data.tables) as Array<[string, { rows: DataRow[] }]>).flatMap(([table, contract]) => contract.rows.map((row) => ({ record_type: "table", source: table, ...row })));
-  downloadRows("marketing-dashboard-evidence.csv", [...datasetRows, ...chartRows, ...tableRows], { snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: data.meta.generated_from, scope: data.meta.period, methodology: data.meta.methodology });
+  downloadRows("marketing-dashboard-evidence.csv", [...datasetRows, ...chartRows, ...tableRows], { snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", generated_from: data.meta.generated_from, scope: data.meta.period, methodology: data.meta.methodology });
 }
 
 function formatContractCell(column: string, value: unknown): string {
@@ -494,7 +494,7 @@ function LatestFindings({ brief, data }: { brief: LatestBrief; data: DashboardDa
   const tiles: Array<{ key: string; label: string; value: string; context: ReactNode; status: string; tone: "risk" | "neutral" }> = [];
   // Ordered as the argument runs: the problem (the one accent), the proof point, then the two limits a CMO must know.
   if (has("marketing_recent_win_rate")) tiles.push({ key: "marketing", label: "Marketing-sourced new-logo win rate", value: pct(numberValue(s, "marketing_recent_win_rate")), context: <>Lowest of {brief.sourceGroups.length || "the"} sources, 2023–24{has("recent_best_win_rate") && <> · {textValue(s, "recent_best_rate_source") || "best source"} wins {pct(numberValue(s, "recent_best_win_rate"))}</>}</>, status: finding("f-marketing")?.evidence_status ?? "Observed", tone: "risk" });
-  if (textValue(s, "top_channel")) tiles.push({ key: "referral", label: "Strongest new-logo source", value: textValue(s, "top_channel"), context: <>{has("top_channel_win_rate") && <>{pct(numberValue(s, "top_channel_win_rate"))} win rate · </>}most recorded new-logo won amount, 2018–2024</>, status: finding("f-channel")?.evidence_status ?? "Observed", tone: "neutral" });
+  if (textValue(s, "top_channel")) tiles.push({ key: "referral", label: "Strongest new-logo source", value: textValue(s, "top_channel"), context: <>{has("top_channel_win_rate") && <>{pct(numberValue(s, "top_channel_win_rate"))} win rate, 2018–2024 · </>}most recorded new-logo won amount</>, status: finding("f-channel")?.evidence_status ?? "Observed", tone: "neutral" });
   if (has("zero_amount_win_mrr")) tiles.push({ key: "mrr", label: "MRR on wins recorded at $0", value: `${money(numberValue(s, "zero_amount_win_mrr"))}/mo`, context: <>{has("zero_amount_wins") && has("won") ? <>{formatCount(numberValue(s, "zero_amount_wins"))} of {formatCount(numberValue(s, "won"))} wins carry no amount; </> : null}shown beside won amount, never added</>, status: finding("f-value")?.evidence_status ?? "Observed", tone: "neutral" });
   if (withdrawnCaveat) tiles.push({ key: "model", label: "Win-probability model", value: "Withdrawn", context: <>Holdout was near chance, so no deal scores are published</>, status: "Not used", tone: "neutral" });
   if (!tiles.length) return null;

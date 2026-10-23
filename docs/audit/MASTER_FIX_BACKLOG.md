@@ -1,5 +1,7 @@
 # Master fix backlog
 
+> **Historical snapshot.** This report records the state of the project when it was written. The working logs, scratch scripts and notes it referenced were removed in the repository cleanup and remain available in git history (commit `4f14d8d`). Current status is in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+
 Updated 2026-10-03. **Single consolidated repair ledger.** Duplicates from the project-wide audit, nitpick audit and existing backlog are merged into root-cause work items. No application changes are made by this document.
 
 Status after authorized repairs: **49 items closed locally;5 implemented with acceptance/policy dependencies open;5 external-input/source items open.** Unchecked does not mean untouched; read each closure note. **Confirmed** means demonstrated source/data/browser evidence; **risk** needs an edge-case regression reproduction; **polish** is a proposal; **Needs input/source data** must not be resolved by inventing facts. Prior repaired items are retained as regression requirements, not reopened automatically.
@@ -803,14 +805,14 @@ Canonical nondeleted selection, opportunity-window-before-weekly-compression ord
 
 ## Sources and reference key
 
-- [Project-wide audit](C:/Users/andre/Downloads/Datathon/audit/PROJECT_WIDE_AUDIT.md)
-- [50-item nitpick audit](C:/Users/andre/Downloads/Datathon/audit/NITPICK_AUDIT.md) — N1–N50 refer to its numbered items.
-- [Numerical notes](C:/Users/andre/Downloads/Datathon/audit/followup-numbers.md)
-- [Engineering notes](C:/Users/andre/Downloads/Datathon/audit/followup-engineering.md) — E1–E10.
-- [Frontend notes](C:/Users/andre/Downloads/Datathon/audit/followup-ui.md)
-- [Interaction nitpicks](C:/Users/andre/Downloads/Datathon/audit/nitpicks-interactions.md) — I01–I21.
-- [Copy nitpicks](C:/Users/andre/Downloads/Datathon/audit/nitpicks-copy.md)
-- [Prior repair verification](C:/Users/andre/Downloads/Datathon/audit/REPAIR_VERIFICATION.md)
+- [Project-wide audit](PROJECT_WIDE_AUDIT.md)
+- `50-item nitpick audit` — N1–N50 refer to its numbered items.
+- `Numerical notes`
+- `Engineering notes` — E1–E10.
+- `Frontend notes`
+- `Interaction nitpicks` — I01–I21.
+- `Copy nitpicks`
+- `Prior repair verification`
 
 The older reports remain evidence snapshots. This file is the working backlog. The 320px overflow and 42px deck-target findings qualify the earlier sampled mobile acceptance; they must not be lost during consolidation.
 

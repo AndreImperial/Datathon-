@@ -1,5 +1,7 @@
 # Consolidated repair verification
 
+> **Historical snapshot.** This report records the state of the project when it was written. The working logs, scratch scripts and notes it referenced were removed in the repository cleanup and remain available in git history (commit `4f14d8d`). Current status is in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+
 2026-10-03. User-approved implementation in the existing local checkout. Snapshot **386ea2031409f547**, analytical method **v3.2**. No commit, push, deployment, access change or repository-history cleanup performed.
 
 ## Outcome and closure
@@ -10,14 +12,14 @@ Implemented analytical coverage, null costs and matched observation windows, dis
 
 ## Fresh verification
 
-- Complete source cleaning→integration→core analysis→attribution→advanced analysis→v3 contract→legacy archive→React production build→semantic validation passed: [FIX_PIPELINE_FINAL.log](FIX_PIPELINE_FINAL.log). Earlier attempts exposed timezone-aware Excel export incompatibility and a transient Windows write-handle error; ISO timestamp export corrected, full rerun passed.
-- Final Python suite: **41 tests passed**, including canonical/as-of/tie-credit prior repairs, new motion/cost/web/identity/calibration/duration fixtures, unavailable-model behavior, schema drift, malformed/empty/private contracts and missing lazy assets. [FIX_TESTS_FINAL.log](FIX_TESTS_FINAL.log).
-- Final frontend suite: **16 tests passed**. Typed units/sorting/missing states/formula escaping/CSV provenance; atomic sequence navigation/event-time timers/route and storage validation; DOM native Space/PageDown, modal Escape/inertness, hash synchronization and attribution lookback. [FIX_FRONTEND_TESTS.log](FIX_FRONTEND_TESTS.log).
-- Final production build and TypeScript compilation passed after integration edits: [FIX_BUILD_FINAL.log](FIX_BUILD_FINAL.log). Vite warns about a large chart-library chunk; chunk size alone is not a runtime failure.
-- Final semantic contract validation passed:16 main+6 appendix slides,22 v3 datasets and snapshot386ea2031409f547. [FIX_VALIDATION_FINAL.log](FIX_VALIDATION_FINAL.log).
+- Complete source cleaning→integration→core analysis→attribution→advanced analysis→v3 contract→legacy archive→React production build→semantic validation passed: `FIX_PIPELINE_FINAL.log`. Earlier attempts exposed timezone-aware Excel export incompatibility and a transient Windows write-handle error; ISO timestamp export corrected, full rerun passed.
+- Final Python suite: **41 tests passed**, including canonical/as-of/tie-credit prior repairs, new motion/cost/web/identity/calibration/duration fixtures, unavailable-model behavior, schema drift, malformed/empty/private contracts and missing lazy assets. `FIX_TESTS_FINAL.log`.
+- Final frontend suite: **16 tests passed**. Typed units/sorting/missing states/formula escaping/CSV provenance; atomic sequence navigation/event-time timers/route and storage validation; DOM native Space/PageDown, modal Escape/inertness, hash synchronization and attribution lookback. `FIX_FRONTEND_TESTS.log`.
+- Final production build and TypeScript compilation passed after integration edits: `FIX_BUILD_FINAL.log`. Vite warns about a large chart-library chunk; chunk size alone is not a runtime failure.
+- Final semantic contract validation passed:16 main+6 appendix slides,22 v3 datasets and snapshot386ea2031409f547. `FIX_VALIDATION_FINAL.log`.
 - Fresh Flask test-client readiness:HTTP200, all required contracts/archive/favicon/index/imported assets ready. Public JSON recursively rejects identifying opportunity/account/contact fields; scores are10 histogram rows, not411 identifiable active records.
-- `git diff --check` passed; line-ending conversion notices only. [FIX_DIFF_CHECK.log](FIX_DIFF_CHECK.log).
-- Offline CSV produced by the same serializer used by the UI:12 channel rows, exact snapshot/units/source, numeric visible order, explicit period inputs. Parsed and reconciled independently: [FIX_EXPORT_SAMPLE.csv](FIX_EXPORT_SAMPLE.csv). The in-app browser's native download-event inspection timed out, so native save/readback is not claimed verified.
+- `git diff --check` passed; line-ending conversion notices only. `FIX_DIFF_CHECK.log`.
+- Offline CSV produced by the same serializer used by the UI:12 channel rows, exact snapshot/units/source, numeric visible order, explicit period inputs. Parsed and reconciled independently: `FIX_EXPORT_SAMPLE.csv`. The in-app browser's native download-event inspection timed out, so native save/readback is not claimed verified.
 
 ## Browser evidence
 
@@ -38,8 +40,8 @@ At320px, both dashboard and deck:document clientWidth305=scrollWidth305. Deck he
 
 CI/Pages and multi-stage Render/Docker gates are implemented but have not run remotely or in Docker. Public-artifact checks do not sanitize private Git history or establish publication rights. Historical PPTX remains explicitly archived and its old generators are disabled.
 
-`npm audit` additionally reports a high-severity development-tooling advisory in the Tailwind3→glob/braces chain, with npm suggesting a breaking Tailwind4 migration. No compatible patched braces version was reported by the audit. This is recorded in [FIX_NPM_AUDIT.json](FIX_NPM_AUDIT.json); no forced incompatible migration or security-clean claim. The static public runtime does not expose the development glob toolchain.
+`npm audit` additionally reports a high-severity development-tooling advisory in the Tailwind3→glob/braces chain, with npm suggesting a breaking Tailwind4 migration. No compatible patched braces version was reported by the audit. This is recorded in `FIX_NPM_AUDIT.json`; no forced incompatible migration or security-clean claim. The static public runtime does not expose the development glob toolchain.
 
 ## Supporting receipts
 
-[Analytical fixes](FIX_ANALYTICS_RECEIPT.md), [frontend fixes](FIX_FRONTEND_RECEIPT.md), [release fixes](FIX_RELEASE_RECEIPT.md), [execution rulings](FIX_EXECUTION.md). Independent reviewer findings were addressed:period fields lost in export, field-unit errors, empty readiness contracts and focused-modal Escape. Prior audit documents remain historical evidence snapshots.
+`Analytical fixes`, `frontend fixes`, `release fixes`, `execution rulings`. Independent reviewer findings were addressed:period fields lost in export, field-unit errors, empty readiness contracts and focused-modal Escape. Prior audit documents remain historical evidence snapshots.

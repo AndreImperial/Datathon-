@@ -6,11 +6,11 @@ import pandas as pd
 def check_source_schema(root):
     root = Path(root)
     expected = json.loads((root / "source_schema.json").read_text(encoding="utf-8"))["sources"]
-    actual_files = {file.name for file in (root / "Analytics Case Study").glob("*.xlsx")}
+    actual_files = {file.name for file in (root / "data" / "raw").glob("*.xlsx")}
     if actual_files != set(expected):
         raise ValueError("Source file inventory drift: review source_schema.json against authoritative supplied files")
     for name, sheets in expected.items():
-        with pd.ExcelFile(root / "Analytics Case Study" / name) as book:
+        with pd.ExcelFile(root / "data" / "raw" / name) as book:
             if set(book.sheet_names) != set(sheets):
                 raise ValueError(f"Source sheet drift: {name}; review schema baseline")
             for sheet, columns in sheets.items():

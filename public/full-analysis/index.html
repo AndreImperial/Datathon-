@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>Marketing Analytics Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
 <script>/**
 * plotly.js v3.5.0
 * Copyright 2012-2026, Plotly, Inc.
@@ -4601,7 +4602,7 @@ return Plotly;
     </div>
   </header>
   <div class="status-strip" aria-label="Dashboard generation status">
-    <span class="status-chip"><i data-lucide="check-circle-2" aria-hidden="true"></i>Validated data · Oct 23, 2026 04:07 PM</span>
+    <span class="status-chip"><i data-lucide="check-circle-2" aria-hidden="true"></i>Validated data · Oct 23, 2026 08:58 PM</span>
     <span class="status-chip"><i data-lucide="database" aria-hidden="true"></i>3,245 opportunities · 8 datasets</span>
   </div>
   <details class="data-health">
@@ -4910,7 +4911,7 @@ return Plotly;
   <div id="s-segment" class="section">
     <h2 class="section-title">Segment & ICP Analysis</h2>
     <div class="section-desc">Which account segments and industries have the most pipeline and highest win rates - your best ABM targeting zones.</div>
-    <div class="section-takeaway"><strong>Segment takeaway:</strong> The best targeting decision balances revenue potential with win probability, not just the largest deal size. <span class="evidence-badge green">Commercial + Strong Fit wins most often</span></div>
+    <div class="section-takeaway"><strong>Segment takeaway:</strong> The best targeting decision balances revenue potential with win rate, not just the largest deal size. <span class="evidence-badge green">Commercial + Strong Fit wins most often</span></div>
     <div class="context-box">
       <strong>What is a "Segment" here?</strong> The CRM segment field groups opportunities into Commercial, Mid, and Enterprise markets. It is not a 6sense buying-stage label. The profile-fit field is analyzed separately, and win rates use resolved opportunities only.
     </div>
@@ -5021,7 +5022,7 @@ return Plotly;
   <!-- Advanced Analytics -->
   <div id="s-advanced" class="section">
     <h2 class="section-title">Advanced Analytics</h2>
-    <div class="section-desc">Account coverage gap, deal velocity, journey sequences, and targeting matrix. A calendar-only win-probability baseline was withdrawn after a near-chance holdout (AUC about 0.52, no predicted wins).</div>
+    <div class="section-desc">Account coverage gap, deal velocity, journey sequences, and targeting matrix. A calendar-only win-probability baseline was withdrawn after a near-chance holdout that predicted no wins.</div>
     <div class="section-takeaway"><strong>Advanced takeaway:</strong> Coverage and targeting evidence point to the same action: focus sales and marketing on high-fit accounts that are not yet fully activated. <span class="evidence-badge orange">67.7% unreached</span></div>
     <div class="context-box">
       <strong>What makes this section different:</strong> Standard marketing analytics tells you what happened. This section adds coverage, velocity and targeting evidence; none of it establishes causal priority.
@@ -5134,9 +5135,9 @@ return Plotly;
         <button class="action-button" type="button" onclick="showAppendixSection('s-budget')"><i data-lucide="circle-dollar-sign" aria-hidden="true"></i><span>Open</span></button>
       </div>
       <div class="priority-card">
-        <div class="priority-tag">Modeling</div>
+        <div class="priority-tag">Diagnostics</div>
         <h3>Advanced Analytics</h3>
-        <p>Win probability, deal velocity, journey, and targeting matrix detail.</p>
+        <p>Account coverage, deal velocity, journey and targeting matrix detail.</p>
         <button class="action-button" type="button" onclick="showAppendixSection('s-advanced')"><i data-lucide="brain-circuit" aria-hidden="true"></i><span>Open</span></button>
       </div>
     </div>

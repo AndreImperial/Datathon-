@@ -33,7 +33,7 @@ class CaseRepairTests(unittest.TestCase):
         self.assertAlmostEqual(result['total_effect_pp'].sum(), 50)
 
     def test_appendix_has_evidence_and_topic_specific_methods(self):
-        summary = {'opportunities': 3245, 'resolved': 2834, 'won': 1070, 'eligible_domains': 2032, 'linked_365': 684}
+        summary = {'opportunities': 3245, 'resolved': 2834, 'won': 1070, 'eligible_domains': 2034, 'linked_365': 684}
         slides = case.build_appendix(summary)
         self.assertEqual(len(slides), 6)
         self.assertTrue(all(len(s['body'].split()) >= 18 and s['chart_refs'] for s in slides))

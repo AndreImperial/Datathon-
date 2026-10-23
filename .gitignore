@@ -17,18 +17,9 @@ vite.config.d.ts
 # Temp Office lock files
 ~$*
 
-# Old pptx versions (the canonical deck has no version suffix)
-outputs/presentation/Marketing_Analytics_Executive_Deck_v2.pptx
-outputs/presentation/Marketing_Analytics_Executive_Deck_v3.pptx
-outputs/presentation/Marketing_Analytics_Executive_Deck_v4.pptx
-outputs/presentation/rendered/
-*.pptx.inspect.ndjson
-
-# Original briefing deck (large, not needed)
-Analytics - Case Study.pptx
-
-# Throwaway local package installs used during audit runs
-audit/python-deps/
+# Retired PowerPoint outputs and the original briefing deck
+outputs/presentation/
+*.pptx
 
 # Agent worktrees and local Claude Code state
 .claude/
