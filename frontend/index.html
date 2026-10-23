@@ -9,7 +9,8 @@
     <meta name="color-scheme" content="dark" />
     <title>Revenue Command Center · Decision Analytics</title>
     <!-- Paint the dark canvas before the stylesheet arrives so the first frame never flashes white. -->
-    <style>html, body { background: #070708; color: #f7f4f4; }</style>
+    <!-- Unlayered, so it outranks styles.css (@layer utilities): print needs its own light override here. -->
+    <style>html, body { background: #070708; color: #f7f4f4; } @media print { html, body { background: #fff; color: #151515; } .skip-link { display: none; } }</style>
   </head>
   <body>
     <noscript><p style="margin: 48px auto; max-width: 52ch; padding: 0 16px; font: 14px/1.6 system-ui, sans-serif;">The Revenue Command Center needs JavaScript to render its validated evidence. The static analysis archive is available at <a href="./full-analysis/" style="color: #ff7b84;">full-analysis/</a>.</p></noscript>

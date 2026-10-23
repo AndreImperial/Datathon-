@@ -1,4 +1,4 @@
-import { compareValues, serializeEvidenceCsv, formatField, fieldUnit, columnLabel, formatCount, formatDollarsCompact, formatPercent } from "./evidence";
+import { compareValues, serializeEvidenceCsv, formatField, fieldUnit, columnLabel, formatCount, formatDollarsCompact, formatPercent, listPhrase, topRows } from "./evidence";
 import { displayName } from "./labels";
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -219,7 +219,27 @@ function sectionCopy(id: SectionId, data: DashboardData, n: StoryNumbers): Secti
   }
 }
 
-const explain: Record<string, { title: string; body: ReactNode; insight: string }> = {
+/*
+ * Explanation copy that quotes a figure reads it from the loaded contract, so a
+ * data refresh can never leave a stale number in the prose. Static strings may
+ * still use {metric_key} placeholders (see interpolate).
+ */
+type Copy<T> = T | ((data: DashboardData) => T);
+const resolveCopy = <T,>(copy: Copy<T>, data: DashboardData): T => (typeof copy === "function" ? (copy as (data: DashboardData) => T)(data) : copy);
+
+// CRM categories that are not marketing programmes; mirrors the chart's split (Charts.tsx).
+const NON_MARKETING_CHANNELS = new Set(["other", "existing_client", "referral"]);
+const channelRows = (data: DashboardData, chartId: string) => data.chart_data?.[chartId] ?? data.datasets.channel_pipeline;
+/** "A at $1.5M, B at $1.1M, and C at $678K" for the largest channels by `key`. */
+function channelLeaders(data: DashboardData, chartId: string, key: string, limit: number, keep: (row: DataRow) => boolean = () => true): { count: number; phrase: string } {
+  const rows = topRows(channelRows(data, chartId), key, limit, keep);
+  return { count: rows.length, phrase: listPhrase(rows.map((row) => `${displayName(textValue(row, "channel_category"))} at ${money(numberValue(row, key))}`)) };
+}
+/** Channels whose media spend is tracked, as display names. */
+const trackedSpendChannels = (data: DashboardData) => data.datasets.channel_pipeline.filter((row) => textValue(row, "spend_measurement_status") === "tracked").map((row) => displayName(textValue(row, "channel_category")));
+const countWord = (value: number) => ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"][value] ?? formatCount(value);
+
+const explain: Record<string, { title: string; body: Copy<ReactNode>; insight: Copy<string> }> = {
   "c-essential-contribution": {
     title: "What this shows - Marketing Contribution vs Total Pipeline",
     body: <>Sourced credit is the CRM origin field. Influenced credit captures classified email or 6sense presence in an eligible pre-opportunity journey. The two totals use different definitions and populations.<br /><br /><strong>Read the bars against total pipeline:</strong> sourced credit is conservative CRM origin; influenced credit is the linked subset of classified journeys. The influenced total is not a full-population or causal lift estimate.</>,
@@ -238,12 +258,20 @@ const explain: Record<string, { title: string; body: ReactNode; insight: string 
   "c-bar-channel": {
     title: "What this shows - Pipeline by Channel",
     body: <>Each bar is the recorded amount of opportunities—won, lost, discontinued, and active—grouped by CRM lead source. Relationship-led sources provide the revenue base; marketing sources show where net-new pipeline enters the record.<br /><br /><strong>Decision use:</strong> compare scale first, then check resolution, win rate, and amount completeness before judging channel quality.</>,
-    insight: "6Sense Channel ($1.5M), Web Inbound ($1.1M), and Event ($678K) are the largest named marketing sources by recorded pipeline. Treat that ordering as a starting point for investigation, not a causal leaderboard.",
+    insight: (data) => {
+      const leaders = channelLeaders(data, "c-bar-channel", "total_pipeline", 3, (row) => !NON_MARKETING_CHANNELS.has(textValue(row, "channel_category")));
+      const lead = leaders.count ? `By recorded pipeline, the largest named marketing ${leaders.count === 1 ? "source is" : "sources are"} ${leaders.phrase}. ` : "";
+      return `${lead}Treat that ordering as a starting point for investigation, not a causal leaderboard.`;
+    },
   },
   "c-donut-won": {
     title: "What this shows - Won Revenue by Channel",
     body: <>This view shows recorded won amount by CRM lead source; only sources with a positive won amount appear.<br /><br /><strong>Decision use:</strong> separate the relationship-led revenue base from the acquisition channels expected to create future pipeline. The chart describes recorded outcomes, not incremental channel value.</>,
-    insight: "Other ($2.5M won) and Existing Client ($1.2M won) are the largest recorded won-revenue channels. Judge marketing channels with pipeline maturity and conversion timing in view.",
+    insight: (data) => {
+      const leaders = channelLeaders(data, "c-donut-won", "won_pipeline", 2);
+      const lead = leaders.count ? `The largest recorded won-revenue ${leaders.count === 1 ? "channel is" : "channels are"} ${leaders.phrase}. ` : "";
+      return `${lead}Judge marketing channels with pipeline maturity and conversion timing in view.`;
+    },
   },
   "c-monthly-trend": {
     title: "What this shows - Pipeline Created by Month",
@@ -268,7 +296,10 @@ const explain: Record<string, { title: string; body: ReactNode; insight: string 
   "c-spend-pipeline": {
     title: "What this shows - Tracked-Spend ROI",
     body: <>Each point compares return multiples for channels with tracked spend. Pipeline and recorded-won multiples use opportunities created within each platform’s observed spend window. All-history totals are separate.<br /><br /><strong>Why only some channels appear:</strong> only channels with tracked ad spend show up. Referral and Existing Client have unmeasured media spend, not a measured zero. Longer distances from zero mean more recorded pipeline or won revenue per tracked-spend dollar.</>,
-    insight: "Only 6sense_display and linkedin have tracked spend, so use this to choose where to investigate marginal spend — it is not a full marketing budget model.",
+    insight: (data) => {
+      const tracked = trackedSpendChannels(data);
+      return `${tracked.length ? `Only ${listPhrase(tracked)} ${tracked.length === 1 ? "has" : "have"} tracked spend, so use` : "Use"} this to choose where to investigate marginal spend — it is not a full marketing budget model.`;
+    },
   },
   "c-funnel": {
     title: "What this shows - Channel Activity Volumes",
@@ -287,7 +318,7 @@ const explain: Record<string, { title: string; body: ReactNode; insight: string 
   },
   "c-creative-ctr": {
     title: "What this shows - High-Volume Creative CTR Within Platform",
-    body: <>CTR is clicks divided by impressions. LinkedIn and 6sense are ranked separately because their delivery mechanics and baselines differ; only ads with at least 10,000 impressions appear.<br /><br /><strong>Decision use:</strong> carry the strongest observed ads into a controlled comparison. Do not infer which format, message, tone, or CTA caused the result unless the variants isolate that one difference.</>,
+    body: <>CTR is clicks divided by impressions. LinkedIn and 6sense are ranked separately because their delivery mechanics and baselines differ; only high-volume ads above the impression threshold in the chart subtitle appear.<br /><br /><strong>Decision use:</strong> carry the strongest observed ads into a controlled comparison. Do not infer which format, message, tone, or CTA caused the result unless the variants isolate that one difference.</>,
     insight: "Use the highest-CTR ads as test candidates, then isolate creative variables before shifting budget or declaring a format winner.",
   },
   "c-creative-attr": {
@@ -297,7 +328,7 @@ const explain: Record<string, { title: string; body: ReactNode; insight: string 
   },
   "c-email-seniority": {
     title: "What this shows - Email Engagement-Event Mix by Job Seniority",
-    body: <>The supplied email file contains 17,130 engagement events across 5,557 people. It does not contain sent or delivered counts. Click-event share is click rows divided by all recorded engagement rows for the seniority group. This is event composition, not a send-based click rate.<br /><br /><strong>How to use it:</strong> treat a higher click-event share as a hypothesis for message relevance. Acquire delivery denominators before judging subject lines, true open rates, or true click-through rates.</>,
+    body: (data) => <>The supplied email file contains {metric(data, "email_events")} engagement events across {metric(data, "email_people")} people. It does not contain sent or delivered counts. Click-event share is click rows divided by all recorded engagement rows for the seniority group. This is event composition, not a send-based click rate.<br /><br /><strong>How to use it:</strong> treat a higher click-event share as a hypothesis for message relevance. Acquire delivery denominators before judging subject lines, true open rates, or true click-through rates.</>,
     insight: "The current log can rank engagement composition, but it cannot measure campaign reach or send-based effectiveness.",
   },
   "c-budget-scenario": {
@@ -323,12 +354,18 @@ const explain: Record<string, { title: string; body: ReactNode; insight: string 
   "c-targeting-matrix": {
     title: "What this shows - ABM Targeting Priority Matrix",
     body: <>This win-rate heatmap crosses CRM segment with current 6sense profile fit. Every cell includes its resolved-deal count; cells below 30 are explicitly exploratory.<br /><br /><strong>Decision use:</strong> prioritize cells only when conversion history, sample size, and an eligible current audience align. Low-sample cells remain exploratory regardless of color.</>,
-    insight: "Commercial + Strong Fit combines strong historical conversion with a larger resolved sample. Treat fit as a current-snapshot association, not proof of historical targeting effectiveness.",
+    insight: (data) => {
+      // The leading cell is the highest adjusted win rate among decision-grade (n >= 30) cells.
+      const rows = data.chart_data?.["c-targeting-matrix"] ?? data.datasets.targeting;
+      const [best] = topRows(rows, "adjusted_win_rate", 1, (row) => textValue(row, "evidence_tier") === "decision-grade");
+      const lead = best ? `${textValue(best, "segment__c")} + ${textValue(best, "accountprofilefit6sense__c")} Fit has the highest adjusted win rate among decision-grade cells (${pct(numberValue(best, "adjusted_win_rate"))} across ${formatCount(numberValue(best, "resolved_deals"))} resolved deals). ` : "";
+      return `${lead}Treat fit as a current-snapshot association, not proof of historical targeting effectiveness.`;
+    },
   },
   "c-cohort": {
     title: "What this shows - Pipeline Cohort Analysis by Quarter",
     body: <>Blue bars show pipeline created each quarter. The quality panel shows closed-deal win rate and resolved share so newer cohorts are not treated as mature evidence. The resolved-share line explains why recent cohorts remain provisional until they cross the 80% maturity gate.</>,
-    insight: "Among mature cohorts, closed-deal win rate moved from 38% in 2022Q1 to 22% in 2024Q2. Investigate whether the decline reflects ICP fit, qualification, or source mix; do not treat unresolved recent cohorts as equivalent to fully matured cohorts.",
+    insight: "Among mature cohorts, closed-deal win rate moved from {cohort_start_win_rate} in {cohort_start_quarter} to {cohort_end_win_rate} in {cohort_end_quarter}. Investigate whether the decline reflects ICP fit, qualification, or source mix; do not treat unresolved recent cohorts as equivalent to fully matured cohorts.",
   },
 };
 
@@ -459,7 +496,7 @@ function ChartCard({ id, metadata, data, totalPipeline, coverageMix, presenting 
         {caveat ? <p className="chart-caveat"><CircleAlert size={13} aria-hidden="true" /><span><span className="sr-only">Caveat: </span>{caveat}</span></p> : <span />}
         {info && <button type="button" className="text-button" aria-expanded={details} aria-controls={explanationId} onClick={() => setDetails((value) => !value)}>{details ? "Hide explanation" : "What this shows"}<span className="sr-only">: {title}</span><ChevronDown className={details ? "rotate" : ""} size={14} aria-hidden="true" /></button>}
       </div>
-      {info && details && <div className="explanation-body" id={explanationId}><p>{info.body}</p><div className="insight"><Sparkles size={14} />{interpolate(info.insight, data)}</div></div>}
+      {info && details && <div className="explanation-body" id={explanationId}><p>{resolveCopy(info.body, data)}</p><div className="insight"><Sparkles size={14} aria-hidden="true" />{interpolate(resolveCopy(info.insight, data), data)}</div></div>}
     </div>}
     {table && <DataTable id={tableId} rows={chartRows} label={`${title} data`} provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: metadata?.source_dataset ?? "Unavailable", scope: subtitle, methodology: data.meta.methodology, caveat: metadata?.caveat ?? "" }} />}
     {presenting && <span className="presentation-mark" aria-hidden="true">Evidence</span>}
@@ -499,7 +536,7 @@ function LatestFindings({ brief, data }: { brief: LatestBrief; data: DashboardDa
   if (withdrawnCaveat) tiles.push({ key: "model", label: "Win-probability model", value: "Withdrawn", context: <>Holdout was near chance, so no deal scores are published</>, status: "Not used", tone: "neutral" });
   if (!tiles.length) return null;
   return <section className="latest-findings" aria-labelledby="latest-findings-title">
-    <div className="latest-findings-head"><div><span className="latest-kicker">Evidence{brief.methodVersion && ` · ${brief.methodVersion}`}</span><h2 id="latest-findings-title">Four findings behind the decision</h2></div><a className="text-button latest-deck-link" href="#present/main-01">Walk through the findings deck <ArrowRight size={14} aria-hidden="true" /></a></div>
+    <div className="latest-findings-head"><div><span className="latest-kicker">Evidence{brief.methodVersion && ` · ${brief.methodVersion}`}</span><h2 id="latest-findings-title">{countWord(tiles.length)} finding{tiles.length === 1 ? "" : "s"} behind the decision</h2></div><a className="text-button latest-deck-link" href="#present/main-01">Walk through the findings deck <ArrowRight size={14} aria-hidden="true" /></a></div>
     <dl className="latest-findings-grid">{tiles.map((tile) => <div key={tile.key} className={`latest-tile tone-${tile.tone}`}><dt>{tile.label}</dt><dd className="latest-value">{tile.value}</dd><dd className="latest-context">{tile.context}</dd><dd className="latest-status">{tile.status}</dd></div>)}</dl>
   </section>;
 }
@@ -688,7 +725,7 @@ function ChannelSection({ data, metadata, presenting, totalPipeline, coverageMix
     <EvidenceGrid items={[{ label: "Recorded outcome", title: "Relationship-led revenue is the strongest base", body: <>Existing-client and referral sources lead recorded won outcomes, so the current revenue story is broader than paid media.</>, tone: "high" }, { label: "Acquisition role", title: "Marketing channels build net-new pipeline", body: <>Judge acquisition channels through pipeline creation, later conversion and time-to-close together.</>, tone: "medium" }, { label: "Decision gate", title: "Separate quality from volume", body: <>Increase spend only when added reach creates incremental qualified opportunities, not simply more activity.</>, tone: "directional" }]} />
     <EvidenceTable title="Channel ROI Summary Table" note="Multiples = same-period recorded sourced pipeline or won amount / tracked spend. Channels without measured media spend remain unavailable rather than being assigned a zero-cost return." columns={table.columns} rows={rows} />
     <EvidenceDetails title="Period-matched efficiency inputs and observation windows" count={efficiencyRows.length}><DataTable id="period-matched-efficiency" provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: "channel_pipeline", scope: data.meta.period, methodology: data.meta.methodology }} label="Period-matched efficiency inputs and observation windows" rows={efficiencyRows} hideKeys={ratioDefinition ? ["ratio_definition"] : []} note={ratioDefinition ? <>Ratio definition: {ratioDefinition}.</> : undefined} isEmptyRow={(row) => Object.entries(row).every(([key, value]) => efficiencyLabelKeys.includes(key) || isMissing(value))} emptyRowNoun="channels" /></EvidenceDetails>
-    <ReadingNote><strong>Decision use:</strong> multiples compare same-period recorded CRM-sourced pipeline or won amount with tracked ad spend. Only two paid channels have tracked spend, so treat these as diagnostic efficiency ratios, not an incremental ROI ranking. <strong>Avg Deal</strong> uses opportunities with a populated amount.</ReadingNote>
+    <ReadingNote><strong>Decision use:</strong> multiples compare same-period recorded CRM-sourced pipeline or won amount with tracked ad spend. {(() => { const tracked = trackedSpendChannels(data).length; return tracked ? `Only ${countWord(tracked).toLowerCase()} paid channel${tracked === 1 ? " has" : "s have"} tracked spend, so treat` : "No paid channel has tracked spend, so treat"; })()} these as diagnostic efficiency ratios, not an incremental ROI ranking. <strong>Avg Deal</strong> uses opportunities with a populated amount.</ReadingNote>
   </section>;
 }
 
@@ -808,6 +845,8 @@ function LegacyDashboard() {
   const utilityMenu = useRef<HTMLDivElement>(null);
   const utilityTrigger = useRef<HTMLButtonElement>(null);
   const routeHasRendered = useRef(false);
+  const sectionNav = useRef<HTMLElement>(null);
+  const [navMore, setNavMore] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [error, setError] = useState("");
   const [active, setActive] = useState<SectionId>("s-essential");
@@ -945,6 +984,19 @@ function LegacyDashboard() {
     };
   }, [utilityOpen]);
   useEffect(() => {
+    // The section list scrolls inside the drawer on short screens; a bottom fade
+    // and "More sections" cue stay until the last link is in view.
+    const nav = sectionNav.current;
+    if (!nav) return;
+    const update = () => setNavMore(nav.scrollHeight - nav.scrollTop - nav.clientHeight > 4);
+    update();
+    nav.addEventListener("scroll", update, { passive: true });
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(update);
+    observer?.observe(nav);
+    window.addEventListener("resize", update);
+    return () => { nav.removeEventListener("scroll", update); observer?.disconnect(); window.removeEventListener("resize", update); };
+  }, [data, menuOpen, search]);
+  useEffect(() => {
     document.body.style.overflow = menuOpen || caveatsOpen ? "hidden" : "";
     return () => { document.body.style.overflow = ""; };
   }, [menuOpen, caveatsOpen]);
@@ -1018,6 +1070,20 @@ function LegacyDashboard() {
     setPresenting((value) => !value);
     if (state) window.requestAnimationFrame(() => Flip.from(state, { duration: 0.32, ease: "power2.out", nested: true, absolute: false }));
   };
+  // Render every section, give lazy charts a moment to measure, then print.
+  // The view returns to the single section on afterprint (see the effect
+  // above). Browsers whose print() returns before printing finishes never block
+  // here, so the view also returns on the next pointer or key press instead of
+  // a fixed timer that could fire while the print snapshot is still pending.
+  const printAllSections = () => {
+    setPrintAll(true);
+    window.setTimeout(() => {
+      window.print();
+      const reset = () => { setPrintAll(false); window.removeEventListener("pointerdown", reset); window.removeEventListener("keydown", reset); };
+      window.addEventListener("pointerdown", reset);
+      window.addEventListener("keydown", reset);
+    }, 400);
+  };
   const story = storyNumbers(brief);
   const props: SectionProps = { data, metadata, presenting, totalPipeline, coverageMix, resetToken, brief, story, onOpen: openSection };
   const renderSection = (id: SectionId) => {
@@ -1034,13 +1100,14 @@ function LegacyDashboard() {
   };
 
   return <div ref={root} className="app-shell">
-    <aside id="dashboard-navigation" className={`sidebar ${menuOpen ? "is-open" : ""}`} role={menuOpen ? "dialog" : undefined} aria-label="Dashboard sections" aria-modal={menuOpen ? "true" : undefined}><div className="brand"><span>RC</span><div><strong>Revenue Command</strong><small>Decision analytics · {data.meta.period}</small></div></div><button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button><div className="nav-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a section" aria-label="Search dashboard sections" />{search && <button type="button" aria-label="Clear section search" onClick={() => setSearch("")}><X size={14} /></button>}</div><nav className="section-nav">{filteredGroups.map((group) => <div className="nav-group" key={group.id}><div className="nav-group-label">{group.icon}<span>{group.label}</span></div>{group.children.map((item) => <a key={item.id} href={`#${item.id}`} className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={(event) => { event.preventDefault(); openSection(item.id); }}><span>{item.label}</span>{active === item.id && <AnimatedNavIndicator />}</a>)}</div>)}</nav>{search.trim() && !hasSearchResults && <p className="nav-empty" role="status">No sections match “{search}”.</p>}<a className="legacy-link" href={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}full-analysis/`}><ExternalLink size={15} /><span><strong>Full analysis archive</strong><small>Original Plotly reference</small></span></a><div className="sidebar-note"><ShieldCheck size={16} /><span>Validated Parquet evidence<br />Schema v{data.schema_version}</span></div></aside>{menuOpen && <button type="button" className="nav-backdrop" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation" />}
-      <main id="main-content" tabIndex={-1}><header className="topbar"><div className="topbar-left"><button ref={menuButton} className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="dashboard-navigation"><Menu size={18} /></button><div><h1>Revenue Command<span className="wide-title"> Center</span></h1><span className="top-context">{activeGroup && activeSection && activeSection.label !== activeGroup.label ? `${activeGroup.label} / ${activeSection.label}` : activeSection?.label ?? activeGroup?.label ?? "Dashboard"} · {data.meta.period}<span className="context-refresh"> · {refreshed} · {metrics.total_opportunities} opportunities</span></span></div></div><div className="top-actions"><span className="validated"><Check size={13} /> Validated snapshot</span><button ref={caveatsTrigger} className="action-button" type="button" title="View data caveats" onClick={() => setCaveatsOpen(true)} aria-haspopup="dialog" aria-expanded={caveatsOpen}><Info size={15} /> Caveats</button><button className="action-button utility-export" type="button" title="Export all evidence" onClick={() => downloadEvidence(data)}><Download size={15} /> Export</button><button className="action-button utility-print" type="button" title="Print all dashboard sections" onClick={() => { setPrintAll(true); window.setTimeout(() => { window.print(); window.setTimeout(() => setPrintAll(false), 1500); }, 120); }}><Printer size={15} /> Print</button><a className="action-button browser-deck-link" href="#present/main-01" title="Open the browser findings deck"><Presentation size={15} /> Findings deck</a><button className={`mode-button ${presenting ? "active" : ""}`} type="button" title={presenting ? "Switch to analyst mode" : "Switch to presentation mode"} onClick={togglePresentation} aria-pressed={presenting}><Presentation size={15} /> {presenting ? "Analyst mode" : "Presentation mode"}</button><button className="icon-button utility-reset" type="button" onClick={() => { setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }} title="Reset dashboard" aria-label="Reset dashboard"><RotateCcw size={16} /></button><div ref={utilityMenu} className="utility-menu-wrap"><button ref={utilityTrigger} className="icon-button utility-more" type="button" aria-label="More dashboard actions" aria-haspopup={undefined} aria-expanded={utilityOpen} aria-controls="utility-menu" onClick={() => setUtilityOpen((value) => !value)}><MoreHorizontal size={18} /></button>{utilityOpen && <div id="utility-menu" className="utility-menu-popover" role="group" aria-label="Dashboard actions"><button type="button"  onClick={() => { downloadEvidence(data); setUtilityOpen(false); }}><Download size={16} /><span><strong>Export evidence</strong><small>Download the full validated dataset</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); setPrintAll(true); window.setTimeout(() => { window.print(); window.setTimeout(() => setPrintAll(false), 1500); }, 120); }}><Printer size={16} /><span><strong>Print dashboard</strong><small>Prepare every section for print</small></span></button><button type="button"  aria-pressed={presenting} onClick={() => { togglePresentation(); setUtilityOpen(false); }}><Presentation size={16} /><span><strong>{presenting ? "Analyst mode" : "Presentation mode"}</strong><small>{presenting ? "Restore the working layout" : "Expand the executive canvas"}</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }}><RotateCcw size={16} /><span><strong>Reset dashboard</strong><small>Return to the essential view</small></span></button></div>}</div></div></header>
+    {/* A div, not <aside>: ARIA forbids role="dialog" on <aside>. Closed it is the complementary landmark; open (mobile) it is a modal dialog. */}
+    <div id="dashboard-navigation" className={`sidebar ${menuOpen ? "is-open" : ""}`} role={menuOpen ? "dialog" : "complementary"} aria-label="Dashboard sections" aria-modal={menuOpen ? "true" : undefined}><div className="brand"><span>RC</span><div><strong>Revenue Command</strong><small>Decision analytics · {data.meta.period}</small></div></div><button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button><div className="nav-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a section" aria-label="Search dashboard sections" />{search && <button type="button" aria-label="Clear section search" onClick={() => setSearch("")}><X size={14} /></button>}</div><div className={`section-nav-scroll${navMore ? " has-more" : ""}`}><nav ref={sectionNav} className="section-nav" aria-label="Section navigation">{filteredGroups.map((group) => <div className="nav-group" key={group.id}><div className="nav-group-label">{group.icon}<span>{group.label}</span></div>{group.children.map((item) => <a key={item.id} href={`#${item.id}`} className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={(event) => { event.preventDefault(); openSection(item.id); }}><span>{item.label}</span>{active === item.id && <AnimatedNavIndicator />}</a>)}</div>)}</nav><span className="nav-more-cue" aria-hidden="true"><ChevronDown size={13} />More sections</span></div>{search.trim() && !hasSearchResults && <p className="nav-empty" role="status">No sections match “{search}”.</p>}<a className="legacy-link" href={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}full-analysis/`}><ExternalLink size={15} /><span><strong>Full analysis archive</strong><small>Original Plotly reference</small></span></a><div className="sidebar-note"><ShieldCheck size={16} /><span>Validated Parquet evidence<br />Schema v{data.schema_version}</span></div></div>{menuOpen && <button type="button" className="nav-backdrop" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation" />}
+      <main id="main-content" tabIndex={-1}><header className="topbar"><div className="topbar-left"><button ref={menuButton} className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="dashboard-navigation"><Menu size={18} /></button><div><h1>Revenue Command<span className="wide-title"> Center</span></h1><span className="top-context">{activeGroup && activeSection && activeSection.label !== activeGroup.label ? `${activeGroup.label} / ${activeSection.label}` : activeSection?.label ?? activeGroup?.label ?? "Dashboard"} · {data.meta.period}<span className="context-refresh"> · {refreshed} · {metrics.total_opportunities} opportunities</span></span></div></div><div className="top-actions"><span className="validated"><Check size={13} /> Validated snapshot</span><button ref={caveatsTrigger} className="action-button" type="button" title="View data caveats" onClick={() => setCaveatsOpen(true)} aria-haspopup="dialog" aria-expanded={caveatsOpen}><Info size={15} /> Caveats</button><button className="action-button utility-export" type="button" title="Export all evidence" onClick={() => downloadEvidence(data)}><Download size={15} /> Export</button><button className="action-button utility-print" type="button" title="Print all dashboard sections" onClick={() => { printAllSections(); }}><Printer size={15} /> Print</button><a className="action-button browser-deck-link" href="#present/main-01" title="Open the browser findings deck"><Presentation size={15} /> Findings deck</a><button className={`mode-button ${presenting ? "active" : ""}`} type="button" title={presenting ? "Switch to analyst mode" : "Switch to presentation mode"} onClick={togglePresentation} aria-pressed={presenting}><Presentation size={15} /> {presenting ? "Analyst mode" : "Presentation mode"}</button><button className="icon-button utility-reset" type="button" onClick={() => { setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }} title="Reset dashboard" aria-label="Reset dashboard"><RotateCcw size={16} /></button><div ref={utilityMenu} className="utility-menu-wrap"><button ref={utilityTrigger} className="icon-button utility-more" type="button" aria-label="More dashboard actions" aria-haspopup={undefined} aria-expanded={utilityOpen} aria-controls="utility-menu" onClick={() => setUtilityOpen((value) => !value)}><MoreHorizontal size={18} /></button>{utilityOpen && <div id="utility-menu" className="utility-menu-popover" role="group" aria-label="Dashboard actions"><button type="button"  onClick={() => { downloadEvidence(data); setUtilityOpen(false); }}><Download size={16} /><span><strong>Export evidence</strong><small>Download the full validated dataset</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); printAllSections(); }}><Printer size={16} /><span><strong>Print dashboard</strong><small>Prepare every section for print</small></span></button><button type="button"  aria-pressed={presenting} onClick={() => { togglePresentation(); setUtilityOpen(false); }}><Presentation size={16} /><span><strong>{presenting ? "Analyst mode" : "Presentation mode"}</strong><small>{presenting ? "Restore the working layout" : "Expand the executive canvas"}</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }}><RotateCcw size={16} /><span><strong>Reset dashboard</strong><small>Return to the essential view</small></span></button></div>}</div></div></header>
       {/* The conclusion restates the big idea in its own hero, so the compact strip would only repeat it. */}
       {active === "s-conclusion" && !printAll ? null : active !== "s-essential" && !printAll ? <section className="command-strip is-compact" aria-label="The big idea"><div className="command-decision"><h2>{BIG_IDEA}</h2></div><dl className="command-inline-kpis"><div><dt>Pipeline</dt><dd>{metrics.total_pipeline}</dd></div><div><dt>Won</dt><dd>{metrics.won_revenue}</dd></div><div><dt>Win rate</dt><dd>{metrics.closed_deal_win_rate}</dd></div></dl></section> : <section className="command-strip" aria-label="The big idea"><div className="command-decision"><span>The big idea</span><h2>{BIG_IDEA}</h2><p>{bigIdeaSupport(data, story)}</p></div><dl className="command-kpis"><div><dt>Recorded pipeline</dt><dd className="kpi-value">{metrics.total_pipeline}</dd><dd className="kpi-context">{metrics.total_opportunities} opportunities, {metrics.data_year_range}</dd></div>{story.openPipeline ? <div><dt>Still open</dt><dd className="kpi-value">{story.openPipeline}</dd><dd className="kpi-context">The rest is already resolved</dd></div> : null}<div><dt>Recorded won</dt><dd className="kpi-value">{metrics.won_revenue}</dd><dd className="kpi-context">{metrics.closed_deal_win_rate} resolved win rate</dd></div><div><dt>Marketing-sourced</dt><dd className="kpi-value">{metrics.marketing_sourced_pipeline}</dd><dd className="kpi-context">{metrics.marketing_sourced_share} of recorded pipeline</dd></div>{story.openPipeline ? null : <div><dt>Marketing-linked</dt><dd className="kpi-value">{metrics.marketing_influenced_pipeline}</dd><dd className="kpi-context">{metrics.attribution_linked_won_share} of wins linked</dd></div>}</dl></section>}
       {(active === "s-essential" || printAll) && <ArcStrip data={data} story={story} onOpen={openSection} />}
       {(active === "s-essential" || printAll) && brief && <LatestFindings brief={brief} data={data} />}
-      <div className="progress-rail" aria-label={`Section ${sectionOrder.indexOf(active) + 1} of ${sectionOrder.length}`}><span style={{ width: "100%", transform: `scaleX(${(sectionOrder.indexOf(active) + 1) / sectionOrder.length})`, transformOrigin: "left center" }} /></div>
+      <div className="progress-rail" role="progressbar" aria-label="Story progress" aria-valuemin={1} aria-valuemax={sectionOrder.length} aria-valuenow={sectionOrder.indexOf(active) + 1} aria-valuetext={`Section ${sectionOrder.indexOf(active) + 1} of ${sectionOrder.length}`}><span style={{ width: "100%", transform: `scaleX(${(sectionOrder.indexOf(active) + 1) / sectionOrder.length})`, transformOrigin: "left center" }} /></div>
       <div className={`section-viewport ${printAll ? "print-all" : ""}`}>{printAll ? sectionOrder.map((id) => <div className="print-section" key={id}>{renderSection(id)}</div>) : <>{renderSection(active)}<SectionPager active={active} onOpen={openSection} /></>}</div>
       <footer><div className="footer-id"><strong>Marketing Analytics Decision System</strong><span>{refreshed}{data.meta.snapshot_id ? ` · Snapshot ${data.meta.snapshot_id}` : ""} · Schema v{data.schema_version}</span></div><p><span className="footer-label">Source</span> {data.meta.generated_from} · {data.meta.methodology}</p><button type="button" className="text-button back-to-top" onClick={() => { window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); document.querySelector<HTMLElement>("#main-content")?.focus({ preventScroll: true }); }}><ArrowUp size={14} aria-hidden="true" /> Back to top</button></footer>
     </main>

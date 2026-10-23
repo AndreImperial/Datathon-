@@ -127,7 +127,13 @@ a { color: inherit; }
 .nav-search input { width: 100%; min-width: 0; height: 36px; border: 0; outline: 0; color: #fff; background: transparent; font-size: 11px; }
 .nav-search input::placeholder { color: #91898a; }
 .nav-empty { margin: 12px 8px 0; color: #d2c9ca; font-size: 11px; line-height: 1.45; }
-.section-nav { display: grid; gap: 16px; margin-top: 18px; overflow: auto; scrollbar-width: thin; scrollbar-color: #514547 transparent; }
+.section-nav-scroll { position: relative; display: flex; min-height: 0; flex-direction: column; margin-top: 18px; }
+.section-nav { display: grid; min-height: 0; gap: 16px; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #514547 transparent; }
+/* Scroll cue: a fade and a "More sections" label while links sit below the fold; both vanish at the end. */
+.section-nav-scroll::after { content: ""; position: absolute; inset: auto 0 0; height: 56px; pointer-events: none; background: linear-gradient(to bottom, rgba(7,7,8,0), var(--nav) 82%); opacity: 0; transition: opacity 180ms var(--ease); }
+.nav-more-cue { position: absolute; bottom: 4px; left: 50%; z-index: 1; display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px 3px 7px; border: 1px solid rgba(255,255,255,.18); border-radius: 999px; color: #ece6e7; background: #1a1517; font-size: 11px; font-weight: 700; white-space: nowrap; pointer-events: none; opacity: 0; transform: translateX(-50%); transition: opacity 180ms var(--ease); }
+.nav-more-cue svg { color: #ff7b84; }
+.section-nav-scroll.has-more::after, .section-nav-scroll.has-more .nav-more-cue { opacity: 1; }
 .nav-group { display: grid; gap: 3px; }
 .nav-group-label { display: flex; align-items: center; gap: 8px; padding: 0 10px 4px; color: #91898a; font-size: 11px; font-weight: 750; letter-spacing: .085em; text-transform: uppercase; }
 .nav-group-label svg { width: 13px; height: 13px; color: #c6b7b9; }
@@ -161,7 +167,8 @@ a { color: inherit; }
 .button { min-height: 38px; padding: 0 13px; }
 .button-small { min-height: 34px; }
 .action-button:hover, .mode-button:hover, .icon-button:hover, .button:hover { border-color: #8d454c; color: var(--blue-dark); background: #281114; box-shadow: 0 6px 16px rgba(0,0,0,.28); }
-.text-button:hover { color: var(--blue); background: var(--surface-tint); }
+/* --azure keeps 4.5:1 on the tinted hover fill (--blue measured 3.9:1). */
+.text-button:hover { color: var(--azure); background: var(--surface-tint); }
 .action-button:active, .mode-button:active, .icon-button:active, .text-button:active, .button:active { transform: translateY(1px); }
 .mode-button { border-color: #d3b5b7; color: var(--blue-dark); background: var(--surface-tint); }
 .mode-button.active { border-color: var(--blue); color: #fff; background: var(--blue); }
@@ -610,6 +617,7 @@ footer p { margin: 0; max-width: 110ch; }
 @media (max-width: 900px) {
   .latest-findings, .skeleton-body { width: calc(100% - 32px); }
   .section-nav a { min-height: 44px; }
+  .section-nav { gap: 10px; }
   .nav-search input { height: 44px; }
   .skeleton-sidebar { display: none; }
 }
@@ -848,4 +856,47 @@ footer p { margin: 0; max-width: 110ch; }
 @media (max-width: 900px) {
   .text-button, .button-small { min-height: 44px; }
   .data-table th button, .sort-button, .rank-card th button { min-height: 44px; }
+}
+
+/*
+ * Print: light paper, ink-only surfaces (dashboard; the deck has its own rules).
+ * Unlayered on purpose so it outranks the dark theme's hard-coded fills above,
+ * which otherwise print as black bands with dark-on-dark text.
+ */
+@media print {
+  @page { margin: 12mm; }
+  :root {
+    --ink-soft: #2a2627; --muted-light: #5f5859; --surface-tint: #fdeef0; --teal-soft: #f2efef;
+    --amber-soft: #fbf0f1; --red-soft: #fdeaec; --nav: #fff; --nav-soft: #fdeef0; --blue-dark: #a90f1b; --azure: #a90f1b;
+  }
+  .app-shell, #main-content { background: #fff; }
+  /* Tables: light header and zebra rows, and fit the page instead of clipping on the right. */
+  .data-table th, .evidence-table th { position: static; color: #2a2627; background: #f2efef; }
+  .data-table tbody tr:nth-child(even), .evidence-table tbody tr:nth-child(even) { background: #f8f6f6; }
+  .data-table, .evidence-table { table-layout: auto; font-size: 9.5px; }
+  /* break-word (not anywhere) keeps whole words as each column's minimum width. */
+  .data-table th, .data-table td, .evidence-table th, .evidence-table td { padding: 4px 5px; overflow-wrap: break-word; hyphens: auto; }
+  .data-table td.text, .evidence-table td.text { min-width: 0; }
+  .data-table th, .evidence-table th { font-size: 9.5px; }
+  .data-table th.numeric, .evidence-table th.numeric, .data-table td.numeric, .evidence-table td.numeric { white-space: normal; }
+  /* Chrome repeats <thead> on each printed page only outside clipping containers. */
+  .evidence-table-card, .data-table-wrap, .table-scroll { overflow: visible !important; }
+  .data-table th button, .sort-button, .rank-card th button { min-height: 0; }
+  .data-table th svg, .sort-button svg, .data-table-top .text-button, .data-table-foot .text-button { display: none; }
+  .quality-tape-head, .table-heading { background: #f6f4f4; }
+  .action-queue-head h3, .command-decision h2, .conclusion-hero h3 { color: #151515; }
+  .action-queue-head span, .conclusion-hero p { color: #454141; }
+  .action-queue-head > strong, .command-decision > span, .tone-risk .latest-value, .chip-red, .priority-tag.red, .section-index, .chart-caveat { color: #a90f1b; }
+  .chip-amber, .priority-tag.amber, .confidence.medium { color: #7a2a32; }
+  .section-index { border-color: #d9a9ae; }
+  .conclusion-hero { color: #151515; background: #fff0f1; box-shadow: inset 0 2px 0 var(--blue); }
+  .hero-label { border-color: #d9a9ae; color: #8f0d18; background: #fff; }
+  .attr-td { background: #f8eef0; }
+  /* Interactive-only controls carry no information on paper. */
+  .appendix-card .button, .nav-more-cue, .skip-link { display: none !important; }
+  /* Each section starts a page; a heading never ends a page alone. */
+  .print-all .print-section { break-before: page; }
+  .print-all .print-section:first-child { break-before: auto; }
+  .section-heading, .section-takeaway, .section-heading h2, .chart-heading, .table-heading, .evidence-details > summary { break-after: avoid; }
+  .evidence-card, .appendix-card, .latest-tile, .decision-card, .conclusion-hero, .command-strip, .reading-note, #main-content > footer { break-inside: avoid; }
 }
