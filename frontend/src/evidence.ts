@@ -89,3 +89,22 @@ export function formatField(key: string, value: unknown): string {
   if (unit.startsWith("recorded dollars")) return formatDollars(value);
   return value.toLocaleString("en-US", { maximumFractionDigits: 3 });
 }
+
+/** Joins names as prose: "A", "A and B", "A, B, and C". */
+export function listPhrase(items: string[]): string {
+  if (items.length <= 1) return items[0] ?? "";
+  if (items.length === 2) return `${items[0]} and ${items[1]}`;
+  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+}
+
+/**
+ * The largest rows by a numeric field, for copy that names leaders ("A ($1.5M)
+ * and B ($1.1M)"). Rows without a positive finite value never rank; ties keep
+ * source order. `keep` filters rows before ranking.
+ */
+export function topRows<T extends Record<string, unknown>>(rows: T[], key: string, limit: number, keep: (row: T) => boolean = () => true): T[] {
+  return rows
+    .filter((row) => keep(row) && typeof row[key] === "number" && Number.isFinite(row[key] as number) && (row[key] as number) > 0)
+    .sort((a, b) => (b[key] as number) - (a[key] as number))
+    .slice(0, limit);
+}
