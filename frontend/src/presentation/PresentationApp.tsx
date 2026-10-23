@@ -7,7 +7,7 @@ import "./deck.css";
 
 import { applyCommand, elapsedAt, initialState, slideFromHash, storageRead, storageWrite, validCommand, validState, type DeckCommand, type SharedState } from "./deckState";
 import { readableSources, SECTIONS, sectionFor } from "./labels";
-import { actionTitle, EvidenceDrawer, evidenceFor, SlideVisual } from "./slides";
+import { actionTitle, BIG_IDEA, EvidenceDrawer, evidenceFor, SlideVisual, transitionFor } from "./slides";
 
 /** First section of the dashboard (App.tsx); used by the exit link and Escape. */
 const DASHBOARD_HASH = "#s-essential";
@@ -16,6 +16,8 @@ const STAGE_W = 1280;
 const STAGE_H = 720;
 /** Below this frame width the slide reflows instead of scaling (phones). */
 const FLOW_BREAKPOINT = 760;
+/** Slides whose authored body only restates the action title and the visual; it stays in the presenter's "Say" note. */
+const BODY_REPEATS_HEADLINE = new Set(["main-02", "main-13", "main-16"]);
 
 const readSession = () => { try { return storageRead(window.sessionStorage, "deck-session"); } catch { return null; } };
 const newSession = () => globalThis.crypto?.randomUUID?.() ?? `deck-${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
@@ -185,7 +187,8 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
         <section className="presenter-clock" aria-label="Timer"><div className="timer"><Clock3 /> {fmt(elapsed / 1000)} <small>/ {fmt(target)}</small></div>{pace ? <p className={`presenter-pace ${pace.tone}`}>{pace.label} <small>· slide {currentIndex + 1} due at {fmt(expected ?? 0)}</small></p> : <p className="presenter-pace">Timer not started</p>}<div className="presenter-progress" aria-hidden="true"><b style={{ width: `${Math.min(100, elapsed / 1000 / target * 100)}%` }} /><i style={{ left: `${expected === null ? 0 : expected / target * 100}%` }} /></div></section>
         <section className="presenter-upnext" aria-label="Next slide"><p>Next · {upcoming ? label(upcoming) : state.sequence === "main" ? "Appendix" : "End"}</p><h2>{upcoming ? headlines.get(upcoming.id) : state.sequence === "main" ? "End of main deck · open the appendix from the overview" : "Last appendix slide"}</h2></section>
       </div>
-      <section className="presenter-notes"><h2>Speaker notes</h2><p><b>Say:</b> {current?.speaker_notes.say}</p><p><b>Do not claim:</b> {current?.speaker_notes.do_not_claim}</p><p><b>Likely question:</b> {current?.speaker_notes.judge_question}</p><p><b>Answer:</b> {current?.speaker_notes.answer}</p>{limits.length > 0 && <><h3>Evidence limits and owners</h3><ul>{limits.map(item => <li key={item}>{item}</li>)}</ul></>}<p className="presenter-sources"><b>Sources:</b> {(current?.speaker_notes.sources.length ? current.speaker_notes.sources : current?.source_footer.split(";").map(s => s.trim()) ?? []).join("; ")} · scope: {current?.scope}</p></section>
+      <p className="presenter-bigidea"><b>Big idea</b> {BIG_IDEA}</p>
+      <section className="presenter-notes"><h2>Speaker notes</h2><p><b>Say:</b> {current?.speaker_notes.say}</p>{current && <p className="presenter-transition"><b>Transition:</b> {transitionFor(data, current, upcoming)}</p>}<p><b>Do not claim:</b> {current?.speaker_notes.do_not_claim}</p><p><b>Likely question:</b> {current?.speaker_notes.judge_question}</p><p><b>Answer:</b> {current?.speaker_notes.answer}</p>{limits.length > 0 && <><h3>Evidence limits and owners</h3><ul>{limits.map(item => <li key={item}>{item}</li>)}</ul></>}<p className="presenter-sources"><b>Sources:</b> {(current?.speaker_notes.sources.length ? current.speaker_notes.sources : current?.source_footer.split(";").map(s => s.trim()) ?? []).join("; ")} · scope: {current?.scope}</p></section>
       <footer><button disabled={connection !== "connected" || currentIndex === 0} onClick={() => command({kind:"previous"})}><ChevronLeft /> Back</button><button disabled={connection !== "connected" || currentIndex === slides.length - 1} className="red" onClick={() => command({kind:"next"})}>Next <ChevronRight /></button>{timerButtons}</footer>
     </main>;
   }
@@ -207,12 +210,12 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
           <div className="deck-slide-head">
             <div className="slide-kicker"><span>{section}</span>{current && headlines.get(current.id) !== current.title && <em>{current.title}</em>}<b>{state.sequence === "main" ? `${String(currentIndex + 1).padStart(2, "0")} / ${main.length}` : `A${currentIndex + 1}`}</b></div>
             <h1>{current ? headlines.get(current.id) : ""}</h1>
-            <p className="slide-body">{current?.body}</p>
+            {current && !BODY_REPEATS_HEADLINE.has(current.id) && <p className="slide-body">{current.body}</p>}
           </div>
           <div className="deck-visual"><div className="deck-visual-inner">{current && <SlideVisual data={data} slide={current} />}</div></div>
           <footer className="deck-slide-foot">
             <p className="slide-caveat">{current?.visible_caveat}</p>
-            <div className="deck-source"><span>Source: {sources.join(" · ")}</span><span title="Data snapshot">Snapshot {data.meta.snapshot_id.slice(0, 7)}</span>{current && <EvidenceDrawer sets={evidenceFor(data, current)} slideTitle={current.title} />}</div>
+            <div className="deck-source"><span title={sources.join(" · ")}>Source: {sources.join(" · ")}</span><span title="Data snapshot">Snapshot {data.meta.snapshot_id.slice(0, 7)}</span>{current && <EvidenceDrawer sets={evidenceFor(data, current)} slideTitle={current.title} />}</div>
           </footer>
         </article>
       </div>
