@@ -44,7 +44,16 @@ export function formatDollarsCompact(value: number): string {
   if (abs >= 1_000) return `${sign}$${Math.round(abs / 1_000)}K`;
   return `${sign}$${Math.round(abs).toLocaleString("en-US")}`;
 }
-const ISO_DATETIME = /^\d{4}-\d{2}-\d{2}(T|\s|$)/;
+/** One percent format for every tile and title: a fraction (0.102) reads "10.2%". */
+export function formatPercent(fraction: number, digits = 1): string {
+  if (!Number.isFinite(fraction)) return "—";
+  return `${(fraction * 100).toFixed(digits)}%`;
+}
+/** One count format for every tile and title: 4426 reads "4,426". */
+export function formatCount(value: number): string {
+  return Number.isFinite(value) ? Math.round(value).toLocaleString("en-US") : "—";
+}
+const ISO_DATETIME =/^\d{4}-\d{2}-\d{2}(T|\s|$)/;
 /** Observation-window bounds read as a month, e.g. "Jan 2023". */
 export function formatMonthYear(value: string): string {
   const parsed = new Date(value);
