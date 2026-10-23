@@ -1,4 +1,4 @@
-import { compareValues, serializeEvidenceCsv, formatField, fieldUnit, columnLabel } from "./evidence";
+import { compareValues, serializeEvidenceCsv, formatField, fieldUnit, columnLabel, formatCount, formatDollarsCompact, formatPercent } from "./evidence";
 import { displayName } from "./labels";
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
 import {
@@ -80,65 +80,144 @@ const sectionGroupLabel = (id: SectionId) => groups.find((group) => group.childr
  * contract predates them, so they are read from the v3 summary row and findings
  * rather than hard-coded; when the v3 file is unavailable the band is omitted.
  */
-interface LatestBrief { summary: DataRow; findings: CaseStudyData["findings"]; methodVersion: string; snapshotId: string; }
+interface LatestBrief {
+  summary: DataRow;
+  findings: CaseStudyData["findings"];
+  recommendations: CaseStudyData["recommendations"];
+  /** 2023–24 new-logo source groups that are ranked, best win rate first. */
+  sourceGroups: DataRow[];
+  scenarios: DataRow[];
+  methodVersion: string;
+  snapshotId: string;
+}
 function toLatestBrief(payload: CaseStudyData): LatestBrief | null {
   const summary = payload.datasets?.summary?.[0];
   if (!summary) return null;
-  return { summary, findings: payload.findings ?? [], methodVersion: payload.meta?.method_version ?? "", snapshotId: payload.meta?.snapshot_id ?? "" };
+  const sourceGroups = (payload.datasets?.source_group_scorecard ?? [])
+    .filter((row) => row.ranked_channel === true && textValue(row, "business_motion") === "Acquisition" && /2023/.test(textValue(row, "scope")) && Number.isFinite(numberValue(row, "win_rate")))
+    .sort((a, b) => numberValue(b, "win_rate") - numberValue(a, "win_rate"));
+  return { summary, findings: payload.findings ?? [], recommendations: payload.recommendations ?? [], sourceGroups, scenarios: payload.datasets?.experiment_scenarios ?? [], methodVersion: payload.meta?.method_version ?? "", snapshotId: payload.meta?.snapshot_id ?? "" };
 }
 
-const copy: Record<SectionId, { title: string; description: string; takeaway: string }> = {
-  "s-essential": {
-    title: "The decision in one view",
-    description: "The evidence points to one disciplined move: protect conversion quality, then expand reach through a controlled account test.",
-    takeaway: "Decision: tighten qualification, test the unreached audience, and use attribution to choose hypotheses—not to claim causality.",
-  },
-  "s-exec": {
-    title: "The revenue story starts with concentration",
-    description: "Recorded pipeline and won revenue show where the business performs today—and where marketing still has to prove future contribution.",
-    takeaway: "Read first: relationship-led channels anchor recorded wins; marketing channels create net-new pipeline whose quality and maturity still need validation.",
-  },
-  "s-attrib": {
-    title: "Influence is visible. Causality is not.",
-    description: "Four attribution models show where tracked channels appear before opportunities, within the subset the marketing logs can observe.",
-    takeaway: "Use attribution to frame channel roles: report CRM source and linked-journey credit separately, then validate lift with a controlled test.",
-  },
-  "s-channel": {
-    title: "Relationship-led sources anchor wins; marketing must prove lift",
-    description: "Compare recorded pipeline, resolved win rate, and tracked spend without turning sparse efficiency ratios into a winner.",
-    takeaway: "Channel decision: protect relationship-led revenue, maintain measurable acquisition channels, and test incremental lift before moving budget.",
-  },
-  "s-segment": {
-    title: "Prioritize fit and evidence—not deal size alone",
-    description: "Segment and profile views identify where account potential and historical conversion evidence overlap.",
-    takeaway: "Targeting decision: start with strong-fit cells that have enough resolved history and a reachable audience; keep sparse cells exploratory.",
-  },
-  "s-creative": {
-    title: "Engagement reveals test ideas, not a format winner",
-    description: "Advertising and email behavior show where attention appears, while incomplete metadata and missing delivery denominators limit broader claims.",
-    takeaway: "Content decision: rank ads within platform, treat labeled creative combinations as bundles, and test matched variants before scaling a message.",
-  },
-  "s-budget": {
-    title: "Fund learning before expansion",
-    description: "Budget scenarios preserve the tracked envelope while reserving room for a holdout and a measurable experiment.",
-    takeaway: "Budget decision: treat historical spend as context, not an approved mix; release more only when the test shows incremental qualified pipeline.",
-  },
-  "s-advanced": {
-    title: "Read coverage, velocity and cohorts before testing",
-    description: "Coverage, cohort, velocity, and journey diagnostics help focus review without replacing commercial judgment.",
-    takeaway: "Operating decision: use coverage gaps to design controlled tests. The calendar-only win-probability model was withdrawn after a near-chance holdout.",
-  },
-  "s-appendix": {
-    title: "The evidence behind the decision",
-    description: "Supporting definitions, diagnostics, and detailed views stay available for judge questions without interrupting the main story.",
-    takeaway: "When challenged: trace each recommendation back to its population, denominator, and limitation.",
-  },
-  "s-conclusion": {
-    title: "The CMO decision",
-    description: "A measured growth plan that connects the evidence, the risk, and the next decision.",
-    takeaway: "Bottom line: stabilize conversion quality, test account coverage, and scale only what produces incremental lift.",
-  },
+/* ------------------------------------------------------------------------- *
+ * The story (Knaflic). One big idea, stated identically in the hero, the
+ * compact strip and the conclusion; every section title is an action title
+ * built from the data, tagged with its place in the arc
+ * context -> tension -> resolution -> ask. Reading only the titles in order
+ * tells the whole story (horizontal logic).
+ * ------------------------------------------------------------------------- */
+const BIG_IDEA = "Fix conversion before buying volume. Prove reach before scaling spend.";
+
+type ArcStage = "Big idea" | "Context" | "Tension" | "Resolution" | "Evidence" | "Ask";
+const arcStage: Record<SectionId, ArcStage> = {
+  "s-essential": "Big idea",
+  "s-exec": "Context",
+  "s-attrib": "Tension",
+  "s-channel": "Tension",
+  "s-segment": "Resolution",
+  "s-creative": "Resolution",
+  "s-budget": "Resolution",
+  "s-advanced": "Resolution",
+  "s-appendix": "Evidence",
+  "s-conclusion": "Ask",
 };
+
+interface StoryNumbers {
+  marketingRate?: string; bestSource?: string; bestRate?: string; rankedSources?: number;
+  openPipeline?: string; eligible?: string; defaultNeed?: string; defaultLabel?: string;
+  feasibleLabel?: string; feasibleNeed?: string; zeroWins?: string; zeroMrr?: string;
+}
+/** Every figure the narrative quotes, read from the v3 brief; absent when the brief is unavailable. */
+function storyNumbers(brief: LatestBrief | null): StoryNumbers {
+  if (!brief) return {};
+  const s = brief.summary;
+  const num = (key: string) => numberValue(s, key);
+  const out: StoryNumbers = {};
+  if (Number.isFinite(num("marketing_recent_win_rate"))) out.marketingRate = pct(num("marketing_recent_win_rate"));
+  if (Number.isFinite(num("recent_best_win_rate"))) { out.bestRate = pct(num("recent_best_win_rate")); out.bestSource = textValue(s, "recent_best_rate_source") || "the best source"; }
+  if (brief.sourceGroups.length) out.rankedSources = brief.sourceGroups.length;
+  if (Number.isFinite(num("open_pipeline"))) out.openPipeline = money(num("open_pipeline"));
+  if (Number.isFinite(num("zero_amount_wins"))) out.zeroWins = formatCount(num("zero_amount_wins"));
+  if (Number.isFinite(num("zero_amount_win_mrr"))) out.zeroMrr = money(num("zero_amount_win_mrr"));
+  const scenarios = brief.scenarios.filter((row) => Number.isFinite(numberValue(row, "required_total")));
+  const eligible = Number.isFinite(num("eligible_domains")) ? num("eligible_domains") : numberValue(scenarios[0] ?? {}, "eligible_audience");
+  if (Number.isFinite(eligible)) out.eligible = formatCount(eligible);
+  const label = (row: DataRow) => `${pct(numberValue(row, "baseline_rate")).replace(".0%", "%")} baseline, +${Math.round(numberValue(row, "absolute_lift") * 100)}pp lift`;
+  // The deck's default design is the 5% baseline / +2pp scenario.
+  const defaultRow = scenarios.find((row) => numberValue(row, "baseline_rate") === 0.05 && numberValue(row, "absolute_lift") === 0.02);
+  if (defaultRow) { out.defaultNeed = formatCount(numberValue(defaultRow, "required_total")); out.defaultLabel = label(defaultRow); }
+  const feasible = scenarios.filter((row) => row.feasible === true).sort((a, b) => numberValue(a, "absolute_lift") - numberValue(b, "absolute_lift") || numberValue(a, "required_total") - numberValue(b, "required_total"))[0];
+  if (feasible) { out.feasibleLabel = label(feasible); out.feasibleNeed = formatCount(numberValue(feasible, "required_total")); }
+  return out;
+}
+
+/** The single sentence of evidence that travels with the big idea. */
+function bigIdeaSupport(data: DashboardData, n: StoryNumbers): string {
+  if (n.marketingRate && n.bestRate) return `Marketing-sourced new logos win ${n.marketingRate} of resolved deals; ${n.bestSource} wins ${n.bestRate} (2023–24). Fix the handoff first, then let a holdout decide the next budget move.`;
+  return `Mature-cohort win rate fell from ${metric(data, "cohort_start_win_rate")} to ${metric(data, "cohort_end_win_rate")} while ${metric(data, "unreached_pct")} of account domains went unreached. Fix qualification first, then let a holdout decide the next budget move.`;
+}
+
+interface SectionCopy { title: string; description: string; takeaway: string }
+function sectionCopy(id: SectionId, data: DashboardData, n: StoryNumbers): SectionCopy {
+  const m = (key: string) => metric(data, key);
+  switch (id) {
+    case "s-essential": return {
+      title: `Win quality fell ${m("cohort_start_win_rate")} → ${m("cohort_end_win_rate")} while ${m("unreached_pct")} of accounts went unreached`,
+      description: "Three charts carry the case: what marketing contributes, how conversion is trending, and which accounts no campaign has touched.",
+      takeaway: "Decision: tighten qualification first, then test reach on unreached strong-fit accounts with a holdout.",
+    };
+    case "s-exec": return {
+      title: `Three sources hold ${m("top3_pipeline_share")} of ${m("total_pipeline")} recorded pipeline`,
+      description: n.openPipeline ? `Relationship-led sources anchor recorded wins. Only ${n.openPipeline} of the ${m("total_pipeline")} is still open, so read these as history, not as a forecast.` : "Relationship-led sources anchor recorded wins; marketing sources show where net-new pipeline enters.",
+      takeaway: "Context: today's revenue base is relationship-led; marketing's job is net-new pipeline that converts.",
+    };
+    case "s-attrib": return {
+      title: `Only ${m("attribution_linked_won_share")} of won deals link to a tracked marketing touch`,
+      description: "Email, web and 6sense logs cover 2024 only. Four models show where tracked channels appear before an opportunity, not what caused it.",
+      takeaway: "So what: report CRM source and linked-journey credit side by side, and use a holdout to measure lift.",
+    };
+    case "s-channel": return {
+      title: n.marketingRate && n.bestRate ? `Marketing-sourced new logos win ${n.marketingRate}, the lowest of ${n.rankedSources ?? "the"} sources; ${n.bestSource} wins ${n.bestRate}` : "Relationship-led sources win more often; marketing must prove lift",
+      description: `New-logo opportunities created 2023–24, resolved outcomes only. Tracked spend exists for just ${m("tracked_spend_channels").split(",").filter(Boolean).length} paid channels, too few to rank ROI.`,
+      takeaway: "So what: fix the marketing-to-sales handoff before buying more volume, and build referral asks into account reviews.",
+    };
+    case "s-segment": {
+      const rows = data.datasets.segment_win_rate.filter((row) => numberValue(row, "deals") >= 30 && Number.isFinite(numberValue(row, "win_rate")));
+      const best = [...rows].sort((a, b) => numberValue(b, "win_rate") - numberValue(a, "win_rate"))[0];
+      const biggest = [...rows].sort((a, b) => numberValue(b, "pipeline") - numberValue(a, "pipeline"))[0];
+      const name = (row: DataRow) => textValue(row, "segment__c");
+      const title = best && biggest && best !== biggest
+        ? `${name(best)} wins ${pct(numberValue(best, "win_rate"))}; ${name(biggest)}, the biggest pipeline, wins ${pct(numberValue(biggest, "win_rate"))}`
+        : "Target fit with proven history, not deal size";
+      return { title, description: "Closed-deal win rate by CRM segment, with industry concentration and profile fit. Small cells stay exploratory.", takeaway: "So what: aim the test at strong-fit cells with enough resolved history; treat small cells as exploratory." };
+    }
+    case "s-creative": return {
+      title: "Creative labels are too sparse to name a winner; test matched variants",
+      description: `Ad CTR is compared only within platform. The email file logs engagement across ${m("email_people")} people but has no send counts, so it cannot give response rates.`,
+      takeaway: "So what: carry the strongest ads into a matched test; fix creative metadata before any tone or format claim.",
+    };
+    case "s-budget": return {
+      title: n.eligible && n.feasibleLabel ? `Keep spend flat: ${n.eligible} eligible domains can only detect a ${n.feasibleLabel.split(", ")[1]} on a ${n.feasibleLabel.split(", ")[0]}` : "Keep spend flat and fund a holdout before expansion",
+      description: n.eligible && n.defaultNeed ? `The default test (${n.defaultLabel}) needs ${n.defaultNeed} domains; only ${n.eligible} are eligible. Size the test to the audience, or widen the audience first.` : "Each plan keeps the tracked envelope and reserves a holdout. No pipeline forecast is shown; paid outcomes are too sparse.",
+      takeaway: "So what: keep the budget envelope, reserve the holdout, and release more only on incremental qualified pipeline.",
+    };
+    case "s-advanced": return {
+      title: n.eligible ? `${m("unreached_accounts")} account domains are unreached; ${n.eligible} are eligible to test` : `${m("unreached_accounts")} account domains (${m("unreached_pct")}) are unreached: that is the test audience`,
+      description: "Coverage and the targeting matrix pick the audience; cohorts, velocity and journeys set expectations. The win-probability model was withdrawn after a near-chance holdout, so no deal scores are shown.",
+      takeaway: "So what: exclude customers and open pipeline, randomize strong-fit domains, and keep a holdout.",
+    };
+    case "s-appendix": return {
+      title: "Every number traces to a population, a denominator and a limit",
+      description: "Definitions, diagnostics and deliverable coverage for judge questions, kept out of the main story.",
+      takeaway: "When challenged: trace each recommendation to its population, denominator and limitation.",
+    };
+    case "s-conclusion": return {
+      title: "Approve three decisions, each with an owner and a measure",
+      description: "Each decision names who owns it, the first step, the metric that decides it, and when to stop.",
+      takeaway: "Bottom line: fix conversion, record value, and scale only what a holdout proves.",
+    };
+  }
+}
 
 const explain: Record<string, { title: string; body: ReactNode; insight: string }> = {
   "c-essential-contribution": {
@@ -255,13 +334,9 @@ const explain: Record<string, { title: string; body: ReactNode; insight: string 
 
 const GENERIC_CAVEAT = "Source-backed metric; see the analyst explanation and caveat in this section.";
 
-const money = (value: number) => {
-  if (!Number.isFinite(value)) return "—";
-  if (Math.abs(value) >= 999_500) return `$${(value / 1_000_000).toFixed(1)}M`;
-  if (Math.abs(value) >= 1_000) return `$${Math.round(value / 1_000)}K`;
-  return `$${Math.round(value).toLocaleString()}`;
-};
-const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
+// One formatter per unit, shared by tiles, titles and tables (evidence.ts).
+const money = formatDollarsCompact;
+const pct = (value: number) => formatPercent(value);
 const metric = (data: DashboardData, key: string) => data.context.metrics[key] ?? "N/A";
 const parseCount = (value: string) => Number(value.replaceAll(",", "")) || 0;
 const formatRefresh = (value?: string) => {
@@ -391,17 +466,24 @@ function ChartCard({ id, metadata, data, totalPipeline, coverageMix, presenting 
   </article>;
 }
 
-function SectionIntro({ id, data }: { id: SectionId; data: DashboardData }) {
-  const item = copy[id];
-  const takeaway = interpolate(item.takeaway, data);
-  const [label, ...rest] = takeaway.split(":");
-  // The three headline evidence chips frame the opening and the close; repeating
-  // them on every section dilutes each section's own "so what".
-  const showChips = id === "s-essential" || id === "s-conclusion";
+/**
+ * Action-title intro: the eyebrow places the section in the arc, the h2 states
+ * the takeaway (not the topic), one sentence says what the evidence below is,
+ * and the "so what" line carries the single accent mark.
+ */
+function SectionIntro({ id, data, story }: { id: SectionId; data: DashboardData; story: StoryNumbers }) {
+  const item = sectionCopy(id, data, story);
+  const [label, ...rest] = item.takeaway.split(":");
   const position = sectionOrder.indexOf(id) + 1;
   const group = sectionGroupLabel(id);
   const sectionName = sectionLabel(id);
-  return <><div className="section-heading"><div className="section-title-block"><span className="section-eyebrow"><span className="section-index"><span className="sr-only">Section </span>{String(position).padStart(2, "0")}<span className="sr-only"> of {sectionOrder.length}</span><span aria-hidden="true"> / {String(sectionOrder.length).padStart(2, "0")}</span></span>{group && group !== sectionName ? `${group} · ${sectionName}` : sectionName}</span><h2>{item.title}</h2></div><p>{item.description}</p></div><div className="section-takeaway"><div className="takeaway-copy"><strong>{label}:</strong><span>{rest.join(":")}</span></div>{showChips && <div className="evidence-chips"><span className="chip chip-blue">{metric(data, "marketing_influenced_pipeline")} linked-journey signal</span><span className="chip chip-amber">{metric(data, "unreached_pct")} domains unreached</span><span className="chip chip-red">{metric(data, "cohort_start_win_rate")} → {metric(data, "cohort_end_win_rate")} mature-cohort win rate</span></div>}</div></>;
+  const stage = arcStage[id];
+  return <><div className="section-heading"><div className="section-title-block"><span className="section-eyebrow"><span className="section-index"><span className="sr-only">Section </span>{String(position).padStart(2, "0")}<span className="sr-only"> of {sectionOrder.length}</span><span aria-hidden="true"> / {String(sectionOrder.length).padStart(2, "0")}</span></span><span className={`arc-stage arc-${stage.toLowerCase().replace(" ", "-")}`}>{stage}</span><span className="section-topic">{group && group !== sectionName ? `${group} · ${sectionName}` : sectionName}</span></span><h2>{item.title}</h2></div><p>{item.description}</p></div><div className="section-takeaway"><div className="takeaway-copy"><strong>{label}:</strong><span>{rest.join(":")}</span></div></div></>;
+}
+
+/** Method notes stay one click away instead of standing between a title and its evidence. */
+function ReadingNote({ children }: { children: ReactNode }) {
+  return <details className="evidence-details reading-note"><summary><Info size={14} aria-hidden="true" /><span>How to read this section</span><ChevronDown size={14} aria-hidden="true" /></summary><div className="reading-note-body">{children}</div></details>;
 }
 
 function LatestFindings({ brief, data }: { brief: LatestBrief; data: DashboardData }) {
@@ -409,14 +491,15 @@ function LatestFindings({ brief, data }: { brief: LatestBrief; data: DashboardDa
   const has = (key: string) => typeof s[key] === "number" && Number.isFinite(s[key] as number);
   const finding = (id: string) => brief.findings.find((item) => item.id === id);
   const withdrawnCaveat = data.context.caveats.find((caveat) => /withdrawn/i.test(caveat));
-  const tiles: Array<{ key: string; label: string; value: string; context: ReactNode; status: string; tone: "risk" | "strength" | "gap" | "neutral" }> = [];
-  if (has("marketing_recent_win_rate")) tiles.push({ key: "marketing", label: "Marketing-sourced conversion", value: pct(numberValue(s, "marketing_recent_win_rate")), context: <>Lowest of the source groups for 2023–24 new-logo deals{has("recent_best_win_rate") && <> · {textValue(s, "recent_best_rate_source") || "best group"} converts at {pct(numberValue(s, "recent_best_win_rate"))}</>}</>, status: finding("f-marketing")?.evidence_status ?? "Observed", tone: "risk" });
-  if (textValue(s, "top_channel")) tiles.push({ key: "referral", label: "Strongest new-logo source", value: textValue(s, "top_channel"), context: <>{has("top_channel_win_rate") && <>{pct(numberValue(s, "top_channel_win_rate"))} resolved win rate · </>}leads recorded new-logo won amount, 2018–2024</>, status: finding("f-channel")?.evidence_status ?? "Observed", tone: "strength" });
-  if (has("zero_amount_win_mrr")) tiles.push({ key: "mrr", label: "MRR on $0-amount wins", value: `${money(numberValue(s, "zero_amount_win_mrr"))}/mo`, context: <>{has("zero_amount_wins") && has("won") ? <>{numberValue(s, "zero_amount_wins").toLocaleString()} of {numberValue(s, "won").toLocaleString()} wins record no amount; </> : null}reported beside won amount, never added</>, status: finding("f-value")?.evidence_status ?? "Observed", tone: "gap" });
-  if (withdrawnCaveat) tiles.push({ key: "model", label: "Win-probability model", value: "Withdrawn", context: <>Near-chance holdout, so no deal scores are published</>, status: "Not used", tone: "neutral" });
+  const tiles: Array<{ key: string; label: string; value: string; context: ReactNode; status: string; tone: "risk" | "neutral" }> = [];
+  // Ordered as the argument runs: the problem (the one accent), the proof point, then the two limits a CMO must know.
+  if (has("marketing_recent_win_rate")) tiles.push({ key: "marketing", label: "Marketing-sourced new-logo win rate", value: pct(numberValue(s, "marketing_recent_win_rate")), context: <>Lowest of {brief.sourceGroups.length || "the"} sources, 2023–24{has("recent_best_win_rate") && <> · {textValue(s, "recent_best_rate_source") || "best source"} wins {pct(numberValue(s, "recent_best_win_rate"))}</>}</>, status: finding("f-marketing")?.evidence_status ?? "Observed", tone: "risk" });
+  if (textValue(s, "top_channel")) tiles.push({ key: "referral", label: "Strongest new-logo source", value: textValue(s, "top_channel"), context: <>{has("top_channel_win_rate") && <>{pct(numberValue(s, "top_channel_win_rate"))} win rate · </>}most recorded new-logo won amount, 2018–2024</>, status: finding("f-channel")?.evidence_status ?? "Observed", tone: "neutral" });
+  if (has("zero_amount_win_mrr")) tiles.push({ key: "mrr", label: "MRR on wins recorded at $0", value: `${money(numberValue(s, "zero_amount_win_mrr"))}/mo`, context: <>{has("zero_amount_wins") && has("won") ? <>{formatCount(numberValue(s, "zero_amount_wins"))} of {formatCount(numberValue(s, "won"))} wins carry no amount; </> : null}shown beside won amount, never added</>, status: finding("f-value")?.evidence_status ?? "Observed", tone: "neutral" });
+  if (withdrawnCaveat) tiles.push({ key: "model", label: "Win-probability model", value: "Withdrawn", context: <>Holdout was near chance, so no deal scores are published</>, status: "Not used", tone: "neutral" });
   if (!tiles.length) return null;
   return <section className="latest-findings" aria-labelledby="latest-findings-title">
-    <div className="latest-findings-head"><div><span className="latest-kicker">Latest case analysis{brief.methodVersion && ` · ${brief.methodVersion}`}</span><h2 id="latest-findings-title">What the CMO should act on now</h2></div><a className="text-button latest-deck-link" href="#present/main-01">Walk through the findings deck <ArrowRight size={14} aria-hidden="true" /></a></div>
+    <div className="latest-findings-head"><div><span className="latest-kicker">Evidence{brief.methodVersion && ` · ${brief.methodVersion}`}</span><h2 id="latest-findings-title">Four findings behind the decision</h2></div><a className="text-button latest-deck-link" href="#present/main-01">Walk through the findings deck <ArrowRight size={14} aria-hidden="true" /></a></div>
     <dl className="latest-findings-grid">{tiles.map((tile) => <div key={tile.key} className={`latest-tile tone-${tile.tone}`}><dt>{tile.label}</dt><dd className="latest-value">{tile.value}</dd><dd className="latest-context">{tile.context}</dd><dd className="latest-status">{tile.status}</dd></div>)}</dl>
   </section>;
 }
@@ -427,7 +510,7 @@ function SectionPager({ active, onOpen }: { active: SectionId; onOpen: (id: Sect
   const next = index < sectionOrder.length - 1 ? sectionOrder[index + 1] : undefined;
   const link = (id: SectionId, direction: "previous" | "next") => <a className={`pager-link pager-${direction}`} href={`#${id}`} onClick={(event) => { event.preventDefault(); onOpen(id); }} aria-keyshortcuts={direction === "next" ? "]" : "["}>
     {direction === "previous" && <ArrowLeft size={16} aria-hidden="true" />}
-    <span><small>{direction === "previous" ? "Previous" : "Next"} · {String(sectionOrder.indexOf(id) + 1).padStart(2, "0")}</small><strong>{sectionLabel(id)}</strong></span>
+    <span><small>{direction === "previous" ? "Previous" : "Next"} · {String(sectionOrder.indexOf(id) + 1).padStart(2, "0")} · {arcStage[id]}</small><strong>{sectionLabel(id)}</strong></span>
     {direction === "next" && <ArrowRight size={16} aria-hidden="true" />}
   </a>;
   return <nav className="section-pager" aria-label="Section pagination">
@@ -451,8 +534,6 @@ function DashboardSkeleton() {
   </div>;
 }
 
-function ContextBox({ children }: { children: ReactNode }) { return <div className="context-box"><Info size={16} aria-hidden="true" /><div>{children}</div></div>; }
-
 function EvidenceGrid({ items }: { items: Array<{ label: string; title?: string; body: ReactNode; tone: "high" | "medium" | "directional" }> }) {
   return <div className="evidence-grid">{items.map((item) => <article className="evidence-card" key={`${item.label}-${item.title ?? "label-only"}`}>{item.title ? <><span className={`confidence ${item.tone}`}>{item.label}</span><h3>{item.title}</h3></> : <h3 className="evidence-label-only"><span className={`confidence ${item.tone}`}>{item.label}</span></h3>}<p>{item.body}</p></article>)}</div>;
 }
@@ -467,12 +548,12 @@ function AttributionSensitivityPanel({ data }: { data: DashboardData }) {
   </section>;
 }
 
-function PriorityGrid({ data }: { data: DashboardData }) {
+function PriorityGrid({ data, onOpen }: { data: DashboardData; onOpen: (id: SectionId) => void }) {
   return <aside className="action-queue" aria-label="Recommended action queue">
-    <div className="action-queue-head"><div><h3>The next three decisions</h3><span>Evidence to action</span></div><strong>3</strong></div>
+    <div className="action-queue-head"><div><h3>The next three decisions</h3><span>Owners and measures in the ask</span></div><a className="text-button" href="#s-conclusion" onClick={(event) => { event.preventDefault(); onOpen("s-conclusion"); }}>Go to the ask <ArrowRight size={13} aria-hidden="true" /></a></div>
     <article className="action-row"><span className="action-sequence">01</span><div><span className="priority-tag red">Protect the base</span><h4>Diagnose conversion quality</h4><p>Among cohorts at least 80% resolved, closed-deal win rate moved from {metric(data, "cohort_start_win_rate")} to {metric(data, "cohort_end_win_rate")}. Review ICP, qualification, and loss reasons before increasing broad spend.</p></div></article>
-    <article className="action-row"><span className="action-sequence">02</span><div><span className="priority-tag amber">Create the test</span><h4>Build an eligible coverage cohort</h4><p>{metric(data, "unreached_accounts")} CRM account domains, or {metric(data, "unreached_pct")}, have no tracked email or 6sense touch. Prioritize strong-fit accounts and retain a holdout.</p></div></article>
-    <article className="action-row"><span className="action-sequence">03</span><div><span className="priority-tag">Earn the scale</span><h4>Fund measurement before expansion</h4><p>Use the tracked budget to run a controlled test. Scale only if treatment creates incremental qualified pipeline.</p></div></article>
+    <article className="action-row"><span className="action-sequence">02</span><div><span className="priority-tag muted">Create the test</span><h4>Build an eligible coverage cohort</h4><p>{metric(data, "unreached_accounts")} CRM account domains, or {metric(data, "unreached_pct")}, have no tracked email or 6sense touch. Prioritize strong-fit accounts and retain a holdout.</p></div></article>
+    <article className="action-row"><span className="action-sequence">03</span><div><span className="priority-tag muted">Earn the scale</span><h4>Fund measurement before expansion</h4><p>Use the tracked budget to run a controlled test. Scale only if treatment creates incremental qualified pipeline.</p></div></article>
   </aside>;
 }
 
@@ -490,17 +571,25 @@ function QualityTape({ data }: { data: DashboardData }) {
   </section>;
 }
 
-function StoryStrip({ data }: { data: DashboardData }) {
-  return <section className="story-strip" aria-label="Decision story framing">
-    <div><strong>Pipeline grew, but win quality weakened</strong><span><b>{metric(data, "cohort_start_win_rate")} → {metric(data, "cohort_end_win_rate")} closed win rate</b> among mature cohorts makes conversion quality the first guardrail.</span></div>
-    <ArrowRight size={15} aria-hidden="true" />
-    <div><strong>The largest measurable opportunity is reach</strong><span><b>{metric(data, "unreached_pct")} unreached</b> CRM account domains provide a clear audience for a controlled coverage test.</span></div>
-    <ArrowRight size={15} aria-hidden="true" />
-    <div><strong>Prove lift before moving budget</strong><span><b>{metric(data, "marketing_influenced_pipeline")} linked-journey signal</b> across {metric(data, "linked_opportunities")} opportunities shows presence—not causality.</span></div>
-  </section>;
+/**
+ * The narrative arc as navigation: reading the four steps left to right is
+ * the whole argument, and each step opens the section that proves it. Only
+ * the tension step wears the accent.
+ */
+function ArcStrip({ data, story, onOpen }: { data: DashboardData; story: StoryNumbers; onOpen: (id: SectionId) => void }) {
+  const steps: Array<{ stage: ArcStage; target: SectionId; line: string; detail: string }> = [
+    // Words carry the arc; each detail adds a figure the tiles below do not repeat.
+    { stage: "Context", target: "s-exec", line: "Revenue is relationship-led", detail: `Three sources hold ${metric(data, "top3_pipeline_share")} of recorded pipeline` },
+    { stage: "Tension", target: "s-channel", line: story.marketingRate ? "Marketing-sourced deals convert worst" : "Win quality is falling", detail: `Mature-cohort win rate ${metric(data, "cohort_start_win_rate")} → ${metric(data, "cohort_end_win_rate")}` },
+    { stage: "Resolution", target: "s-budget", line: "Fix the handoff; size the test to the audience", detail: story.eligible && story.defaultNeed ? `${story.eligible} eligible domains; default test needs ${story.defaultNeed}` : `${metric(data, "unreached_accounts")} account domains unreached` },
+    { stage: "Ask", target: "s-conclusion", line: "Approve three decisions", detail: "Each with an owner, a measure and a stop rule" },
+  ];
+  return <nav className="arc-strip" aria-label="The story in four steps">
+    <ol>{steps.map((step) => <li key={step.stage} className={step.stage === "Tension" ? "is-tension" : undefined}><a href={`#${step.target}`} onClick={(event) => { event.preventDefault(); onOpen(step.target); }}><span className="arc-step-stage">{step.stage}</span><strong>{step.line}</strong><span className="arc-step-detail">{step.detail}</span></a></li>)}</ol>
+  </nav>;
 }
 
-interface SectionProps { data: DashboardData; metadata: Map<string, ChartMetadata>; presenting: boolean; totalPipeline: number; coverageMix: DataRow[]; resetToken: number; }
+interface SectionProps { data: DashboardData; metadata: Map<string, ChartMetadata>; presenting: boolean; totalPipeline: number; coverageMix: DataRow[]; resetToken: number; brief: LatestBrief | null; story: StoryNumbers; onOpen: (id: SectionId) => void; }
 
 function ChartGrid({ ids, data, presenting, totalPipeline, coverageMix, metadata, resetToken, className = "" }: { ids: string[]; data: DashboardData; presenting: boolean; totalPipeline: number; coverageMix: DataRow[]; metadata: Map<string, ChartMetadata>; resetToken: number; className?: string }) {
   return <div className={`chart-grid ${ids.length === 1 ? "single" : ids.length === 2 ? "two" : ""} ${className}`.trim()}>{ids.map((id) => <ChartCard key={`${id}-${resetToken}`} id={id} metadata={metadata.get(id)} data={data} totalPipeline={totalPipeline} coverageMix={coverageMix} presenting={presenting} />)}</div>;
@@ -520,99 +609,189 @@ function AttributionTable({ data }: { data: DashboardData }) {
   return <EvidenceTable title="Full Attribution Table - All Models Side by Side" note="Every channel across every model in one place. The last column identifies the largest-credit model descriptively; it is not a model recommendation." columns={table.columns} rows={contractRows(table)} />;
 }
 
-function EssentialSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
+function EssentialSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken, story, onOpen }: SectionProps) {
   const chartProps = { data, presenting, totalPipeline, coverageMix };
-  return <section id="s-essential" className="dashboard-section essential-section"><SectionIntro id="s-essential" data={data} />
+  const plan = data.tables.essential_action_plan;
+  return <section id="s-essential" className="dashboard-section essential-section"><SectionIntro id="s-essential" data={data} story={story} />
     <div className="command-canvas">
       <div className="command-evidence">
         <div className="command-chart-pair">
-          <ChartCard key={`c-essential-contribution-${resetToken}`} id="c-essential-contribution" metadata={metadata.get("c-essential-contribution")} {...chartProps} />
+          {/* Tension first: the conversion trend, then what marketing contributes. */}
           <ChartCard key={`c-essential-cohort-${resetToken}`} id="c-essential-cohort" metadata={metadata.get("c-essential-cohort")} {...chartProps} />
+          <ChartCard key={`c-essential-contribution-${resetToken}`} id="c-essential-contribution" metadata={metadata.get("c-essential-contribution")} {...chartProps} />
         </div>
         <ChartCard key={`c-essential-coverage-${resetToken}`} id="c-essential-coverage" metadata={metadata.get("c-essential-coverage")} {...chartProps} />
       </div>
-      <div className="command-rail"><PriorityGrid data={data} /><QualityTape data={data} /></div>
+      <div className="command-rail"><PriorityGrid data={data} onOpen={onOpen} /><QualityTape data={data} /></div>
     </div>
-    <EvidenceTable title="Essential Action Plan" columns={data.tables.essential_action_plan.columns} rows={contractRows(data.tables.essential_action_plan)} />
-    <div className="scope-row" aria-label="Essential view drilldown"><span><strong>Scope</strong> only 3 charts are shown here by design</span><span>Deeper views are in the appendix</span><span>Caveats remain available from the top bar</span></div>
+    <EvidenceDetails title="Essential action plan: why and next step" count={plan.rows.length}><EvidenceTable title="Essential Action Plan" columns={plan.columns} rows={contractRows(plan)} /></EvidenceDetails>
   </section>;
 }
 
-function ExecutiveSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
-  return <section id="s-exec" className="dashboard-section"><SectionIntro id="s-exec" data={data} /><ContextBox><strong>Follow the decision path:</strong> first, see where recorded pipeline and won revenue come from; second, identify where marketing appears before opportunities; third, choose the gap that can be tested. Because this is account-based marketing, the useful unit is the account—not a disconnected click or impression.</ContextBox><ChartGrid ids={["c-bar-channel", "c-donut-won", "c-monthly-trend"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /></section>;
+function ExecutiveSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken, story }: SectionProps) {
+  return <section id="s-exec" className="dashboard-section"><SectionIntro id="s-exec" data={data} story={story} /><ChartGrid ids={["c-bar-channel", "c-donut-won", "c-monthly-trend"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /><ReadingNote><strong>Follow the decision path:</strong> first, see where recorded pipeline and won revenue come from; second, identify where marketing appears before opportunities; third, choose the gap that can be tested. Because this is account-based marketing, the useful unit is the account, not a disconnected click or impression.</ReadingNote></section>;
 }
 
-function AttributionSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
-  return <section id="s-attrib" className="dashboard-section"><SectionIntro id="s-attrib" data={data} /><ContextBox><strong>Decision use:</strong> attribution shows where classified channels appear in tracked pre-opportunity journeys; it does not estimate incremental lift. Compare first-touch, last-touch, linear, and time-decay within the same 365-day linked population, while keeping CRM source credit separate.</ContextBox><EvidenceGrid items={[{ label: "Observed", title: "Marketing appears in measurable journeys", body: <>Sourced credit reconciles to the full CRM source view; influenced credit reconciles within the linked opportunity population. Each number must travel with its denominator.</>, tone: "high" }, { label: "Directional pattern", title: "Channels occupy different journey positions", body: <>Model differences show whether a channel tends to appear earlier or later in the observed path.</>, tone: "medium" }, { label: "Limit", title: "Credit is not causality", body: <>A touchpoint receiving credit means it appeared before opportunity creation; it does not mean that touch caused or closed the deal.</>, tone: "directional" }]} /><AttributionSensitivityPanel data={data} /><ChartGrid ids={["c-attrib-comparison", "c-sourced-influenced", "c-attrib-waterfall"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /><AttributionTable data={data} /></section>;
+function AttributionSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken, story }: SectionProps) {
+  return <section id="s-attrib" className="dashboard-section"><SectionIntro id="s-attrib" data={data} story={story} />
+    {/* The lookback panel is the direct proof of the title (share of won deals linked), so it leads. */}
+    <AttributionSensitivityPanel data={data} />
+    <ChartGrid ids={["c-attrib-comparison", "c-sourced-influenced", "c-attrib-waterfall"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} />
+    <EvidenceGrid items={[{ label: "Observed", title: "Marketing appears in measurable journeys", body: <>Sourced credit reconciles to the full CRM source view; influenced credit reconciles within the linked opportunity population. Each number must travel with its denominator.</>, tone: "high" }, { label: "Directional pattern", title: "Channels occupy different journey positions", body: <>Model differences show whether a channel tends to appear earlier or later in the observed path.</>, tone: "medium" }, { label: "Limit", title: "Credit is not causality", body: <>A touchpoint receiving credit means it appeared before opportunity creation; it does not mean that touch caused or closed the deal.</>, tone: "directional" }]} />
+    <EvidenceDetails title="Full attribution table: all models side by side" count={data.tables.attribution_models.rows.length}><AttributionTable data={data} /></EvidenceDetails>
+    <ReadingNote><strong>Decision use:</strong> attribution shows where classified channels appear in tracked pre-opportunity journeys; it does not estimate incremental lift. Compare first-touch, last-touch, linear and time-decay within the same 365-day linked population, while keeping CRM source credit separate.</ReadingNote>
+  </section>;
 }
 
-function ChannelSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
+/**
+ * Ranked new-logo win rate by source (v3). A bar table: one series, so no
+ * legend; the tension row (marketing-sourced) wears the only accent and the
+ * rest stay muted. Every value is printed in the row, so the table is its
+ * own accessible equivalent; the whisker is the 95% Wilson interval.
+ */
+function SourceScorecard({ brief }: { brief: LatestBrief }) {
+  const rows = brief.sourceGroups;
+  if (!rows.length) return null;
+  const max = Math.min(1, Math.ceil(Math.max(...rows.map((row) => numberValue(row, "win_rate_ci_high", numberValue(row, "win_rate")))) * 10) / 10);
+  const x = (value: number) => `${Math.max(0, Math.min(100, (value / max) * 100))}%`;
+  return <article className="rank-card" aria-labelledby="source-scorecard-title">
+    <div className="rank-card-head"><h3 id="source-scorecard-title">New-logo win rate by lead source, 2023–24</h3><span className="chart-unit">Resolved opportunities · bar = win rate · line = 95% interval</span></div>
+    <table className="rank-table"><caption className="sr-only">New-logo win rate by lead source, opportunities created 2023–24, resolved outcomes only</caption>
+      <thead><tr><th scope="col">Source</th><th scope="col"><span className="sr-only">Win rate bar</span></th><th scope="col" className="numeric">Win rate</th><th scope="col" className="numeric">Won / resolved</th></tr></thead>
+      <tbody>{rows.map((row) => {
+        const name = textValue(row, "source_group");
+        const rate = numberValue(row, "win_rate");
+        const low = numberValue(row, "win_rate_ci_low"); const high = numberValue(row, "win_rate_ci_high");
+        const focus = /marketing/i.test(name);
+        return <tr key={name} className={focus ? "is-focus" : undefined} title={`${name}: ${pct(rate)} (95% interval ${pct(low)}–${pct(high)}), ${formatCount(numberValue(row, "won"))} won of ${formatCount(numberValue(row, "resolved"))} resolved`}>
+          <th scope="row">{name}</th>
+          <td className="rank-bar-cell" aria-hidden="true"><span className="rank-track"><span className="rank-bar" style={{ width: x(rate) }} />{Number.isFinite(low) && Number.isFinite(high) && <span className="rank-ci" style={{ left: x(low), width: `calc(${x(high)} - ${x(low)})` }} />}</span></td>
+          <td className="numeric rank-value">{pct(rate)}</td>
+          <td className="numeric">{formatCount(numberValue(row, "won"))} / {formatCount(numberValue(row, "resolved"))}{numberValue(row, "resolved") < 50 && <small className="rank-small-n">small sample</small>}</td>
+        </tr>;
+      })}</tbody>
+    </table>
+    <p className="rank-note">Existing-client deals are excluded from the ranking. Rates are observational; recent cohorts still have open deals.</p>
+  </article>;
+}
+
+function ChannelSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken, brief, story }: SectionProps) {
   const table = data.tables.channel_roi_summary;
   const rows = contractRows(table);
   const efficiencyRows = data.datasets.channel_pipeline.map(row => Object.fromEntries(Object.entries(row).filter(([key]) => ["channel_category", "spend_measurement_status", "pipeline_period_start", "pipeline_period_end", "spend_period_start", "spend_period_end", "period_matched_pipeline", "period_matched_won_amount", "period_matched_opportunities", "channel_spend", "pipeline_roi", "revenue_roi", "ratio_definition"].includes(key)))) as DataRow[];
   // Identifiers and the shared definition never count as a "measured value".
   const efficiencyLabelKeys = ["channel_category", "spend_measurement_status", "ratio_definition"];
   const ratioDefinition = constantText(efficiencyRows, "ratio_definition");
-  return <section id="s-channel" className="dashboard-section"><SectionIntro id="s-channel" data={data} /><ContextBox><strong>Decision use:</strong> multiples compare same-period recorded CRM-sourced pipeline or won amount with tracked ad spend. Only two paid channels have tracked spend, so treat these as diagnostic efficiency ratios—not an incremental ROI ranking. <strong>Avg Deal</strong> uses opportunities with a populated amount.</ContextBox><EvidenceGrid items={[{ label: "Recorded outcome", title: "Relationship-led revenue is the strongest base", body: <>Existing-client and referral sources lead recorded won outcomes, so the current revenue story is broader than paid media.</>, tone: "high" }, { label: "Acquisition role", title: "Marketing channels build net-new pipeline", body: <>Judge acquisition channels through pipeline creation, later conversion, and time-to-close together.</>, tone: "medium" }, { label: "Decision gate", title: "Separate quality from volume", body: <>Increase spend only when added reach creates incremental qualified opportunities—not simply more activity.</>, tone: "directional" }]} /><ChartGrid ids={["c-spend-pipeline", "c-funnel"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /><EvidenceTable title="Channel ROI Summary Table" note="Multiples = same-period recorded sourced pipeline or won amount / tracked spend. The period-matched inputs and observation windows are listed below. Channels without measured media spend remain unavailable rather than being assigned a zero-cost return." columns={table.columns} rows={rows} /><EvidenceDetails title="Period-matched efficiency inputs and observation windows" count={efficiencyRows.length}><DataTable id="period-matched-efficiency" provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: "channel_pipeline", scope: data.meta.period, methodology: data.meta.methodology }} label="Period-matched efficiency inputs and observation windows" rows={efficiencyRows} hideKeys={ratioDefinition ? ["ratio_definition"] : []} note={ratioDefinition ? <>Ratio definition: {ratioDefinition}.</> : undefined} isEmptyRow={(row) => Object.entries(row).every(([key, value]) => efficiencyLabelKeys.includes(key) || isMissing(value))} emptyRowNoun="channels" /></EvidenceDetails></section>;
+  return <section id="s-channel" className="dashboard-section"><SectionIntro id="s-channel" data={data} story={story} />
+    {brief && <SourceScorecard brief={brief} />}
+    <ChartGrid ids={["c-spend-pipeline", "c-funnel"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} />
+    <EvidenceGrid items={[{ label: "Recorded outcome", title: "Relationship-led revenue is the strongest base", body: <>Existing-client and referral sources lead recorded won outcomes, so the current revenue story is broader than paid media.</>, tone: "high" }, { label: "Acquisition role", title: "Marketing channels build net-new pipeline", body: <>Judge acquisition channels through pipeline creation, later conversion and time-to-close together.</>, tone: "medium" }, { label: "Decision gate", title: "Separate quality from volume", body: <>Increase spend only when added reach creates incremental qualified opportunities, not simply more activity.</>, tone: "directional" }]} />
+    <EvidenceTable title="Channel ROI Summary Table" note="Multiples = same-period recorded sourced pipeline or won amount / tracked spend. Channels without measured media spend remain unavailable rather than being assigned a zero-cost return." columns={table.columns} rows={rows} />
+    <EvidenceDetails title="Period-matched efficiency inputs and observation windows" count={efficiencyRows.length}><DataTable id="period-matched-efficiency" provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: "channel_pipeline", scope: data.meta.period, methodology: data.meta.methodology }} label="Period-matched efficiency inputs and observation windows" rows={efficiencyRows} hideKeys={ratioDefinition ? ["ratio_definition"] : []} note={ratioDefinition ? <>Ratio definition: {ratioDefinition}.</> : undefined} isEmptyRow={(row) => Object.entries(row).every(([key, value]) => efficiencyLabelKeys.includes(key) || isMissing(value))} emptyRowNoun="channels" /></EvidenceDetails>
+    <ReadingNote><strong>Decision use:</strong> multiples compare same-period recorded CRM-sourced pipeline or won amount with tracked ad spend. Only two paid channels have tracked spend, so treat these as diagnostic efficiency ratios, not an incremental ROI ranking. <strong>Avg Deal</strong> uses opportunities with a populated amount.</ReadingNote>
+  </section>;
 }
 
-function SegmentSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
-  return <section id="s-segment" className="dashboard-section"><SectionIntro id="s-segment" data={data} /><ContextBox><strong>Decision use:</strong> CRM segment groups opportunities by the supplied market categories; profile fit is a separate current-account attribute. Use resolved opportunities for historical win rates, then require sufficient sample and an eligible audience before selecting a target cell.</ContextBox><ChartGrid className="segment-grid" ids={["c-seg-heatmap", "c-seg-winrate"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /></section>;
+function SegmentSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken, story }: SectionProps) {
+  return <section id="s-segment" className="dashboard-section"><SectionIntro id="s-segment" data={data} story={story} />
+    {/* Win rate first: it is the evidence for the title; concentration follows as context. */}
+    <ChartGrid className="segment-grid" ids={["c-seg-winrate", "c-seg-heatmap"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} />
+    <ReadingNote><strong>Decision use:</strong> CRM segment groups opportunities by the supplied market categories; profile fit is a separate current-account attribute. Use resolved opportunities for historical win rates, then require sufficient sample and an eligible audience before selecting a target cell.</ReadingNote>
+  </section>;
 }
 
-function CreativeSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
-  return <section id="s-creative" className="dashboard-section"><SectionIntro id="s-creative" data={data} /><ContextBox><strong>Decision use:</strong> compare ad CTR only within platform. The supplied metadata covers a narrow creative subset, so format, message, and tone must be read as combined bundles—not independent winners.<br /><br /><strong>Email denominator:</strong> the email file records engagement events across {metric(data, "email_people")} people but contains no sent or delivered counts. It can suggest content tests; it cannot support campaign response rates.</ContextBox><ChartGrid ids={["c-creative-ctr", "c-creative-attr", "c-email-seniority"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /></section>;
+function CreativeSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken, story }: SectionProps) {
+  return <section id="s-creative" className="dashboard-section"><SectionIntro id="s-creative" data={data} story={story} /><ChartGrid ids={["c-creative-ctr", "c-creative-attr", "c-email-seniority"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /><ReadingNote><strong>Decision use:</strong> compare ad CTR only within platform. The supplied metadata covers a narrow creative subset, so format, message and tone must be read as combined bundles, not independent winners. <strong>Email denominator:</strong> the email file records engagement events across {metric(data, "email_people")} people but contains no sent or delivered counts. It can suggest content tests; it cannot support campaign response rates.</ReadingNote></section>;
 }
 
-function BudgetSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
-  return <section id="s-budget" className="dashboard-section"><SectionIntro id="s-budget" data={data} /><ContextBox><strong>Decision use:</strong> these are planning allocations, not an optimized channel mix. Each option preserves the current tracked envelope while reserving a different amount for a holdout and pre-registered test. The decision gate is incremental qualified pipeline—not click volume.</ContextBox><ChartGrid ids={["c-budget-scenario"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /></section>;
+/**
+ * Test sizing as three stat tiles (the number is the chart). The shortfall
+ * between the default design and the eligible audience is the only accent.
+ */
+function ExperimentPower({ story }: { story: StoryNumbers }) {
+  if (!story.eligible || !story.defaultNeed) return null;
+  return <dl className="power-tiles" aria-label="Experiment sizing">
+    <div><dt>Eligible test audience</dt><dd className="power-value">{story.eligible}</dd><dd className="power-context">ICP target domains after excluding customers and open pipeline</dd></div>
+    <div className="is-focus"><dt>Default test needs</dt><dd className="power-value">{story.defaultNeed}</dd><dd className="power-context">{story.defaultLabel} · two arms, 80% power</dd></div>
+    {story.feasibleLabel && <div><dt>Smallest detectable lift</dt><dd className="power-value">{story.feasibleLabel.split(", ")[1]?.replace(" lift", "")}</dd><dd className="power-context">On a {story.feasibleLabel.split(", ")[0]} · needs {story.feasibleNeed} domains</dd></div>}
+  </dl>;
 }
 
-function AdvancedSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken }: SectionProps) {
+function BudgetSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken, story }: SectionProps) {
+  return <section id="s-budget" className="dashboard-section"><SectionIntro id="s-budget" data={data} story={story} /><ExperimentPower story={story} /><ChartGrid ids={["c-budget-scenario"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /><ReadingNote><strong>Decision use:</strong> these are planning allocations, not an optimized channel mix. Each option preserves the current tracked envelope while reserving a different amount for a holdout and pre-registered test. The decision gate is incremental qualified pipeline, not click volume. Sizing assumes a two-sided alpha of .05 and 80% power; the baselines are hypothetical.</ReadingNote></section>;
+}
+
+function AdvancedSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken, story }: SectionProps) {
   const velocityRows = data.datasets.deal_velocity_exclusions ?? [];
   const intervalDefinition = constantText(velocityRows, "interval_definition");
-  return <section id="s-advanced" className="dashboard-section"><SectionIntro id="s-advanced" data={data} /><ContextBox><strong>Decision use:</strong> coverage, cohort, velocity and journey views describe observed patterns, not causal effects. A calendar-only win-probability baseline was withdrawn: its time-based holdout was near chance and predicted no wins, so no deal scores are shown.</ContextBox><EvidenceGrid items={[{ label: "Observed gap", title: "Reached tiers show higher observed rates", body: <>Unreached accounts show a {metric(data, "not_reached_opportunity_rate")} historical opportunity prevalence, while email-only accounts show {metric(data, "email_only_opportunity_rate")} and both-channel accounts show {metric(data, "both_channels_opportunity_rate")}. CRM outcomes can precede the reach window; selection and sales activity can explain the association.</>, tone: "high" }, { label: "Quality diagnosis", title: "Growth is not automatically healthy", body: <>Among cohorts at least 80% resolved, closed-deal win rate moved from {metric(data, "cohort_start_win_rate")} in {metric(data, "cohort_start_quarter")} to {metric(data, "cohort_end_win_rate")} in {metric(data, "cohort_end_quarter")}.</>, tone: "medium" }, { label: "Next test", title: "Validate causality", body: <>Run a holdout or phased rollout to measure incremental lift from email-first outreach; test a 6sense overlay separately.</>, tone: "directional" }]} /><ChartGrid ids={["c-account-coverage", "c-deal-velocity", "c-journey", "c-targeting-matrix", "c-cohort"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /><EvidenceDetails title="Won-deal duration eligibility by channel and motion" count={velocityRows.length}><DataTable id="velocity-eligibility" provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: "deal_velocity_exclusions", scope: "Canonical won outcomes", methodology: data.meta.methodology }} label="Canonical won duration eligibility by channel and motion" rows={velocityRows} hideKeys={intervalDefinition ? ["interval_definition"] : []} note={intervalDefinition ? <>Interval definition: {intervalDefinition}.</> : undefined} /></EvidenceDetails></section>;
+  return <section id="s-advanced" className="dashboard-section"><SectionIntro id="s-advanced" data={data} story={story} />
+    {/* Audience evidence first (coverage, then who to target), expectations after (cohorts, velocity, journeys). */}
+    <ChartGrid ids={["c-account-coverage", "c-targeting-matrix", "c-cohort", "c-deal-velocity", "c-journey"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} />
+    <EvidenceGrid items={[{ label: "Observed gap", title: "Reached tiers show higher observed rates", body: <>Unreached accounts show a {metric(data, "not_reached_opportunity_rate")} historical opportunity prevalence, while email-only accounts show {metric(data, "email_only_opportunity_rate")} and both-channel accounts show {metric(data, "both_channels_opportunity_rate")}. CRM outcomes can precede the reach window; selection and sales activity can explain the association.</>, tone: "high" }, { label: "Quality diagnosis", title: "Growth is not automatically healthy", body: <>Among cohorts at least 80% resolved, closed-deal win rate moved from {metric(data, "cohort_start_win_rate")} in {metric(data, "cohort_start_quarter")} to {metric(data, "cohort_end_win_rate")} in {metric(data, "cohort_end_quarter")}.</>, tone: "medium" }, { label: "Next test", title: "Validate causality", body: <>Run a holdout or phased rollout to measure incremental lift from email-first outreach; test a 6sense overlay separately.</>, tone: "directional" }]} />
+    <EvidenceDetails title="Won-deal duration eligibility by channel and motion" count={velocityRows.length}><DataTable id="velocity-eligibility" provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: "deal_velocity_exclusions", scope: "Canonical won outcomes", methodology: data.meta.methodology }} label="Canonical won duration eligibility by channel and motion" rows={velocityRows} hideKeys={intervalDefinition ? ["interval_definition"] : []} note={intervalDefinition ? <>Interval definition: {intervalDefinition}.</> : undefined} /></EvidenceDetails>
+    <ReadingNote><strong>Decision use:</strong> coverage, cohort, velocity and journey views describe observed patterns, not causal effects. A calendar-only win-probability baseline was withdrawn: its time-based holdout was near chance and predicted no wins, so no deal scores are shown.</ReadingNote>
+  </section>;
 }
 
-function AppendixSection({ data, onOpen }: { data: DashboardData; onOpen: (id: SectionId) => void }) {
+function AppendixSection({ data, story, onOpen }: SectionProps) {
   const cards: Array<{ id: SectionId; label: string; title: string; body: string }> = [
-    { id: "s-exec", label: "Overview", title: "Executive Summary", body: "Top-line pipeline, won revenue, and monthly trend views." },
-    { id: "s-segment", label: "Targeting", title: "Segment & ICP", body: "Segment, industry, and ICP evidence for account prioritization." },
+    { id: "s-exec", label: "Context", title: "Executive Summary", body: "Top-line pipeline, won revenue and monthly trend views." },
+    { id: "s-segment", label: "Targeting", title: "Segment & ICP", body: "Segment, industry and ICP evidence for account prioritization." },
     { id: "s-creative", label: "Engagement", title: "Creative & Email", body: "Creative CTR and email engagement detail for messaging decisions." },
-    { id: "s-budget", label: "Planning", title: "Budget Scenarios", body: "Tracked-spend scenarios for sizing controlled budget tests." },
-    { id: "s-advanced", label: "Diagnostics", title: "Advanced Analytics", body: "Account coverage, deal velocity, journey, and targeting matrix detail." },
+    { id: "s-budget", label: "Planning", title: "Budget Scenarios", body: "Test sizing and budget-neutral holdout scenarios." },
+    { id: "s-advanced", label: "Diagnostics", title: "Advanced Analytics", body: "Account coverage, deal velocity, journey and targeting matrix detail." },
   ];
-  return <section id="s-appendix" className="dashboard-section"><SectionIntro id="s-appendix" data={data} /><div className="appendix-grid">{cards.map((card) => <article className="appendix-card" key={card.id}><span className="priority-tag">{card.label}</span><h3>{card.title}</h3><p>{card.body}</p><button type="button" className="button button-small" onClick={() => onOpen(card.id)}>Open evidence <ArrowRight size={14} /></button></article>)}</div><EvidenceTable title="Case Deliverable Coverage" columns={data.tables.case_deliverable_coverage.columns} rows={contractRows(data.tables.case_deliverable_coverage)} /></section>;
+  return <section id="s-appendix" className="dashboard-section"><SectionIntro id="s-appendix" data={data} story={story} /><div className="appendix-grid">{cards.map((card) => <article className="appendix-card" key={card.id}><span className="priority-tag muted">{card.label}</span><h3>{card.title}</h3><p>{card.body}</p><button type="button" className="button button-small" onClick={() => onOpen(card.id)}>Open evidence <ArrowRight size={14} /></button></article>)}</div><EvidenceTable title="Case Deliverable Coverage" columns={data.tables.case_deliverable_coverage.columns} rows={contractRows(data.tables.case_deliverable_coverage)} /></section>;
 }
 
-function ConclusionSection({ data }: { data: DashboardData }) {
+/** The three decisions the big idea needs: fix conversion, prove reach, record value. */
+const PRIMARY_DECISIONS = ["r-marketing", "r-test", "r-value"];
+
+function DecisionCards({ brief }: { brief: LatestBrief }) {
+  const byId = new Map(brief.recommendations.map((item) => [item.id, item]));
+  const primary = PRIMARY_DECISIONS.map((id) => byId.get(id)).filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const decisions = primary.length ? primary : brief.recommendations.slice(0, 3);
+  const queued = brief.recommendations.filter((item) => !decisions.includes(item));
+  return <>
+    <ol className="decision-list" aria-label="Decisions for the CMO">{decisions.map((item, index) => <li key={item.id} className={`decision-card${index === 0 ? " is-focus" : ""}`}>
+      <div className="decision-card-head"><span className="decision-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><h3>{item.decision}</h3><span className={`confidence ${/observed/i.test(item.confidence_status) ? "high" : "medium"}`}>{item.confidence_status}</span></div>
+      <dl>
+        <div><dt>Owner</dt><dd>{item.owner_role}</dd></div>
+        <div><dt>First step</dt><dd>{item.immediate_next_step}</dd></div>
+        <div><dt>Measure</dt><dd>{item.primary_success_measure}</dd></div>
+        <div><dt>Stop rule</dt><dd>{item.scale_stop_rule}</dd></div>
+      </dl>
+    </li>)}</ol>
+    {queued.length > 0 && <div className="decision-queued"><span>Also queued</span><ul>{queued.map((item) => <li key={item.id}><strong>{item.decision}</strong> · {item.owner_role}</li>)}</ul></div>}
+  </>;
+}
+
+function ConclusionSection({ data, brief, story }: SectionProps) {
   const confidenceTable = data.tables.decision_confidence;
   const actionsTable = data.tables.recommended_actions;
   // Present the CMO plan in priority order (P1, P2, P3…) regardless of source order.
   const priorityIndex = actionsTable.columns.indexOf("Priority");
   const actionRows = priorityIndex < 0 ? contractRows(actionsTable) : [...contractRows(actionsTable)].sort((left, right) => String(left[priorityIndex] ?? "").localeCompare(String(right[priorityIndex] ?? ""), "en", { numeric: true }));
   return <section id="s-conclusion" className="dashboard-section conclusion-section">
-    <SectionIntro id="s-conclusion" data={data} />
+    <SectionIntro id="s-conclusion" data={data} story={story} />
     <div className="conclusion-hero">
-      <span className="hero-label">Decision for the CMO</span>
-      <h3>Protect win quality, expand coverage to strong-fit unreached accounts, and require a holdout before scaling spend.</h3>
-      <p>Tracked marketing appears in pre-opportunity journeys linked to {metric(data, "marketing_influenced_pipeline")} in recorded pipeline, while {metric(data, "unreached_accounts")} CRM account domains ({metric(data, "unreached_pct")}) have no tracked email or 6sense touch. Both are observational signals; the holdout determines whether broader coverage creates lift.</p>
+      <span className="hero-label">The big idea</span>
+      <h3>{BIG_IDEA}</h3>
+      <p>{bigIdeaSupport(data, story)}</p>
     </div>
-    <ContextBox><strong>How the evidence connects:</strong> cohort analysis identifies the risk, coverage identifies the opportunity, and attribution shapes the test. The holdout—not historical association—determines whether the strategy scales.</ContextBox>
-    <div className="conclusion-grid">
-      <article className="conclusion-card"><h3>What the evidence supports</h3><ul><li>Relationship-led sources anchor recorded won revenue.</li><li>Marketing appears at different positions in tracked pre-opportunity journeys.</li><li>A large unreached CRM audience creates a measurable growth test.</li></ul></article>
-      <article className="conclusion-card"><h3>What could derail growth</h3><ul><li>Among mature cohorts, closed-deal win rate moved from {metric(data, "cohort_start_win_rate")} to {metric(data, "cohort_end_win_rate")}.</li><li>Only {metric(data, "attribution_linked_won_share")} of won deals link to classified marketing touches.</li><li>Sparse spend and creative metadata cannot identify an optimal budget or a standalone format winner.</li></ul></article>
-      <article className="conclusion-card"><h3>What the CMO should authorize</h3><ul><li>Tighten ICP and qualification before adding broad top-of-funnel volume.</li><li>Launch an email-first account test with a retained holdout.</li><li>Test the 6sense overlay separately and scale only on incremental qualified pipeline.</li></ul></article>
-    </div>
-    <div className="priority-grid conclusion-priorities">
-      <article className="priority-card"><h3><span className="priority-tag red">P1</span> Stabilize conversion quality</h3><p>Review ICP, qualification, and loss reasons before asking a larger funnel to carry weaker conversion.</p></article>
-      <article className="priority-card"><h3><span className="priority-tag amber">P2</span> Run the coverage experiment</h3><p>Activate eligible strong-fit accounts with an account-level holdout and a pre-registered 90-day endpoint.</p></article>
-      <article className="priority-card"><h3><span className="priority-tag">P3</span> Scale only on measured lift</h3><p>Release more budget only when treatment improves qualified opportunity creation without weakening win quality.</p></article>
-    </div>
-    <EvidenceTable title="Decision Confidence" note="This separates what the data directly supports from what remains an association or testable hypothesis." columns={confidenceTable.columns} rows={contractRows(confidenceTable)} />
-    <EvidenceGrid items={[{ label: "Observed", body: <>Recorded pipeline, won amount, account coverage, and mature-cohort win-rate movement are directly measurable.</>, tone: "high" }, { label: "Associated", body: <>Marketing touches and reached-account outcomes move together in the observed data, but selection and sales activity may explain part of the pattern.</>, tone: "medium" }, { label: "Requires a test", body: <>Incremental channel lift, creative causality, and budget scaling require holdouts or phased experiments.</>, tone: "directional" }]} />
-    <EvidenceTable title="CMO Action Plan" note="Each row connects the evidence to an action and the metric that decides whether it continues." columns={actionsTable.columns} rows={actionRows} />
-    <div className="presenting-script"><h3>Tell the story in four moves</h3><div><strong>1. Lead with the tension</strong><span>Pipeline exists, but mature-cohort conversion has weakened.</span></div><div><strong>2. Show the opportunity</strong><span>Most CRM account domains remain unreached, creating a measurable test audience.</span></div><div><strong>3. Make the decision</strong><span>Protect qualification, run an email-first holdout, and test the 6sense overlay separately.</span></div><div><strong>4. Set the guardrail</strong><span>Scale only when the experiment creates incremental qualified pipeline without weakening win quality.</span></div></div>
+    {brief && brief.recommendations.length ? <DecisionCards brief={brief} /> : <div className="priority-grid conclusion-priorities">
+      <article className="priority-card"><h3><span className="priority-tag red">P1</span> Stabilize conversion quality</h3><p>Review ICP, qualification and loss reasons before asking a larger funnel to carry weaker conversion.</p></article>
+      <article className="priority-card"><h3><span className="priority-tag muted">P2</span> Run the coverage experiment</h3><p>Activate eligible strong-fit accounts with an account-level holdout and a pre-registered 90-day endpoint.</p></article>
+      <article className="priority-card"><h3><span className="priority-tag muted">P3</span> Scale only on measured lift</h3><p>Release more budget only when treatment improves qualified opportunity creation without weakening win quality.</p></article>
+    </div>}
+    <div className="ask-links"><a className="button button-primary" href="#present/main-16"><Presentation size={15} aria-hidden="true" /> Present the decisions</a><a className="button" href="#present/main-14">Experiment design slide <ArrowRight size={14} aria-hidden="true" /></a></div>
+    <EvidenceDetails title="Supporting tables: decision confidence and full action plan" count={confidenceTable.rows.length + actionsTable.rows.length}>
+      <div className="details-stack">
+        <EvidenceTable title="Decision Confidence" note="This separates what the data directly supports from what remains an association or testable hypothesis." columns={confidenceTable.columns} rows={contractRows(confidenceTable)} />
+        <EvidenceGrid items={[{ label: "Observed", body: <>Recorded pipeline, won amount, account coverage and mature-cohort win-rate movement are directly measurable.</>, tone: "high" }, { label: "Associated", body: <>Marketing touches and reached-account outcomes move together in the observed data, but selection and sales activity may explain part of the pattern.</>, tone: "medium" }, { label: "Requires a test", body: <>Incremental channel lift, creative causality and budget scaling require holdouts or phased experiments.</>, tone: "directional" }]} />
+        <EvidenceTable title="CMO Action Plan" note="Each row connects the evidence to an action and the metric that decides whether it continues." columns={actionsTable.columns} rows={actionRows} />
+      </div>
+    </EvidenceDetails>
   </section>;
 }
 
@@ -839,7 +1018,8 @@ function LegacyDashboard() {
     setPresenting((value) => !value);
     if (state) window.requestAnimationFrame(() => Flip.from(state, { duration: 0.32, ease: "power2.out", nested: true, absolute: false }));
   };
-  const props: SectionProps = { data, metadata, presenting, totalPipeline, coverageMix, resetToken };
+  const story = storyNumbers(brief);
+  const props: SectionProps = { data, metadata, presenting, totalPipeline, coverageMix, resetToken, brief, story, onOpen: openSection };
   const renderSection = (id: SectionId) => {
     if (id === "s-essential") return <EssentialSection {...props} />;
     if (id === "s-exec") return <ExecutiveSection {...props} />;
@@ -849,16 +1029,17 @@ function LegacyDashboard() {
     if (id === "s-creative") return <CreativeSection {...props} />;
     if (id === "s-budget") return <BudgetSection {...props} />;
     if (id === "s-advanced") return <AdvancedSection {...props} />;
-    if (id === "s-appendix") return <AppendixSection data={data} onOpen={openSection} />;
-    return <ConclusionSection data={data} />;
+    if (id === "s-appendix") return <AppendixSection {...props} />;
+    return <ConclusionSection {...props} />;
   };
 
   return <div ref={root} className="app-shell">
     <aside id="dashboard-navigation" className={`sidebar ${menuOpen ? "is-open" : ""}`} role={menuOpen ? "dialog" : undefined} aria-label="Dashboard sections" aria-modal={menuOpen ? "true" : undefined}><div className="brand"><span>RC</span><div><strong>Revenue Command</strong><small>Decision analytics · {data.meta.period}</small></div></div><button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button><div className="nav-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a section" aria-label="Search dashboard sections" />{search && <button type="button" aria-label="Clear section search" onClick={() => setSearch("")}><X size={14} /></button>}</div><nav className="section-nav">{filteredGroups.map((group) => <div className="nav-group" key={group.id}><div className="nav-group-label">{group.icon}<span>{group.label}</span></div>{group.children.map((item) => <a key={item.id} href={`#${item.id}`} className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={(event) => { event.preventDefault(); openSection(item.id); }}><span>{item.label}</span>{active === item.id && <AnimatedNavIndicator />}</a>)}</div>)}</nav>{search.trim() && !hasSearchResults && <p className="nav-empty" role="status">No sections match “{search}”.</p>}<a className="legacy-link" href={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}full-analysis/`}><ExternalLink size={15} /><span><strong>Full analysis archive</strong><small>Original Plotly reference</small></span></a><div className="sidebar-note"><ShieldCheck size={16} /><span>Validated Parquet evidence<br />Schema v{data.schema_version}</span></div></aside>{menuOpen && <button type="button" className="nav-backdrop" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation" />}
       <main id="main-content" tabIndex={-1}><header className="topbar"><div className="topbar-left"><button ref={menuButton} className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="dashboard-navigation"><Menu size={18} /></button><div><h1>Revenue Command<span className="wide-title"> Center</span></h1><span className="top-context">{activeGroup && activeSection && activeSection.label !== activeGroup.label ? `${activeGroup.label} / ${activeSection.label}` : activeSection?.label ?? activeGroup?.label ?? "Dashboard"} · {data.meta.period}<span className="context-refresh"> · {refreshed} · {metrics.total_opportunities} opportunities</span></span></div></div><div className="top-actions"><span className="validated"><Check size={13} /> Validated snapshot</span><button ref={caveatsTrigger} className="action-button" type="button" title="View data caveats" onClick={() => setCaveatsOpen(true)} aria-haspopup="dialog" aria-expanded={caveatsOpen}><Info size={15} /> Caveats</button><button className="action-button utility-export" type="button" title="Export all evidence" onClick={() => downloadEvidence(data)}><Download size={15} /> Export</button><button className="action-button utility-print" type="button" title="Print all dashboard sections" onClick={() => { setPrintAll(true); window.setTimeout(() => { window.print(); window.setTimeout(() => setPrintAll(false), 1500); }, 120); }}><Printer size={15} /> Print</button><a className="action-button browser-deck-link" href="#present/main-01" title="Open the browser findings deck"><Presentation size={15} /> Findings deck</a><button className={`mode-button ${presenting ? "active" : ""}`} type="button" title={presenting ? "Switch to analyst mode" : "Switch to presentation mode"} onClick={togglePresentation} aria-pressed={presenting}><Presentation size={15} /> {presenting ? "Analyst mode" : "Presentation mode"}</button><button className="icon-button utility-reset" type="button" onClick={() => { setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }} title="Reset dashboard" aria-label="Reset dashboard"><RotateCcw size={16} /></button><div ref={utilityMenu} className="utility-menu-wrap"><button ref={utilityTrigger} className="icon-button utility-more" type="button" aria-label="More dashboard actions" aria-haspopup={undefined} aria-expanded={utilityOpen} aria-controls="utility-menu" onClick={() => setUtilityOpen((value) => !value)}><MoreHorizontal size={18} /></button>{utilityOpen && <div id="utility-menu" className="utility-menu-popover" role="group" aria-label="Dashboard actions"><button type="button"  onClick={() => { downloadEvidence(data); setUtilityOpen(false); }}><Download size={16} /><span><strong>Export evidence</strong><small>Download the full validated dataset</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); setPrintAll(true); window.setTimeout(() => { window.print(); window.setTimeout(() => setPrintAll(false), 1500); }, 120); }}><Printer size={16} /><span><strong>Print dashboard</strong><small>Prepare every section for print</small></span></button><button type="button"  aria-pressed={presenting} onClick={() => { togglePresentation(); setUtilityOpen(false); }}><Presentation size={16} /><span><strong>{presenting ? "Analyst mode" : "Presentation mode"}</strong><small>{presenting ? "Restore the working layout" : "Expand the executive canvas"}</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }}><RotateCcw size={16} /><span><strong>Reset dashboard</strong><small>Return to the essential view</small></span></button></div>}</div></div></header>
-      {active !== "s-essential" && !printAll ? <section className="command-strip is-compact" aria-label="Executive operating summary"><div className="command-decision"><h2>Fix conversion before buying volume. Prove reach before scaling spend.</h2></div><dl className="command-inline-kpis"><div><dt>Pipeline</dt><dd>{metrics.total_pipeline}</dd></div><div><dt>Won</dt><dd>{metrics.won_revenue}</dd></div><div><dt>Win rate</dt><dd>{metrics.closed_deal_win_rate}</dd></div></dl></section> : <section className="command-strip" aria-label="Executive operating summary"><div className="command-decision"><span>CMO decision · controlled growth</span><h2>Fix conversion before buying volume. Prove reach before scaling spend.</h2><p>Marketing-sourced deals convert lowest while referral converts best; history names the risk and the test audience, and a holdout decides the next budget move.</p></div><div className="command-kpis"><div><span>Total pipeline</span><strong>{metrics.total_pipeline}</strong><small>{metrics.total_opportunities} opportunities</small></div><div><span>Recorded won revenue</span><strong>{metrics.won_revenue}</strong><small>{metrics.closed_deal_win_rate} resolved win rate</small></div><div><span>Marketing sourced</span><strong>{metrics.marketing_sourced_pipeline}</strong><small>{metrics.marketing_sourced_share} of pipeline</small></div><div><span>Marketing-linked</span><strong>{metrics.marketing_influenced_pipeline}</strong><small>{metrics.attribution_linked_won_share} of wins linked</small></div></div></section>}
+      {/* The conclusion restates the big idea in its own hero, so the compact strip would only repeat it. */}
+      {active === "s-conclusion" && !printAll ? null : active !== "s-essential" && !printAll ? <section className="command-strip is-compact" aria-label="The big idea"><div className="command-decision"><h2>{BIG_IDEA}</h2></div><dl className="command-inline-kpis"><div><dt>Pipeline</dt><dd>{metrics.total_pipeline}</dd></div><div><dt>Won</dt><dd>{metrics.won_revenue}</dd></div><div><dt>Win rate</dt><dd>{metrics.closed_deal_win_rate}</dd></div></dl></section> : <section className="command-strip" aria-label="The big idea"><div className="command-decision"><span>The big idea</span><h2>{BIG_IDEA}</h2><p>{bigIdeaSupport(data, story)}</p></div><dl className="command-kpis"><div><dt>Recorded pipeline</dt><dd className="kpi-value">{metrics.total_pipeline}</dd><dd className="kpi-context">{metrics.total_opportunities} opportunities, {metrics.data_year_range}</dd></div>{story.openPipeline ? <div><dt>Still open</dt><dd className="kpi-value">{story.openPipeline}</dd><dd className="kpi-context">The rest is already resolved</dd></div> : null}<div><dt>Recorded won</dt><dd className="kpi-value">{metrics.won_revenue}</dd><dd className="kpi-context">{metrics.closed_deal_win_rate} resolved win rate</dd></div><div><dt>Marketing-sourced</dt><dd className="kpi-value">{metrics.marketing_sourced_pipeline}</dd><dd className="kpi-context">{metrics.marketing_sourced_share} of recorded pipeline</dd></div>{story.openPipeline ? null : <div><dt>Marketing-linked</dt><dd className="kpi-value">{metrics.marketing_influenced_pipeline}</dd><dd className="kpi-context">{metrics.attribution_linked_won_share} of wins linked</dd></div>}</dl></section>}
+      {(active === "s-essential" || printAll) && <ArcStrip data={data} story={story} onOpen={openSection} />}
       {(active === "s-essential" || printAll) && brief && <LatestFindings brief={brief} data={data} />}
-      {(active === "s-essential" || printAll) && <StoryStrip data={data} />}
       <div className="progress-rail" aria-label={`Section ${sectionOrder.indexOf(active) + 1} of ${sectionOrder.length}`}><span style={{ width: "100%", transform: `scaleX(${(sectionOrder.indexOf(active) + 1) / sectionOrder.length})`, transformOrigin: "left center" }} /></div>
       <div className={`section-viewport ${printAll ? "print-all" : ""}`}>{printAll ? sectionOrder.map((id) => <div className="print-section" key={id}>{renderSection(id)}</div>) : <>{renderSection(active)}<SectionPager active={active} onOpen={openSection} /></>}</div>
       <footer><div className="footer-id"><strong>Marketing Analytics Decision System</strong><span>{refreshed}{data.meta.snapshot_id ? ` · Snapshot ${data.meta.snapshot_id}` : ""} · Schema v{data.schema_version}</span></div><p><span className="footer-label">Source</span> {data.meta.generated_from} · {data.meta.methodology}</p><button type="button" className="text-button back-to-top" onClick={() => { window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); document.querySelector<HTMLElement>("#main-content")?.focus({ preventScroll: true }); }}><ArrowUp size={14} aria-hidden="true" /> Back to top</button></footer>
