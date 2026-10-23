@@ -16,6 +16,8 @@ const STAGE_W = 1280;
 const STAGE_H = 720;
 /** Below this frame width the slide reflows instead of scaling (phones). */
 const FLOW_BREAKPOINT = 760;
+/** Target of the page-level skip link in index.html; the deck's <main> carries it. */
+const MAIN_ID = "main-content";
 /** Slides whose authored body only restates the action title and the visual; it stays in the presenter's "Say" note. */
 const BODY_REPEATS_HEADLINE = new Set(["main-02", "main-13", "main-16"]);
 
@@ -136,6 +138,18 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
     };
     route(); window.addEventListener("hashchange", route); return () => window.removeEventListener("hashchange", route);
   }, [presenter, identities]);
+  // The page-level skip link (index.html) targets #main-content. Following it as a hash would leave the deck,
+  // so move focus to the deck's own <main id="main-content"> instead.
+  useEffect(() => {
+    const skip = (event: MouseEvent) => {
+      const link = (event.target as Element | null)?.closest?.(`a[href="#${MAIN_ID}"]`);
+      if (!link) return;
+      event.preventDefault();
+      document.getElementById(MAIN_ID)?.focus();
+    };
+    document.addEventListener("click", skip);
+    return () => document.removeEventListener("click", skip);
+  }, []);
   useEffect(() => { const tick = () => setElapsed(elapsedAt(stateRef.current, Date.now())); tick(); const id = window.setInterval(tick, 250); return () => clearInterval(id); }, []);
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
@@ -179,8 +193,8 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
     const drift = expected === null || elapsed === 0 ? null : elapsed / 1000 - expected;
     const pace = drift === null ? null : Math.abs(drift) < 30 ? { tone: "ok", label: "On pace" } : drift > 0 ? { tone: "behind", label: `${fmt(drift)} behind` } : { tone: "ahead", label: `${fmt(-drift)} ahead` };
     const label = (slide: typeof current) => slide ? `${sectionFor(slide.sequence, slide.order)} · ${slide.sequence === "main" ? `${slide.order} / ${main.length}` : `A${slide.order}`}` : "";
-    return <main className="presenter-console deck" tabIndex={0} aria-label="Presenter keyboard controls">
-      <header><span className="signal" data-status={connection} /> Presenter console <small role="status">{connection === "unavailable" ? "Cross-window control unavailable; use the audience window's keyboard controls." : `Audience ${connection}`} · session {session.slice(0,8)}</small><kbd className="presenter-keys" aria-label="Keyboard: right arrow, Space or Page Down for next; left arrow or Page Up for back; Home and End jump; F fullscreen">→ Space next · ← back · Home / End · F fullscreen</kbd></header>
+    return <main id={MAIN_ID} className="presenter-console deck" tabIndex={0} aria-label="Presenter keyboard controls">
+      <header><span className="signal" data-status={connection} /> Presenter console <small role="status">{connection === "unavailable" ? "Cross-window control unavailable; use the audience window's keyboard controls." : `Audience ${connection}`} · session {session.slice(0,8)}</small><kbd className="presenter-keys"><span aria-hidden="true">→ Space next · ← back · Home / End · F fullscreen</span><span className="sr-only">Keyboard: right arrow, Space or Page Down for next; left arrow or Page Up for back; Home and End jump; F fullscreen</span></kbd></header>
       {limitation}
       <div className="presenter-top">
         <section className="presenter-current" aria-label="Current slide"><p>Now · {label(current)}</p><h1>{current ? headlines.get(current.id) : ""}</h1>{current && headlines.get(current.id) !== current.title && <p className="presenter-topic">{current.title}</p>}</section>
@@ -196,7 +210,7 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
   const stageStyle = scale === null ? undefined : { width: `${STAGE_W * scale}px`, height: `${STAGE_H * scale}px`, "--deck-scale": scale } as CSSProperties;
   const canvasStyle = { "--deck-density": densityValue } as CSSProperties;
   const isAppendix = current?.sequence === "appendix";
-  return <main className={`presentation-shell deck ${scale === null ? "is-flow" : "is-stage"}`} tabIndex={0} aria-label="Presentation keyboard controls"><div ref={surface}>
+  return <main id={MAIN_ID} className={`presentation-shell deck ${scale === null ? "is-flow" : "is-stage"}`} tabIndex={0} aria-label="Presentation keyboard controls"><div ref={surface}>
     <header className="presentation-header">
       <a href={DASHBOARD_HASH} className="wordmark">REVENUE <span>COMMAND</span> / CMO BRIEF</a>
       <ol className="deck-sections" aria-label="Deck sections">{[...SECTIONS, "Appendix" as const].map(name => <li key={name} aria-current={name === section ? "step" : undefined}>{name}</li>)}</ol>
@@ -226,7 +240,7 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
         const done = run.slides.filter(slide => slides.indexOf(slide) <= currentIndex).length;
         return <span key={run.name} className={run.slides.some(slide => slide.id === current?.id) ? "is-current" : undefined} style={{ flexGrow: run.slides.length }}><b style={{ width: `${done / run.slides.length * 100}%` }} /><small>{run.name}</small></span>;
       })}</div>
-      <span className="deck-elapsed" aria-label="Elapsed presentation time">{fmt(elapsed / 1000)} / {fmt(data.presentation.target_duration_seconds)}</span>
+      <span className="deck-elapsed"><span className="sr-only">Elapsed presentation time </span>{fmt(elapsed / 1000)} / {fmt(data.presentation.target_duration_seconds)}</span>
       {state.sequence === "main" && currentIndex === main.length - 1 ? <button onClick={openOverview}>Appendix <Grid2X2 /></button> : <button className="red" disabled={currentIndex === slides.length - 1} onClick={() => command({kind:"next"})}>Next <ChevronRight /></button>}
     </nav>
   </div>
