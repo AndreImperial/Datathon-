@@ -83,7 +83,7 @@
 .deck .slide-canvas .slide-caveat { margin: 0; padding: 8px 14px; border-left: 3px solid var(--deck-accent); border-radius: 0 6px 6px 0; color: var(--deck-ink-soft); background: var(--deck-tint); font-size: 16px; line-height: 1.4; }
 .deck .deck-source { display: flex; align-items: center; gap: 16px; min-height: 36px; color: var(--deck-muted); font-size: 13px; }
 .deck .deck-source > span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.deck .deck-source > span:nth-child(2) { color: var(--deck-bar-muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.deck .deck-source > span:nth-child(2) { color: var(--deck-muted); font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* split layout (appendix: long methods text beside the evidence) */
 .deck .slide-canvas.layout-split { grid-template-columns: 400px minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; column-gap: 36px; }
@@ -103,6 +103,18 @@
 .deck .deck-progress b { grid-area: 1 / 1; height: 4px; border-radius: 2px; background: var(--deck-accent); transition: width 180ms var(--deck-ease); }
 .deck .deck-progress small { overflow: hidden; color: var(--deck-muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .deck .deck-progress > span.is-current small { color: var(--deck-ink); }
+/* The deck's <main> carries #main-content for the page skip link; undo the dashboard's #main-content layout (sidebar offset). */
+#main-content.deck.presentation-shell { min-height: 0; margin-left: 0; }
+#main-content.deck.presentation-shell.is-flow { min-height: 100dvh; overflow: visible; }
+#main-content.deck.presenter-console { min-height: 100vh; margin-left: auto; overflow: visible; }
+/* Every section label stays whole: a short section (Audience is one slide) widens to its label and the long ones give up the room. */
+.deck.is-stage .deck-progress > span { min-width: max-content; }
+.deck.is-stage .deck-progress small { padding-right: 8px; overflow: visible; text-overflow: clip; }
+/* Too narrow for all six labels: keep only the current one, still whole. */
+@media (max-width: 900px) {
+  .deck.is-stage .deck-progress > span:not(.is-current) { min-width: 0; }
+  .deck.is-stage .deck-progress > span:not(.is-current) small { visibility: hidden; }
+}
 .deck .presentation-controls > .deck-elapsed { color: var(--deck-muted); font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 /* ---------- shared evidence primitives ---------- */

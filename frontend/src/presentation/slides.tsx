@@ -5,7 +5,7 @@ import { TableProperties, X } from "lucide-react";
 import type { CaseSlide, CaseStudyData } from "../types";
 import { columnLabel, formatDollarsCompact, formatField, formatMonthYear } from "../evidence";
 import { displayName } from "../labels";
-import { fieldLabel } from "./labels";
+import { emailLabel, fieldLabel } from "./labels";
 
 export type Row = Record<string, unknown>;
 
@@ -34,7 +34,7 @@ function KpiTiles({ items, className = "" }: { items: Kpi[]; className?: string 
 /** How a bar is emphasized: the bar that makes the slide's point is "accent"; a comparison bar is "reference"; the rest stay muted. */
 type Emphasis = "accent" | "reference" | undefined;
 
-export function Bars({ rows, name, value, format = count, detail, label, emphasis }: { rows: Row[]; name: (row: Row) => string; value: string; format?: (n: number) => string; detail?: (row: Row) => string; label: string; emphasis?: (row: Row, index: number) => Emphasis }) {
+export function Bars({ rows, name, value, format = count, detail, label, emphasis, hint }: { rows: Row[]; name: (row: Row) => string; value: string; format?: (n: number) => string; detail?: (row: Row) => string; label: string; emphasis?: (row: Row, index: number) => Emphasis; hint?: (row: Row) => string }) {
   const observedMax = Math.max(0, ...rows.map(row => Math.abs(numeric(row[value]) ?? 0)));
   const max = observedMax > 0 ? observedMax : 1;
   if (!rows.length) return <p className="deck-empty">Evidence unavailable for this scope.</p>;
@@ -44,7 +44,7 @@ export function Bars({ rows, name, value, format = count, detail, label, emphasi
     const title = name(row);
     const emphasized = tone(row, index);
     return <li className={`slide-bar ${emphasized ? `is-${emphasized}` : ""}`.trim()} key={`${title}-${index}`}>
-      <span className="slide-bar-name" title={title}>{title}</span>
+      <span className="slide-bar-name" title={hint?.(row) ?? title}>{title}</span>
       <i className={n !== null && n < 0 ? "negative" : ""} aria-hidden="true"><b style={{ width: `${n === null ? 0 : Math.abs(n) / max * 100}%` }} /></i>
       <strong>{n === null ? "Unavailable" : format(n)}</strong>
       {detail && <small>{detail(row)}</small>}
@@ -727,7 +727,7 @@ export function SlideVisual({ data, slide }: { data: CaseStudyData; slide: CaseS
     case "main-07": return <Decomposition rows={rows("conversion_decomposition")} slide={slide} />;
     case "main-08": return <CreativeBundles rows={rows("creative_bundles")} />;
     case "main-09": return <div className="deck-two">
-      <Panel title="Email · top 5 titles by unique clickers · no delivery denominator"><Bars label="Unique clickers by email title" rows={[...rows("email_content")].sort(byDesc("unique_clickers")).slice(0, 5)} emphasis={() => undefined} name={row => text(row.content_title)} value="unique_clickers" /></Panel>
+      <Panel title="Email · top 5 titles by unique clickers · no delivery denominator"><Bars label="Unique clickers by email title" rows={[...rows("email_content")].sort(byDesc("unique_clickers")).slice(0, 5)} emphasis={() => undefined} name={row => emailLabel(row.content_title) || text(row.content_title)} hint={row => text(row.content_title) === "Unavailable" ? "Unavailable" : String(row.content_title)} value="unique_clickers" /></Panel>
       <Panel title="Website · recordings and observed contact activity"><WebContact rows={rows("web_content")} /></Panel>
     </div>;
     case "main-10": return <Panel title="Exclusive groups · marketing source × 365-day touch link · opportunities"><OverlapMatrix rows={rows("attribution_overlap")} /></Panel>;

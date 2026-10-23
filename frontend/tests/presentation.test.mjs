@@ -92,4 +92,29 @@ test('presenter console keeps the big idea in view and bridges into the next hea
   const next=document.querySelector('.presenter-upnext h2').textContent;
   assert.ok(document.querySelector('.presenter-transition').textContent.includes(next));
   assert.ok(document.querySelector('.presenter-bigidea').textContent.includes(document.querySelector('.presenter-current h1').textContent));
+  // The keyboard hint is a <kbd>: its accessible text comes from content, not a prohibited aria-label.
+  const keys=document.querySelector('.presenter-keys');
+  assert.equal(keys.getAttribute('aria-label'),null); assert.match(keys.querySelector('.sr-only').textContent,/Page Down for next/);
+  assert.equal(document.querySelector('main').id,'main-content');
 },{presenter:true}));
+test('main-09 shows short email labels and keeps each full campaign name as the tooltip',async()=>mounted('#present/main-09',async()=>{
+  const top=[...data.datasets.email_content].sort((a,b)=>b.unique_clickers-a.unique_clickers).slice(0,5);
+  const names=[...document.querySelectorAll('.slide-bar-name')];
+  assert.equal(names.length,5);
+  names.forEach((name,i)=>{
+    assert.equal(name.title,top[i].content_title);
+    assert.ok(name.textContent.length<=44 && !/^EM\d*\b|_/.test(name.textContent),name.textContent);
+  });
+  assert.equal(new Set(names.map(x=>x.textContent)).size,5);
+  assert.equal(names[3].textContent.replace(/\u00a0/g,' '),'Newsletter Jan–Mar W2 · Jan 29');
+}));
+test('the page skip link focuses the deck instead of leaving it, and elapsed time is named by its text',async()=>mounted('#present/main-03',async(dom)=>{
+  const skip=document.createElement('a'); skip.className='skip-link'; skip.href='#main-content'; skip.textContent='Skip'; document.body.prepend(skip);
+  const main=document.querySelector('main');
+  assert.equal(main.id,'main-content');
+  const click=new dom.window.MouseEvent('click',{bubbles:true,cancelable:true});
+  await act(async()=>skip.dispatchEvent(click));
+  assert.equal(click.defaultPrevented,true); assert.equal(location.hash,'#present/main-03'); assert.equal(document.activeElement,main);
+  const elapsed=document.querySelector('.deck-elapsed');
+  assert.equal(elapsed.getAttribute('aria-label'),null); assert.match(elapsed.textContent,/^Elapsed presentation time \d\d:\d\d \/ \d\d:\d\d$/);
+}));
