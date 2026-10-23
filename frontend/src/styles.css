@@ -900,3 +900,13 @@ footer p { margin: 0; max-width: 110ch; }
   .section-heading, .section-takeaway, .section-heading h2, .chart-heading, .table-heading, .evidence-details > summary { break-after: avoid; }
   .evidence-card, .appendix-card, .latest-tile, .decision-card, .conclusion-hero, .command-strip, .reading-note, #main-content > footer { break-inside: avoid; }
 }
+
+/* Print: heatmap colours carry data, so print them exactly; reading notes stay with their section. */
+@media print {
+  .heatmap-cell, .chart-legend i, .roi-compare * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .reading-note { break-before: avoid; page-break-before: avoid; break-inside: avoid; }
+  .heatmap { overflow: visible; }
+  .chart-card svg text, .chart-card .recharts-text { fill: #2b2b2e !important; }
+  .chart-card .recharts-cartesian-grid line { stroke: #d9d6d6 !important; }
+  .roi-compare, .roi-compare *, .chart-legend { color: #2b2b2e !important; }
+}
