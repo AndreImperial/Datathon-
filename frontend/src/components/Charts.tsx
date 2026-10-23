@@ -684,7 +684,8 @@ export function Heatmap({ data, xKey, yKey, valueKey, valueFormatter = (value: n
   const columnMin = Math.max(64, Math.ceil(Math.max(...xs.map((x) => x.length)) * 7.4) + 10);
   return <div className="heatmap-wrap">
     <div className="heatmap" role="table" aria-label={`${valueKey}; ${scaleText}; dash means unavailable; Low n means below 30`} style={{ gridTemplateColumns: `minmax(84px, 1.1fr) repeat(${xs.length}, minmax(${columnMin}px, 1fr))` }}>
-      <div className="heatmap-corner" style={headerStyle}>{diverging ? <>vs overall {valueFormatter(anchor as number)}</> : <>{valueFormatter(min)} → {valueFormatter(max)}<small> · saturated endpoints</small></>}</div>{xs.map((x) => <div className="heatmap-x" role="columnheader" key={x} title={x} style={{ ...headerStyle, overflowWrap: "normal", wordBreak: "normal" }}>{x}</div>)}
+      {/* Header row: `.heatmap-row` is display: contents, so the cells still sit on the grid. */}
+      <div className="heatmap-row" role="row"><div className="heatmap-corner" role="columnheader" style={headerStyle}>{diverging ? <>vs overall {valueFormatter(anchor as number)}</> : <>{valueFormatter(min)} → {valueFormatter(max)}<small> · saturated endpoints</small></>}</div>{xs.map((x) => <div className="heatmap-x" role="columnheader" key={x} title={x} style={{ ...headerStyle, overflowWrap: "normal", wordBreak: "normal" }}>{x}</div>)}</div>
       {ys.map((y) => <div className="heatmap-row" role="row" key={y}><div className="heatmap-y" role="rowheader" title={y} style={headerStyle}>{y}</div>{xs.map((x) => {
         const row = data.find((item) => textValue(item, yKey) === y && textValue(item, xKey) === x);
         const value = row ? numberValue(row, valueKey) : Number.NaN;

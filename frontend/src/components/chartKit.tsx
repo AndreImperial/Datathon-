@@ -225,6 +225,51 @@ function prefersReducedMotion() {
   return typeof window === "undefined" || typeof window.matchMedia !== "function" || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
+// ---------------------------------------------------------------------------
+// Full-surface hover target
+// ---------------------------------------------------------------------------
+
+const SNAPPED = "__chartSnapped";
+
+/**
+ * Recharts only resolves a tooltip while the pointer is inside the plot area,
+ * so the axis gutters (tick labels under a category, the value-axis column)
+ * showed nothing.  When the pointer is over the chart surface but outside the
+ * plot, swallow that move and re-dispatch it clamped onto the plot edge: the
+ * nearest category's band then answers, and the tooltip is still positioned
+ * (and contained) by Recharts as usual.
+ */
+function useSurfaceHover(ref: { current: HTMLDivElement | null }) {
+  useEffect(() => {
+    const shell = ref.current;
+    if (!shell) return;
+    const onMove = (event: MouseEvent) => {
+      if ((event as unknown as Record<string, unknown>)[SNAPPED]) return;
+      const wrapper = (event.target as Element | null)?.closest?.(".recharts-wrapper");
+      const surface = wrapper?.querySelector<SVGSVGElement>("svg.recharts-surface");
+      const plot = surface?.querySelector<SVGRectElement>("defs clipPath rect");
+      if (!wrapper || !surface || !plot) return;
+      const box = surface.getBoundingClientRect();
+      const { clientX, clientY } = event;
+      if (clientX < box.left || clientX > box.right || clientY < box.top || clientY > box.bottom) return;
+      const left = box.left + plot.x.baseVal.value;
+      const top = box.top + plot.y.baseVal.value;
+      const right = left + plot.width.baseVal.value;
+      const bottom = top + plot.height.baseVal.value;
+      if (right - left < 2 || bottom - top < 2) return;
+      const x = Math.min(Math.max(clientX, left + 1), right - 1);
+      const y = Math.min(Math.max(clientY, top + 1), bottom - 1);
+      if (x === clientX && y === clientY) return;
+      event.stopPropagation();
+      const snapped = new MouseEvent("mousemove", { bubbles: true, cancelable: true, clientX: x, clientY: y, screenX: event.screenX + (x - clientX), screenY: event.screenY + (y - clientY), view: window });
+      (snapped as unknown as Record<string, unknown>)[SNAPPED] = true;
+      wrapper.dispatchEvent(snapped);
+    };
+    shell.addEventListener("mousemove", onMove, true);
+    return () => shell.removeEventListener("mousemove", onMove, true);
+  }, [ref]);
+}
+
 /**
  * Chart container.  Pass a render function to receive the motion props for
  * bars: a short ease-out grow only on first mount, only when the chart is on
@@ -233,6 +278,7 @@ function prefersReducedMotion() {
 export function ChartShell({ children, minHeight = 280, part = 0 }: { children: ReactNode | ((motion: ChartMotion) => ReactNode); minHeight?: number; part?: number }) {
   const ref = useRef<HTMLDivElement>(null);
   const [motion, setMotion] = useState<ChartMotion | null>(typeof children === "function" ? null : STILL);
+  useSurfaceHover(ref);
   useLayoutEffect(() => {
     if (motion) return;
     const element = ref.current;

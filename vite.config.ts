@@ -38,9 +38,23 @@ export default defineConfig({
     modulePreload: false,
     rollupOptions: {
       output: {
-        manualChunks: {
-          motion: ["gsap", "motion"],
-          recharts: ["recharts"],
+        // Function form, matched on the package path only.  The object form
+        // (`recharts: ["recharts"]`) also pulled recharts' shared deps (react,
+        // clsx, …) into the recharts chunk, so the entry chunk had to import
+        // all ~560 kB of chart code before the first paint.  Here React gets
+        // its own vendor chunk and the chart stack stays reachable only from
+        // the lazily imported Charts chunk.
+        manualChunks(id: string) {
+          const match = /[\\/]node_modules[\\/]((?:@[^\\/]+[\\/])?[^\\/]+)/.exec(id);
+          if (!match) return undefined;
+          const pkg = match[1].replace(/\\/g, "/");
+          if (["react", "react-dom", "scheduler"].includes(pkg)) return "react";
+          if (["gsap", "motion", "framer-motion", "motion-dom", "motion-utils"].includes(pkg)) return "motion";
+          // d3 scales/shapes (via victory-vendor) are split from recharts so
+          // neither lazy chunk crosses the 500 kB warning on its own.
+          if (pkg === "victory-vendor" || pkg === "internmap" || pkg.startsWith("d3-")) return "d3";
+          if (["recharts", "recharts-scale", "react-smooth", "lodash", "decimal.js-light", "eventemitter3", "tiny-invariant", "fast-equals", "react-transition-group", "dom-helpers", "prop-types", "react-is"].includes(pkg)) return "recharts";
+          return undefined;
         },
       },
     },
