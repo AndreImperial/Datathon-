@@ -108,3 +108,120 @@ export function topRows<T extends Record<string, unknown>>(rows: T[], key: strin
     .sort((a, b) => (b[key] as number) - (a[key] as number))
     .slice(0, limit);
 }
+
+/* ------------------------------------------------------------------------- *
+ * Pilot sizing and budget. Pure functions, shared by the dashboard and tests.
+ * ------------------------------------------------------------------------- */
+
+const Z_ALPHA = 1.96; // two-sided alpha .05
+const Z_POWER = 0.8416; // power .80
+
+/**
+ * Required accounts per arm for a two-proportion test (equal allocation), the
+ * same formula the analysis uses for experiment_scenarios.
+ */
+export function requiredPerArm(baseline: number, lift: number): number {
+  if (!(baseline > 0 && baseline < 1) || !(lift > 0) || baseline + lift >= 1) return NaN;
+  const treated = baseline + lift;
+  const pooled = (baseline + treated) / 2;
+  const numerator = (Z_ALPHA * Math.sqrt(2 * pooled * (1 - pooled)) + Z_POWER * Math.sqrt(baseline * (1 - baseline) + treated * (1 - treated))) ** 2;
+  return Math.ceil(numerator / lift ** 2);
+}
+
+/**
+ * Smallest absolute lift (a fraction) that `armSize` accounts per arm can detect
+ * at the given baseline: the inverse of requiredPerArm, by bisection.
+ */
+export function detectableLift(baseline: number, armSize: number): number {
+  if (!(baseline > 0 && baseline < 1) || !(armSize > 0)) return NaN;
+  let low = 1e-6;
+  let high = 1 - baseline - 1e-6;
+  if (requiredPerArm(baseline, high) > armSize) return NaN;
+  for (let step = 0; step < 60; step++) {
+    const mid = (low + high) / 2;
+    if (requiredPerArm(baseline, mid) <= armSize) high = mid; else low = mid;
+  }
+  return high;
+}
+
+export interface PilotRow { baseline: number; liftPp: number; treatmentRate: number }
+export interface PilotDesign { totalAccounts: number; armSize: number; horizonDays: number; outcome: string; alpha: number; power: number; rows: PilotRow[] }
+
+const finite = (value: unknown): number => (typeof value === "number" && Number.isFinite(value) ? value : NaN);
+
+/**
+ * Reads datasets.pilot_design rows into one design. Returns null when the
+ * dataset is absent or carries no usable baseline row, so callers degrade to
+ * the existing sizing view. A row without a lift falls back to the formula.
+ */
+export function parsePilotDesign(rows: unknown, fallbackTotal = NaN): PilotDesign | null {
+  if (!Array.isArray(rows) || !rows.length) return null;
+  const records = rows.filter((row): row is Record<string, unknown> => !!row && typeof row === "object");
+  const first = records[0] ?? {};
+  const total = Number.isFinite(finite(first.total_accounts)) ? finite(first.total_accounts) : fallbackTotal;
+  const armSize = Number.isFinite(finite(first.arm_size)) ? finite(first.arm_size) : Math.floor(total / 2);
+  if (!Number.isFinite(armSize) || armSize <= 0) return null;
+  const parsed = records.map((row) => {
+    const baseline = finite(row.baseline_rate);
+    let liftPp = finite(row.detectable_lift_pp);
+    if (!Number.isFinite(liftPp)) liftPp = Number.isFinite(finite(row.detectable_lift)) ? finite(row.detectable_lift) * 100 : detectableLift(baseline, armSize) * 100;
+    const treatmentRate = Number.isFinite(finite(row.treatment_rate)) ? finite(row.treatment_rate) : baseline + liftPp / 100;
+    return { baseline, liftPp, treatmentRate };
+  }).filter((row) => Number.isFinite(row.baseline) && Number.isFinite(row.liftPp)).sort((a, b) => a.baseline - b.baseline);
+  if (!parsed.length) return null;
+  return {
+    totalAccounts: Number.isFinite(total) ? total : armSize * 2,
+    armSize,
+    horizonDays: Number.isFinite(finite(first.horizon_days)) ? finite(first.horizon_days) : 90,
+    outcome: typeof first.outcome === "string" && first.outcome.trim() ? first.outcome.trim() : "New CRM opportunity within 90 days",
+    alpha: Number.isFinite(finite(first.alpha)) ? finite(first.alpha) : 0.05,
+    power: Number.isFinite(finite(first.power)) ? finite(first.power) : 0.8,
+    rows: parsed,
+  };
+}
+
+/** Result of reading one money input: empty is not an error, it is "not entered". */
+export type MoneyInput = { state: "empty" } | { state: "invalid"; message: string } | { state: "ok"; value: number };
+
+/** Parses a typed dollar amount. Accepts "1,250", "$40", "12.5"; rejects negatives and text. */
+export function parseMoneyInput(raw: string, label = "Value"): MoneyInput {
+  const text = raw.trim();
+  if (!text) return { state: "empty" };
+  const cleaned = text.replace(/^\$/, "").replaceAll(",", "").trim();
+  const invalid = { state: "invalid" as const, message: `${label} must be a number, for example 40 or 1250.50.` };
+  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(cleaned)) return invalid;
+  const value = Number(cleaned);
+  if (!Number.isFinite(value)) return invalid;
+  if (value < 0) return { state: "invalid", message: `${label} cannot be negative.` };
+  return { state: "ok", value };
+}
+
+export type PilotBudget = { state: "empty"; message: string } | { state: "invalid"; message: string } | { state: "ok"; total: number; variable: number; fixed: number; message: string };
+
+/**
+ * Pilot budget = treatment accounts × cost per account + optional fixed cost.
+ * Nothing is assumed: with no unit cost the result is an explicit empty state.
+ */
+export function pilotBudget(treatmentAccounts: number, unitCostRaw: string, fixedCostRaw = ""): PilotBudget {
+  const unit = parseMoneyInput(unitCostRaw, "Cost per treatment account");
+  const fixed = parseMoneyInput(fixedCostRaw, "Fixed cost");
+  if (unit.state === "invalid") return unit;
+  if (fixed.state === "invalid") return fixed;
+  if (unit.state === "empty") return { state: "empty", message: "Enter a unit cost to size the pilot budget." };
+  if (!Number.isFinite(treatmentAccounts) || treatmentAccounts < 0) return { state: "invalid", message: "The pilot treatment-arm size is unavailable." };
+  const variable = treatmentAccounts * unit.value;
+  const fixedValue = fixed.state === "ok" ? fixed.value : 0;
+  const total = variable + fixedValue;
+  const accounts = formatCount(treatmentAccounts);
+  const message = fixed.state === "ok"
+    ? `Pilot budget: ${formatBudget(total)} (${accounts} treatment accounts × ${formatBudget(unit.value)} + ${formatBudget(fixedValue)} fixed).`
+    : `Pilot budget: ${formatBudget(total)} (${accounts} treatment accounts × ${formatBudget(unit.value)}).`;
+  return { state: "ok", total, variable, fixed: fixedValue, message };
+}
+
+/** Budget figures keep cents only when they are not whole dollars. */
+export function formatBudget(value: number): string {
+  if (!Number.isFinite(value)) return "—";
+  const whole = Math.abs(value - Math.round(value)) < 0.005;
+  return `${value < 0 ? "-" : ""}$${Math.abs(value).toLocaleString("en-US", { minimumFractionDigits: whole ? 0 : 2, maximumFractionDigits: whole ? 0 : 2 })}`;
+}
