@@ -616,3 +616,61 @@ body:has(.deck) { background: var(--deck-bg); }
 .deck.is-flow .deck-leaders td strong { font-size: 12px; }
 .deck.is-flow .deck-ask .deck-decisions thead th { width: auto; }
 .deck.is-flow .deck-bigidea { font-size: 17px; }
+
+/* ---------- cut toggle: Full · 18 min / Executive · 10 min ---------- */
+.deck .deck-cut { display: inline-flex; flex: none; padding: 2px; border: 1px solid var(--deck-line-strong); border-radius: 10px; background: var(--deck-surface); }
+.deck.presentation-shell .deck-cut button, .deck.presenter-console .deck-cut button { flex-direction: row; align-items: center; gap: 0; min-width: 0; min-height: 40px; padding: 6px 12px; border: 0; border-radius: 8px; color: var(--deck-body); background: none; font-size: 13px; line-height: 1.2; white-space: pre; }
+.deck .deck-cut button small { color: inherit; font-size: inherit; font-weight: 600; letter-spacing: normal; text-transform: none; }
+.deck.presentation-shell .deck-cut button[aria-pressed="true"], .deck.presenter-console .deck-cut button[aria-pressed="true"] { color: var(--deck-ink); background: var(--deck-tint); box-shadow: inset 0 0 0 1px var(--deck-accent); }
+.deck.presentation-shell .deck-cut button:hover:not(:disabled):not([aria-pressed="true"]), .deck.presenter-console .deck-cut button:hover:not(:disabled):not([aria-pressed="true"]) { color: var(--deck-ink); background: var(--deck-surface-2); }
+/* The header carries the toggle; the section pills give way first (the progress bar below keeps the sections). */
+@media (max-width: 1599px) {
+  .deck .deck-sections li:not([aria-current]) { display: none; }
+}
+.deck.is-flow .deck-cut-header button > span, .deck.is-flow .deck-cut-header button small { display: none; }
+.deck.is-flow.presentation-shell .deck-cut-header button { padding: 6px 8px; }
+.deck .overview-cut { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin-top: 12px; }
+.deck .overview-cut .overview-hint { margin: 0; }
+.deck.presenter-console > header .deck-cut { margin-left: auto; }
+.deck.presenter-console > header .deck-cut + .presenter-keys { margin-left: 0; }
+
+/* main-14: the 3×3 grid beside the pilot that fits */
+.deck .deck-pilot-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+.deck .deck-pilot-layout .deck-scenarios th[scope="row"] { width: 150px; }
+.deck .deck-pilot-layout .deck-scenarios td { height: 72px; padding: 8px 10px; }
+.deck .deck-pilot-layout .deck-scenarios td strong { font-size: 26px; }
+.deck .deck-pilot-layout .deck-scenarios td small { font-size: 14px; }
+.deck .deck-pilot-layout .deck-scenarios caption { font-size: 15px; }
+.deck .deck-pilot { display: grid; gap: 12px; padding: 18px 20px; border: 1px solid var(--deck-accent); border-radius: 12px; background: var(--deck-tint); }
+.deck .deck-pilot .deck-panel-label { margin: 0; color: var(--deck-accent-text); }
+.deck .deck-pilot-head { margin: 0; color: var(--deck-ink-soft); font-size: 18px; line-height: 1.3; }
+.deck .deck-pilot-head strong { display: block; color: var(--deck-ink); font-size: 44px; font-weight: 800; line-height: 1; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.deck .deck-pilot-head span { display: block; margin-top: 4px; color: var(--deck-body); font-size: 16px; }
+.deck .deck-pilot-lifts { width: 100%; border-collapse: collapse; color: var(--deck-ink); font-size: 16px; text-align: left; }
+.deck .deck-pilot-lifts caption { padding-bottom: 4px; color: var(--deck-body); font-size: 14px; text-align: left; }
+.deck .deck-pilot-lifts thead th { padding: 4px 8px; color: var(--deck-body); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.deck .deck-pilot-lifts tbody th, .deck .deck-pilot-lifts td { padding: 6px 8px; border-top: 1px solid var(--deck-line-strong); font-variant-numeric: tabular-nums; }
+.deck .deck-pilot-lifts tbody th { width: 34%; font-weight: 700; }
+.deck .deck-pilot-lifts td strong { font-size: 20px; font-weight: 800; }
+.deck .deck-pilot-lifts td small { color: var(--deck-body); font-size: 14px; }
+.deck .deck-pilot-lifts tr.is-accent th { box-shadow: inset 3px 0 0 var(--deck-accent); }
+.deck .deck-pilot-outcome { margin: 0; color: var(--deck-ink); font-size: 16px; font-weight: 700; line-height: 1.3; }
+.deck .deck-pilot-outcome small { display: block; color: var(--deck-body); font-size: 12px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.deck .deck-formula-line { max-width: 52em; margin: 0; color: var(--deck-ink-soft); font-size: 19px; font-weight: 550; line-height: 1.45; }
+.deck .deck-formula-line strong { color: var(--deck-ink); font-weight: 800; }
+
+/* appendix-06: KPI tiles beside the amount / MRR relationship bars */
+.deck .deck-summary-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.deck .deck-summary-split .deck-kpis-compact { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.deck .deck-mrr-relationship .deck-panel-label { font-size: 12px; }
+.deck .deck-mrr-relationship .slide-bars { gap: 8px; }
+.deck .deck-appendix .deck-mrr-relationship .slide-bar { grid-template-columns: minmax(0, 1fr) 3.2em; font-size: 14px; }
+.deck .deck-mrr-relationship .slide-bar > .slide-bar-name { grid-column: 1 / -1; }
+.deck .deck-mrr-relationship .slide-bar i { height: 12px; }
+.deck .slide-canvas .deck-mrr-relationship .slide-bar strong { font-size: 15px; }
+.deck .slide-canvas .deck-mrr-relationship .slide-bar small { grid-column: 1 / -1; font-size: 12px; }
+.deck .deck-mrr-relationship .deck-footnote { margin-top: 8px; font-size: 13px; }
+
+.deck.is-flow .deck-pilot-layout, .deck.is-flow .deck-summary-split { grid-template-columns: 1fr; }
+.deck.is-flow .deck-pilot-layout .deck-scenarios th[scope="row"] { width: 70px; }
+.deck.is-flow .deck-pilot-layout .deck-scenarios td strong { font-size: 17px; }
