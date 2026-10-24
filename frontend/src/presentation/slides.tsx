@@ -95,7 +95,10 @@ export function evidenceFor(data: CaseStudyData, slide: CaseSlide): EvidenceSet[
       { title: "Journey outcomes", rows: rows("journey_outcomes"), fields: fieldsOf(rows("journey_outcomes")) },
     ];
   }
-  const refs = slide.chart_refs.length ? slide.chart_refs : ["summary"];
+  const refs = [...(slide.chart_refs.length ? slide.chart_refs : ["summary"])];
+  // Datasets a slide draws on when the contract carries them (pilot on main-14/15, MRR relationship on appendix-06).
+  const extra = slide.id === "main-14" || slide.id === "main-15" ? "pilot_design" : slide.id === "appendix-06" ? "mrr_amount_relationship" : null;
+  if (extra && rows(extra).length && !refs.includes(extra)) refs.push(extra);
   return refs.map(ref => {
     if (ref === "recommendations") {
       const recs = data.recommendations.map(item => ({ ...item, evidence_limitations: item.evidence_limitations.join(" · ") }) as unknown as Row);
@@ -314,11 +317,69 @@ function ScenarioGrid({ rows, compact = false }: { rows: Row[]; compact?: boolea
   </div>;
 }
 
+/**
+ * The recommended pilot (datasets.pilot_design): every eligible domain split 50/50, with the smallest lift it can
+ * detect at each hypothetical baseline. Null when the contract does not carry it, so slides fall back to the 3×3 grid alone.
+ */
+type Pilot = { rows: Row[]; armSize: number; total: number; treatment: number; horizon: number; outcome: string; at5: number | null; alpha: number | null; power: number | null };
+const liftPp = (row: Row | undefined) => numeric(row?.detectable_lift_pp) ?? (numeric(row?.detectable_lift) === null ? null : (numeric(row?.detectable_lift) as number) * 100);
+export function pilotDesign(data: CaseStudyData): Pilot | null {
+  const rows = (data.datasets.pilot_design ?? []).filter(row => numeric(row.baseline_rate) !== null && liftPp(row) !== null).sort((a, b) => (numeric(a.baseline_rate) ?? 0) - (numeric(b.baseline_rate) ?? 0));
+  if (!rows.length) return null;
+  const s = summaryRow(data);
+  const armSize = num(s, "pilot_arm_size") ?? numeric(rows[0].arm_size);
+  if (armSize === null || armSize <= 0) return null;
+  return {
+    rows, armSize,
+    total: numeric(rows[0].total_accounts) ?? armSize * 2,
+    treatment: num(s, "pilot_treatment_accounts") ?? armSize,
+    horizon: numeric(rows[0].horizon_days) ?? 90,
+    outcome: typeof rows[0].outcome === "string" && rows[0].outcome ? rows[0].outcome : "New CRM opportunity within the horizon",
+    at5: num(s, "pilot_detectable_lift_pp_at_5pct") ?? liftPp(rows.find(row => numeric(row.baseline_rate) === 0.05)),
+    alpha: numeric(rows[0].alpha), power: numeric(rows[0].power),
+  };
+}
+const pp = (value: number) => `+${value.toFixed(1)} pp`;
+/** The 5% / +2 pp scenario: the mid-grid design a team would reach for first. */
+const defaultScenario = (rows: Row[]) => rows.find(row => numeric(row.baseline_rate) === 0.05 && numeric(row.absolute_lift) === 0.02);
+const pilotDecision = (pilot: Pilot) => `Run the ${pilot.horizon}-day pilot on all ${count(pilot.total)} domains, 50/50`;
+
+/** main-14 right column: the pilot that does fit, with its detectable lift at each baseline (5% accented). */
+function PilotCallout({ pilot }: { pilot: Pilot }) {
+  return <section className="deck-pilot" aria-label="Recommended pilot">
+    <h2 className="deck-panel-label">Recommended pilot</h2>
+    <p className="deck-pilot-head"><strong>{count(pilot.total)}</strong> domains, split 50/50 <span>{count(pilot.armSize)} per arm · {pilot.horizon} days</span></p>
+    <table className="deck-pilot-lifts">
+      <caption>Smallest detectable lift{pilot.alpha !== null && pilot.power !== null ? ` · alpha ${String(pilot.alpha).replace(/^0/, "")}, power ${String(pilot.power).replace(/^0/, "")}` : ""}</caption>
+      <thead><tr><th scope="col">Baseline</th><th scope="col">Detectable lift</th></tr></thead>
+      <tbody>{pilot.rows.map(row => { const base = numeric(row.baseline_rate) ?? 0; const lift = liftPp(row) ?? 0; return <tr key={base} className={base === 0.05 ? "is-accent" : undefined}><th scope="row">{percent(base, 0)}</th><td><strong>{pp(lift)}</strong> <small>{percent(base, 0)} → {percent(numeric(row.treatment_rate) ?? base + lift / 100)}</small></td></tr>; })}</tbody>
+    </table>
+    <p className="deck-pilot-outcome"><small>Outcome</small>{pilot.outcome}</p>
+  </section>;
+}
+
 function BudgetFormula({ data }: { data: CaseStudyData }) {
   const scenarios = data.datasets.experiment_scenarios ?? [];
   const feasible = scenarios.filter(row => row.feasible === true);
   const audience = numeric(scenarios[0]?.eligible_audience);
   const smallest = feasible.length ? feasible.reduce((best, row) => (numeric(row.required_per_arm) ?? Infinity) < (numeric(best.required_per_arm) ?? Infinity) ? row : best) : null;
+  const pilot = pilotDesign(data);
+  if (pilot) return <div className="deck-formula">
+    <ol className="deck-formula-terms" aria-label="Pilot budget formula">
+      <li className="known"><small>Pilot treatment accounts</small><strong>{count(pilot.treatment)}</strong><span>treatment arm of the {pilot.horizon}-day pilot · {count(pilot.total)} domains, 50/50</span></li>
+      <li className="op" aria-hidden="true">×</li>
+      <li className="unknown"><small>Cost per treatment account</small><strong>Not supplied</strong><span>not in the supplied data</span></li>
+      <li className="op" aria-hidden="true">+</li>
+      <li className="unknown"><small>Fixed implementation cost</small><strong>Not supplied</strong><span>not in the supplied data</span></li>
+      <li className="op" aria-hidden="true">=</li>
+      <li className="result"><small>Pilot budget</small><strong>Unavailable</strong><span>until both costs are supplied</span></li>
+    </ol>
+    <div className="deck-formula-feasible">
+      <h2 className="deck-panel-label">Why no dollar figure</h2>
+      <p className="deck-formula-line">The design fixes the account count at <strong>{count(pilot.treatment)}</strong>. No unit or fixed cost is supplied in the data, so the budget stays a formula until finance adds both.</p>
+      <p className="deck-footnote">The other {count(pilot.total - pilot.treatment)} domains are the business-as-usual control.</p>
+    </div>
+  </div>;
   return <div className="deck-formula">
     <ol className="deck-formula-terms" aria-label="Planning budget formula">
       <li className="known"><small>Required treatment accounts</small><strong>{smallest ? count(numeric(smallest.required_per_arm) ?? 0) : "None feasible"}</strong><span>{smallest ? `treatment arm of ${text(smallest.scenario)}` : `no scenario fits ${orNA(audience, count)} eligible domains`}</span></li>
@@ -386,12 +447,15 @@ function reviewFor(item: CaseStudyData["recommendations"][number]) {
 function AskTable({ data }: { data: CaseStudyData }) {
   const asks = askDecisions(data);
   const others = data.recommendations.filter(item => !asks.includes(item));
+  const pilot = pilotDesign(data);
+  // With a pilot design in the contract, the coverage-test decision names the concrete pilot.
+  const decision = (item: CaseStudyData["recommendations"][number]) => item.id === "r-test" && pilot ? pilotDecision(pilot) : item.decision;
   return <div className="deck-ask">
     <table className="deck-decisions">
       <caption className="sr-only">Decisions requested today, with owner, first measure and review point</caption>
       <thead><tr><th scope="col">Decision</th><th scope="col">Owner</th><th scope="col">First measure</th><th scope="col">Review</th></tr></thead>
       <tbody>{asks.map((item, index) => <tr key={item.id} className={index === 0 ? "is-accent" : undefined}>
-        <th scope="row"><span className={`deck-chip ${item.confidence_status === "Observed" ? "observed" : "hypothesis"}`}>{actLabel(item.confidence_status)}</span>{item.decision}</th>
+        <th scope="row"><span className={`deck-chip ${item.confidence_status === "Observed" ? "observed" : "hypothesis"}`}>{actLabel(item.confidence_status)}</span>{decision(item)}</th>
         <td>{item.owner_role}</td>
         <td>{item.primary_success_measure}</td>
         <td>{reviewFor(item)}</td>
@@ -596,6 +660,13 @@ export function actionTitle(data: CaseStudyData, slide: CaseSlide): string {
       }
       case "main-14": {
         const scenarios = rows("experiment_scenarios");
+        const pilot = pilotDesign(data);
+        if (pilot && pilot.at5 !== null) {
+          const usual = defaultScenario(scenarios);
+          const needed = numeric(usual?.required_total);
+          const lead = usual && usual.feasible !== true && needed !== null ? `A +2 pp test needs ${count(needed)} domains, but all` : "All";
+          return `${lead} ${count(pilot.total)} ${lead === "All" ? "domains " : ""}split 50/50 can detect ${pp(pilot.at5)} in ${pilot.horizon} days`;
+        }
         const feasible = scenarios.filter(row => row.feasible === true);
         const audience = numeric(scenarios[0]?.eligible_audience);
         if (!scenarios.length || audience === null) break;
@@ -606,10 +677,17 @@ export function actionTitle(data: CaseStudyData, slide: CaseSlide): string {
         return `${feasible.length === 0 ? "None" : feasible.length} of ${scenarios.length} sample-size scenarios fit the ${count(audience)} eligible domains`;
       }
       case "main-15": {
+        const pilot = pilotDesign(data);
+        if (pilot) return `Pilot budget = ${count(pilot.treatment)} treatment accounts × cost per account + fixed cost; neither cost is supplied`;
         const feasible = rows("experiment_scenarios").filter(row => row.feasible === true).map(row => numeric(row.required_per_arm)).filter((n): n is number => n !== null);
         return feasible.length ? `The test budget needs one missing input: cost per account for ${count(Math.min(...feasible))} treatment accounts` : "No feasible test yet, so no planning budget can be set";
       }
-      case "main-16": return "Decide today: fix marketing conversion, run the 90-day coverage test, record contract value";
+      case "main-16": {
+        const pilot = pilotDesign(data);
+        return pilot
+          ? `Decide today: fix marketing conversion, run the ${pilot.horizon}-day pilot on all ${count(pilot.total)} domains, record contract value`
+          : "Decide today: fix marketing conversion, run the 90-day coverage test, record contract value";
+      }
     }
   } catch { /* fall back to the authored title */ }
   return slide.title;
@@ -637,17 +715,38 @@ const BRIDGES: Record<string, string> = {
   "main-15": "That brings us to the decisions we need today.",
 };
 
+/** Bridges for the executive cut, where the next slide is not the deck's next slide. Keyed "from>to". */
+const SKIP_BRIDGES: Record<string, string> = {
+  "main-02>main-04": "Start with where wins and value actually sit.",
+  "main-04>main-06": "Because existing customers dominate, compare channels on new logos: here is how marketing-sourced deals convert.",
+  "main-06>main-10": "Why is that hard to fix? Look at how much of the pipeline marketing can even see.",
+  "main-10>main-12": "Attribution can't close that gap, so a controlled test must. So who can we test on?",
+  "main-12>main-14": "The test has to fit the audience we have.",
+  "main-14>main-16": "With the design fixed, here are the decisions we need today.",
+};
+
 /** Transition note for the presenter: a spoken bridge plus the next headline it leads into. */
 export function transitionFor(data: CaseStudyData, slide: CaseSlide, next: CaseSlide | undefined): string {
   if (slide.sequence === "appendix") return slide.speaker_notes.transition;
   if (!next) return `Close on the big idea: “${BIG_IDEA}” Then open the appendix for questions.`;
-  return `${BRIDGES[slide.id] ?? "Next:"} → “${actionTitle(data, next)}”`;
+  const bridge = SKIP_BRIDGES[`${slide.id}>${next.id}`] ?? (next.order === slide.order + 1 ? BRIDGES[slide.id] : undefined);
+  return `${bridge ?? "Next:"} → “${actionTitle(data, next)}”`;
 }
 
 /* ---------- appendix renderers ---------- */
 
 function summaryTiles(row: Row, keys: [string, string, (n: number) => string][]): Kpi[] {
   return keys.map(([key, labelText, format]) => ({ label: labelText, value: orNA(numeric(row[key]), format) }));
+}
+
+/** appendix-06: how recorded amount and MRR relate on won deals, as share of wins (largest accented). */
+function MrrRelationship({ rows, summary }: { rows: Row[]; summary: Row }) {
+  const both = num(summary, "mrr_both_positive_wins"), equal = num(summary, "mrr_equals_amount_share");
+  return <div className="deck-mrr-relationship">
+    <h3 className="deck-panel-label">Share of wins by amount / MRR relationship</h3>
+    <Bars label="Share of won deals by amount and MRR relationship" rows={[...rows].sort(byDesc("share"))} name={row => text(row.relationship)} value="share" format={n => percent(n, 0)} detail={row => `${orNA(numeric(row.wins), count)} wins`} />
+    {both !== null && equal !== null && <p className="deck-footnote">{count(both)} wins record both a positive amount and MRR; MRR equals amount on {percent(equal, 0)}.</p>}
+  </div>;
 }
 
 function AppendixRef({ data, slide, refName, limit }: { data: CaseStudyData; slide: CaseSlide; refName: string; limit: number }) {
@@ -659,6 +758,11 @@ function AppendixRef({ data, slide, refName, limit }: { data: CaseStudyData; sli
       const keys: [string, string, (n: number) => string][] = slide.id === "appendix-06"
         ? [["recorded_pipeline", "Recorded pipeline", money], ["open_pipeline", "Open pipeline", money], ["recorded_won_amount", "Recorded won amount", money], ["zero_amount_wins", "Zero-amount wins", count], ["zero_amount_win_mrr", "MRR on zero-amount wins", money], ["zero_amount_win_mrr_existing_share", "…of it existing customer", percent]]
         : [["opportunities", "Opportunities", count], ["resolved", "Resolved", count], ["won", "Won", count], ["recorded_pipeline", "Recorded pipeline", money], ["recorded_won_amount", "Recorded won amount", money], ["zero_amount_wins", "Zero-amount wins", count]];
+      const relationship = slide.id === "appendix-06" ? data.datasets.mrr_amount_relationship ?? [] : [];
+      if (relationship.length) return <Panel title="Population summary"><div className="deck-summary-split">
+        <KpiTiles className="deck-kpis-compact" items={summaryTiles(row, keys)} />
+        <MrrRelationship rows={relationship} summary={row} />
+      </div></Panel>;
       return <Panel title="Population summary"><KpiTiles className="deck-kpis-compact" items={summaryTiles(row, keys)} /></Panel>;
     }
     case "population_reconciliation":
@@ -741,7 +845,12 @@ export function SlideVisual({ data, slide }: { data: CaseStudyData; slide: CaseS
     </div>;
     case "main-13": return <GapActionMap data={data} />;
     case "main-16": return <AskTable data={data} />;
-    case "main-14": return <ScenarioGrid rows={rows("experiment_scenarios")} />;
+    case "main-14": {
+      const pilot = pilotDesign(data);
+      return pilot
+        ? <div className="deck-pilot-layout"><ScenarioGrid rows={rows("experiment_scenarios")} /><PilotCallout pilot={pilot} /></div>
+        : <ScenarioGrid rows={rows("experiment_scenarios")} />;
+    }
     case "main-15": return <BudgetFormula data={data} />;
     default: return null;
   }
