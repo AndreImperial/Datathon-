@@ -1,6 +1,7 @@
-import { compareValues, serializeEvidenceCsv, formatField, fieldUnit, columnLabel, formatCount, formatDollarsCompact, formatPercent, listPhrase, topRows } from "./evidence";
+import { compareValues, serializeEvidenceCsv, formatField, fieldUnit, columnLabel, formatCount, formatDollarsCompact, formatPercent, listPhrase, topRows, parsePilotDesign, parseMoneyInput, pilotBudget, type PilotDesign } from "./evidence";
 import { displayName } from "./labels";
 import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import {
   Archive, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, Check, ChevronDown, CircleAlert, Download, ExternalLink,
   FileText, GitBranch, Info, Menu, MoreHorizontal, Presentation, Printer, RotateCcw, Search, ShieldCheck,
@@ -17,7 +18,17 @@ import { chartPlacementIds, tableIds, validateCaseStudyPayload, validateDashboar
 
 gsap.registerPlugin(Flip, ScrollTrigger);
 
-const ChartRenderer = lazy(() => import("./components/Charts").then((module) => ({ default: module.ChartRenderer })));
+// The chart chunk stays lazy, but once it has loaded charts render synchronously
+// (no Suspense round trip), so a print snapshot taken right after beforeprint
+// never catches a "Loading visual" placeholder. The dashboard preloads it.
+type ChartsModule = typeof import("./components/Charts");
+let chartsModule: ChartsModule | null = null;
+let chartsRequest: Promise<ChartsModule> | null = null;
+const loadCharts = () => (chartsRequest ??= import("./components/Charts").then((module) => (chartsModule = module)));
+const LazyChartRenderer = lazy(() => loadCharts().then((module) => ({ default: module.ChartRenderer })));
+function ChartRenderer(props: Parameters<ChartsModule["ChartRenderer"]>[0]) {
+  return chartsModule ? <chartsModule.ChartRenderer {...props} /> : <LazyChartRenderer {...props} />;
+}
 
 type SectionGroup = {
   id: string;
@@ -89,6 +100,21 @@ interface LatestBrief {
   scenarios: DataRow[];
   methodVersion: string;
   snapshotId: string;
+  /** The all-eligible 50/50 pilot (datasets.pilot_design); null on contracts that predate it. */
+  pilot: PilotDesign | null;
+  /** Accounts in the pilot's treatment arm, for the budget calculator. */
+  pilotTreatmentAccounts: number;
+  /** Where amount and MRR are both recorded, how often they are equal; null when not in the contract. */
+  mrrAmount: { share: number; wins: number } | null;
+}
+const finiteOr = (value: number, fallback: number) => (Number.isFinite(value) ? value : fallback);
+function mrrAmountRelationship(summary: DataRow, rows: unknown): LatestBrief["mrrAmount"] {
+  if (!Array.isArray(rows)) return null;
+  const records = rows as DataRow[];
+  const equal = records.find((row) => /equal|match|same/i.test(textValue(row, "relationship")) && !/not|differ|unequal/i.test(textValue(row, "relationship")));
+  const share = finiteOr(numberValue(summary, "mrr_equals_amount_share"), equal ? numberValue(equal, "share") : NaN);
+  const wins = finiteOr(numberValue(summary, "mrr_both_positive_wins"), records.reduce((sum, row) => sum + (Number.isFinite(numberValue(row, "wins")) ? numberValue(row, "wins") : 0), 0));
+  return Number.isFinite(share) && Number.isFinite(wins) && wins > 0 ? { share, wins } : null;
 }
 function toLatestBrief(payload: CaseStudyData): LatestBrief | null {
   const summary = payload.datasets?.summary?.[0];
@@ -96,7 +122,9 @@ function toLatestBrief(payload: CaseStudyData): LatestBrief | null {
   const sourceGroups = (payload.datasets?.source_group_scorecard ?? [])
     .filter((row) => row.ranked_channel === true && textValue(row, "business_motion") === "Acquisition" && /2023/.test(textValue(row, "scope")) && Number.isFinite(numberValue(row, "win_rate")))
     .sort((a, b) => numberValue(b, "win_rate") - numberValue(a, "win_rate"));
-  return { summary, findings: payload.findings ?? [], recommendations: payload.recommendations ?? [], sourceGroups, scenarios: payload.datasets?.experiment_scenarios ?? [], methodVersion: payload.meta?.method_version ?? "", snapshotId: payload.meta?.snapshot_id ?? "" };
+  const pilot = parsePilotDesign(payload.datasets?.pilot_design, numberValue(summary, "eligible_domains"));
+  const pilotTreatmentAccounts = finiteOr(numberValue(summary, "pilot_treatment_accounts"), pilot?.armSize ?? NaN);
+  return { summary, findings: payload.findings ?? [], recommendations: payload.recommendations ?? [], sourceGroups, scenarios: payload.datasets?.experiment_scenarios ?? [], methodVersion: payload.meta?.method_version ?? "", snapshotId: payload.meta?.snapshot_id ?? "", pilot, pilotTreatmentAccounts, mrrAmount: mrrAmountRelationship(summary, payload.datasets?.mrr_amount_relationship) };
 }
 
 /* ------------------------------------------------------------------------- *
@@ -126,6 +154,8 @@ interface StoryNumbers {
   marketingRate?: string; bestSource?: string; bestRate?: string; rankedSources?: number;
   openPipeline?: string; eligible?: string; defaultNeed?: string; defaultLabel?: string;
   feasibleLabel?: string; feasibleNeed?: string; zeroWins?: string; zeroMrr?: string;
+  /** Pilot (all eligible, 50/50): its detectable lift on the default design's 5% baseline, e.g. "+3.1 pp". */
+  pilotLift?: string; pilotTotal?: string;
 }
 /** Every figure the narrative quotes, read from the v3 brief; absent when the brief is unavailable. */
 function storyNumbers(brief: LatestBrief | null): StoryNumbers {
@@ -148,6 +178,10 @@ function storyNumbers(brief: LatestBrief | null): StoryNumbers {
   if (defaultRow) { out.defaultNeed = formatCount(numberValue(defaultRow, "required_total")); out.defaultLabel = label(defaultRow); }
   const feasible = scenarios.filter((row) => row.feasible === true).sort((a, b) => numberValue(a, "absolute_lift") - numberValue(b, "absolute_lift") || numberValue(a, "required_total") - numberValue(b, "required_total"))[0];
   if (feasible) { out.feasibleLabel = label(feasible); out.feasibleNeed = formatCount(numberValue(feasible, "required_total")); }
+  if (brief.pilot) {
+    const atFive = finiteOr(num("pilot_detectable_lift_pp_at_5pct"), brief.pilot.rows.find((row) => Math.abs(row.baseline - 0.05) < 1e-9)?.liftPp ?? NaN);
+    if (Number.isFinite(atFive)) { out.pilotLift = `+${atFive.toFixed(1)} pp`; out.pilotTotal = formatCount(brief.pilot.totalAccounts); }
+  }
   return out;
 }
 
@@ -196,7 +230,11 @@ function sectionCopy(id: SectionId, data: DashboardData, n: StoryNumbers): Secti
       description: `Ad CTR is compared only within platform. The email file logs engagement across ${m("email_people")} people but has no send counts, so it cannot give response rates.`,
       takeaway: "So what: carry the strongest ads into a matched test; fix creative metadata before any tone or format claim.",
     };
-    case "s-budget": return {
+    case "s-budget": return n.pilotLift && n.pilotTotal ? {
+      title: `Keep spend flat: a 50/50 pilot on all ${n.pilotTotal} eligible domains can detect ${n.pilotLift} on a 5% baseline`,
+      description: n.defaultNeed ? `The default test (${n.defaultLabel}) needs ${n.defaultNeed} domains; only ${n.eligible ?? n.pilotTotal} are eligible. Run the pilot the audience supports, with a pre-registered 90-day outcome.` : "Run the pilot the audience supports, with a pre-registered 90-day outcome.",
+      takeaway: "So what: keep the budget envelope, run the pilot with its holdout, and release more only on incremental qualified pipeline.",
+    } : {
       title: n.eligible && n.feasibleLabel ? `Keep spend flat: ${n.eligible} eligible domains can only detect a ${n.feasibleLabel.split(", ")[1]} on a ${n.feasibleLabel.split(", ")[0]}` : "Keep spend flat and fund a holdout before expansion",
       description: n.eligible && n.defaultNeed ? `The default test (${n.defaultLabel}) needs ${n.defaultNeed} domains; only ${n.eligible} are eligible. Size the test to the audience, or widen the audience first.` : "Each plan keeps the tracked envelope and reserves a holdout. No pipeline forecast is shown; paid outcomes are too sparse.",
       takeaway: "So what: keep the budget envelope, reserve the holdout, and release more only on incremental qualified pipeline.",
@@ -532,7 +570,7 @@ function LatestFindings({ brief, data }: { brief: LatestBrief; data: DashboardDa
   // Ordered as the argument runs: the problem (the one accent), the proof point, then the two limits a CMO must know.
   if (has("marketing_recent_win_rate")) tiles.push({ key: "marketing", label: "Marketing-sourced new-logo win rate", value: pct(numberValue(s, "marketing_recent_win_rate")), context: <>Lowest of {brief.sourceGroups.length || "the"} sources, 2023–24{has("recent_best_win_rate") && <> · {textValue(s, "recent_best_rate_source") || "best source"} wins {pct(numberValue(s, "recent_best_win_rate"))}</>}</>, status: finding("f-marketing")?.evidence_status ?? "Observed", tone: "risk" });
   if (textValue(s, "top_channel")) tiles.push({ key: "referral", label: "Strongest new-logo source", value: textValue(s, "top_channel"), context: <>{has("top_channel_win_rate") && <>{pct(numberValue(s, "top_channel_win_rate"))} win rate, 2018–2024 · </>}most recorded new-logo won amount</>, status: finding("f-channel")?.evidence_status ?? "Observed", tone: "neutral" });
-  if (has("zero_amount_win_mrr")) tiles.push({ key: "mrr", label: "MRR on wins recorded at $0", value: `${money(numberValue(s, "zero_amount_win_mrr"))}/mo`, context: <>{has("zero_amount_wins") && has("won") ? <>{formatCount(numberValue(s, "zero_amount_wins"))} of {formatCount(numberValue(s, "won"))} wins carry no amount; </> : null}shown beside won amount, never added</>, status: finding("f-value")?.evidence_status ?? "Observed", tone: "neutral" });
+  if (has("zero_amount_win_mrr")) tiles.push({ key: "mrr", label: "MRR on wins recorded at $0", value: `${money(numberValue(s, "zero_amount_win_mrr"))}/mo`, context: <>{has("zero_amount_wins") && has("won") ? <>{formatCount(numberValue(s, "zero_amount_wins"))} of {formatCount(numberValue(s, "won"))} wins carry no amount; </> : null}shown beside won amount, never added{brief.mrrAmount && <span className="latest-context-line">Where both are recorded, amount equals MRR on {pct(brief.mrrAmount.share)} of {formatCount(brief.mrrAmount.wins)} wins</span>}</>, status: finding("f-value")?.evidence_status ?? "Observed", tone: "neutral" });
   if (withdrawnCaveat) tiles.push({ key: "model", label: "Win-probability model", value: "Withdrawn", context: <>Holdout was near chance, so no deal scores are published</>, status: "Not used", tone: "neutral" });
   if (!tiles.length) return null;
   return <section className="latest-findings" aria-labelledby="latest-findings-title">
@@ -638,7 +676,7 @@ function EvidenceTable({ title, columns, rows, note }: { title: string; columns:
     ? [...rows].sort((left, right) => compareValues(left[sort.index], right[sort.index], sort.direction))
     : rows;
   const numeric = columns.map((_, index) => numericColumn(rows.map((row) => row[index])));
-  return <article className="evidence-table-card"><div className="table-heading"><div><h3>{title}</h3>{note && <p className="table-note">{note}</p>}</div><span>{rows.length} rows · sortable</span></div><div className="table-scroll" tabIndex={0} role="region" aria-label="Evidence table; scroll to read all rows and columns"><table className="evidence-table"><caption className="sr-only">{title}</caption><thead><tr>{columns.map((column, index) => { const active = sort?.index === index; return <th scope="col" key={column} className={numeric[index] ? "numeric" : undefined} aria-sort={active ? (sort?.direction === 1 ? "ascending" : "descending") : "none"}><button type="button" className="sort-button" onClick={() => setSort((current) => ({ index, direction: current?.index === index ? (current.direction * -1 as 1 | -1) : 1 }))}>{column}{active && <span>{sort.direction === 1 ? " ↑" : " ↓"}</span>}<ArrowUpDown size={11} aria-hidden="true" /></button></th>; })}</tr></thead><tbody>{sortedRows.map((row, rowIndex) => <tr key={`${title}-${rowIndex}`}>{row.map((cell, cellIndex) => <td key={`${rowIndex}-${cellIndex}`} className={numeric[cellIndex] ? "numeric" : "text"}>{displayCell(columns[cellIndex], cell, formatContractCell(columns[cellIndex], cell))}</td>)}</tr>)}</tbody></table></div></article>;
+  return <article className="evidence-table-card"><div className="table-heading"><div><h3>{title}</h3>{note && <p className="table-note">{note}</p>}</div><span>{rows.length} rows · sortable</span></div><div className="table-scroll" tabIndex={0} role="region" aria-label={`${title}; scroll to read all rows and columns`}><table className="evidence-table"><caption className="sr-only">{title}</caption><thead><tr>{columns.map((column, index) => { const active = sort?.index === index; return <th scope="col" key={column} className={numeric[index] ? "numeric" : undefined} aria-sort={active ? (sort?.direction === 1 ? "ascending" : "descending") : "none"}><button type="button" className="sort-button" onClick={() => setSort((current) => ({ index, direction: current?.index === index ? (current.direction * -1 as 1 | -1) : 1 }))}>{column}{active && <span>{sort.direction === 1 ? " ↑" : " ↓"}</span>}<ArrowUpDown size={11} aria-hidden="true" /></button></th>; })}</tr></thead><tbody>{sortedRows.map((row, rowIndex) => <tr key={`${title}-${rowIndex}`}>{row.map((cell, cellIndex) => <td key={`${rowIndex}-${cellIndex}`} className={numeric[cellIndex] ? "numeric" : "text"}>{displayCell(columns[cellIndex], cell, formatContractCell(columns[cellIndex], cell))}</td>)}</tr>)}</tbody></table></div></article>;
 }
 
 function AttributionTable({ data }: { data: DashboardData }) {
@@ -750,12 +788,93 @@ function ExperimentPower({ story }: { story: StoryNumbers }) {
   return <dl className="power-tiles" aria-label="Experiment sizing">
     <div><dt>Eligible test audience</dt><dd className="power-value">{story.eligible}</dd><dd className="power-context">ICP target domains after excluding customers and open pipeline</dd></div>
     <div className="is-focus"><dt>Default test needs</dt><dd className="power-value">{story.defaultNeed}</dd><dd className="power-context">{story.defaultLabel} · two arms, 80% power</dd></div>
-    {story.feasibleLabel && <div><dt>Smallest detectable lift</dt><dd className="power-value">{story.feasibleLabel.split(", ")[1]?.replace(" lift", "")}</dd><dd className="power-context">On a {story.feasibleLabel.split(", ")[0]} · needs {story.feasibleNeed} domains</dd></div>}
+    {story.pilotLift ? <div><dt>The pilot can detect</dt><dd className="power-value">{story.pilotLift}</dd><dd className="power-context">On a 5% baseline · all {story.pilotTotal} domains, 50/50</dd></div> : story.feasibleLabel && <div><dt>Smallest detectable lift</dt><dd className="power-value">{story.feasibleLabel.split(", ")[1]?.replace(" lift", "")}</dd><dd className="power-context">On a {story.feasibleLabel.split(", ")[0]} · needs {story.feasibleNeed} domains</dd></div>}
   </dl>;
 }
 
-function BudgetSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken, story }: SectionProps) {
-  return <section id="s-budget" className="dashboard-section"><SectionIntro id="s-budget" data={data} story={story} /><ExperimentPower story={story} /><ChartGrid ids={["c-budget-scenario"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /><ReadingNote><strong>Decision use:</strong> these are planning allocations, not an optimized channel mix. Each option preserves the current tracked envelope while reserving a different amount for a holdout and pre-registered test. The decision gate is incremental qualified pipeline, not click volume. Sizing assumes a two-sided alpha of .05 and 80% power; the baselines are hypothetical.</ReadingNote></section>;
+/** "Run the 90-day pilot on all 2,034 domains, 50/50", from the pilot contract. */
+const pilotHeadline = (pilot: PilotDesign) => `Run the ${formatCount(pilot.horizonDays)}-day pilot on all ${formatCount(pilot.totalAccounts)} domains, 50/50`;
+const ppText = (value: number) => `+${value.toFixed(1)} pp`;
+
+/**
+ * The recommendation made actionable: the pilot that fits today's eligible
+ * audience (all domains, split 50/50) and the smallest lift it can detect at
+ * each hypothetical baseline. The default +2 pp design stays visible as the
+ * test that does not fit.
+ */
+function PilotPlan({ pilot, story, idPrefix }: { pilot: PilotDesign; story: StoryNumbers; idPrefix: string }) {
+  const titleId = `${idPrefix}-pilot-title`;
+  const holdout = Math.max(0, pilot.totalAccounts - pilot.armSize);
+  const alpha = String(pilot.alpha).replace(/^0(?=\.)/, "");
+  return <section className="pilot-plan" aria-labelledby={titleId}>
+    <div className="pilot-plan-head"><span className="pilot-kicker">Pilot you can run now</span><h3 id={titleId}>{pilotHeadline(pilot)}</h3></div>
+    <dl className="pilot-facts">
+      <div><dt>Treatment arm</dt><dd>{formatCount(pilot.armSize)} domains</dd></div>
+      <div><dt>Holdout arm</dt><dd>{formatCount(holdout)} domains</dd></div>
+      <div><dt>Horizon</dt><dd>{formatCount(pilot.horizonDays)} days</dd></div>
+      <div><dt>Outcome</dt><dd>{pilot.outcome}</dd></div>
+    </dl>
+    <div className="pilot-table-wrap"><table className="pilot-table">
+      <caption>Smallest lift this pilot can detect, by hypothetical baseline · two-sided alpha {alpha}, {formatPercent(pilot.power, 0)} power</caption>
+      <thead><tr><th scope="col">Baseline 90-day rate</th><th scope="col" className="numeric">Detectable lift</th><th scope="col" className="numeric">Treatment rate to detect</th></tr></thead>
+      <tbody>{pilot.rows.map((row) => <tr key={row.baseline}><th scope="row">{formatPercent(row.baseline, 0)}</th><td className="numeric">{ppText(row.liftPp)}</td><td className="numeric">{formatPercent(row.treatmentRate)}</td></tr>)}</tbody>
+    </table></div>
+    {story.defaultNeed && <p className="pilot-default"><strong>Does not fit:</strong> the default test ({story.defaultLabel}) needs {story.defaultNeed} domains; only {story.eligible ?? formatCount(pilot.totalAccounts)} are eligible.</p>}
+  </section>;
+}
+
+const readSession = (key: string) => { try { return window.sessionStorage.getItem(key) ?? ""; } catch { return ""; } };
+const writeSession = (key: string, value: string) => { try { if (value) window.sessionStorage.setItem(key, value); else window.sessionStorage.removeItem(key); } catch { /* Storage blocked: the calculator still works for this view. */ } };
+
+/** One labelled money field: number input with a visible hint and an inline validation message. */
+function MoneyField({ id, label, hint, value, badInput, error, onChange }: { id: string; label: string; hint: string; value: string; badInput: boolean; error: string; onChange: (value: string, badInput: boolean) => void }) {
+  const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+  const message = badInput ? `${label.replace(/ \(\$\)$/, "")} must be a number, for example 40 or 1250.50.` : error;
+  return <div className="pilot-field">
+    <label htmlFor={id}>{label}</label>
+    <input id={id} name={id} type="number" inputMode="decimal" min={0} step="any" autoComplete="off" value={value} aria-invalid={message ? true : undefined} aria-describedby={message ? `${hintId} ${errorId}` : hintId} onChange={(event) => onChange(event.currentTarget.value, event.currentTarget.validity.badInput)} />
+    <span id={hintId} className="pilot-field-hint">{hint}</span>
+    {message && <span id={errorId} className="pilot-field-error">{message}</span>}
+  </div>;
+}
+
+/**
+ * Budget = treatment accounts × cost per account + optional fixed cost. No cost
+ * is assumed: both fields start empty, and typed values persist only for this
+ * browser session.
+ */
+function PilotBudgetCalculator({ treatmentAccounts }: { treatmentAccounts: number }) {
+  const [unit, setUnit] = useState(() => readSession("pilotUnitCost"));
+  const [fixed, setFixed] = useState(() => readSession("pilotFixedCost"));
+  const [unitBad, setUnitBad] = useState(false);
+  const [fixedBad, setFixedBad] = useState(false);
+  useEffect(() => { writeSession("pilotUnitCost", unit); }, [unit]);
+  useEffect(() => { writeSession("pilotFixedCost", fixed); }, [fixed]);
+  const unitCheck = parseMoneyInput(unit, "Cost per treatment account");
+  const fixedCheck = parseMoneyInput(fixed, "Fixed cost");
+  const result = unitBad || fixedBad
+    ? { state: "invalid" as const, message: unitBad ? "Cost per treatment account must be a number, for example 40 or 1250.50." : "Fixed cost must be a number, for example 40 or 1250.50." }
+    : pilotBudget(treatmentAccounts, unit, fixed);
+  return <section className="pilot-calc" aria-labelledby="pilot-calc-title">
+    <div className="pilot-calc-head"><h3 id="pilot-calc-title">Size the pilot budget</h3><p>Budget = {formatCount(treatmentAccounts)} treatment accounts × cost per account + any fixed cost. No cost is assumed; enter your own.</p></div>
+    <div className="pilot-calc-body">
+      <div className="pilot-calc-fields">
+        <MoneyField id="pilot-unit-cost" label="Cost per treatment account ($)" hint="Required. Outreach cost for one treated domain." value={unit} badInput={unitBad} error={unitCheck.state === "invalid" ? unitCheck.message : ""} onChange={(value, bad) => { setUnit(value); setUnitBad(bad); }} />
+        <MoneyField id="pilot-fixed-cost" label="Fixed cost ($)" hint="Optional. Set-up cost paid once." value={fixed} badInput={fixedBad} error={fixedCheck.state === "invalid" ? fixedCheck.message : ""} onChange={(value, bad) => { setFixed(value); setFixedBad(bad); }} />
+      </div>
+      <div className={`pilot-calc-result is-${result.state}`}>
+        <span className="pilot-calc-label">Pilot budget</span>
+        <output htmlFor="pilot-unit-cost pilot-fixed-cost" className="pilot-calc-value" aria-live="polite" aria-atomic="true">{result.state === "ok" ? result.message.replace(/^Pilot budget: /, "") : result.state === "empty" ? "Enter a unit cost to size the pilot budget" : result.message}</output>
+        <span className="pilot-calc-note">Holdout domains receive no outreach, so only the treatment arm is costed.</span>
+      </div>
+    </div>
+  </section>;
+}
+
+function BudgetSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken, story, brief }: SectionProps) {
+  const pilot = brief?.pilot ?? null;
+  return <section id="s-budget" className="dashboard-section"><SectionIntro id="s-budget" data={data} story={story} /><ExperimentPower story={story} />{pilot && <PilotPlan pilot={pilot} story={story} idPrefix="budget" />}{pilot && brief && Number.isFinite(brief.pilotTreatmentAccounts) && <PilotBudgetCalculator treatmentAccounts={brief.pilotTreatmentAccounts} />}<ChartGrid ids={["c-budget-scenario"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} /><ReadingNote><strong>Decision use:</strong> these are planning allocations, not an optimized channel mix. Each option preserves the current tracked envelope while reserving a different amount for a holdout and pre-registered test. The decision gate is incremental qualified pipeline, not click volume. Sizing assumes a two-sided alpha of .05 and 80% power; the baselines are hypothetical.</ReadingNote></section>;
 }
 
 function AdvancedSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken, story }: SectionProps) {
@@ -789,9 +908,11 @@ function DecisionCards({ brief }: { brief: LatestBrief }) {
   const primary = PRIMARY_DECISIONS.map((id) => byId.get(id)).filter((item): item is NonNullable<typeof item> => Boolean(item));
   const decisions = primary.length ? primary : brief.recommendations.slice(0, 3);
   const queued = brief.recommendations.filter((item) => !decisions.includes(item));
+  // With a pilot in the contract, the coverage test reads as the concrete pilot to run.
+  const decisionText = (item: (typeof decisions)[number]) => (item.id === "r-test" && brief.pilot ? pilotHeadline(brief.pilot) : item.decision);
   return <>
     <ol className="decision-list" aria-label="Decisions for the CMO">{decisions.map((item, index) => <li key={item.id} className={`decision-card${index === 0 ? " is-focus" : ""}`}>
-      <div className="decision-card-head"><span className="decision-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><h3>{item.decision}</h3><span className={`confidence ${/observed/i.test(item.confidence_status) ? "high" : "medium"}`}>{item.confidence_status}</span></div>
+      <div className="decision-card-head"><span className="decision-number" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span><h3>{decisionText(item)}</h3><span className={`confidence ${/observed/i.test(item.confidence_status) ? "high" : "medium"}`}>{item.confidence_status}</span></div>
       <dl>
         <div><dt>Owner</dt><dd>{item.owner_role}</dd></div>
         <div><dt>First step</dt><dd>{item.immediate_next_step}</dd></div>
@@ -799,7 +920,7 @@ function DecisionCards({ brief }: { brief: LatestBrief }) {
         <div><dt>Stop rule</dt><dd>{item.scale_stop_rule}</dd></div>
       </dl>
     </li>)}</ol>
-    {queued.length > 0 && <div className="decision-queued"><span>Also queued</span><ul>{queued.map((item) => <li key={item.id}><strong>{item.decision}</strong> · {item.owner_role}</li>)}</ul></div>}
+    {queued.length > 0 && <div className="decision-queued"><span>Also queued</span><ul>{queued.map((item) => <li key={item.id}><strong>{decisionText(item)}</strong> · {item.owner_role}</li>)}</ul></div>}
   </>;
 }
 
@@ -821,6 +942,7 @@ function ConclusionSection({ data, brief, story }: SectionProps) {
       <article className="priority-card"><h3><span className="priority-tag muted">P2</span> Run the coverage experiment</h3><p>Activate eligible strong-fit accounts with an account-level holdout and a pre-registered 90-day endpoint.</p></article>
       <article className="priority-card"><h3><span className="priority-tag muted">P3</span> Scale only on measured lift</h3><p>Release more budget only when treatment improves qualified opportunity creation without weakening win quality.</p></article>
     </div>}
+    {brief?.pilot && <PilotPlan pilot={brief.pilot} story={story} idPrefix="ask" />}
     <div className="ask-links"><a className="button button-primary" href="#present/main-16"><Presentation size={15} aria-hidden="true" /> Present the decisions</a><a className="button" href="#present/main-14">Experiment design slide <ArrowRight size={14} aria-hidden="true" /></a></div>
     <EvidenceDetails title="Supporting tables: decision confidence and full action plan" count={confidenceTable.rows.length + actionsTable.rows.length}>
       <div className="details-stack">
@@ -833,6 +955,42 @@ function ConclusionSection({ data, brief, story }: SectionProps) {
 }
 
 function Progress({ value, tone, label }: { value: number; tone: string; label: string }) { return <div className="progress" role="progressbar" aria-label={label} aria-valuetext={`${value.toFixed(1)}%`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={value}><span className={`progress-fill ${tone}`} style={{ width: `${Math.max(0, Math.min(100, value))}%` }} /></div>; }
+
+/**
+ * Puts every section in the DOM synchronously (flushSync), so a print snapshot
+ * taken straight after this returns already holds all of them, then opens the
+ * collapsed evidence tables. While React commits, `print-prep` moves the
+ * section stack below the viewport: charts mounting off-screen skip their
+ * entrance animation, which would otherwise print as empty bars.
+ */
+function renderAllForPrint(setPrintAll: (value: boolean) => void) {
+  const root = document.documentElement;
+  root.classList.add("print-prep");
+  try {
+    flushSync(() => setPrintAll(true));
+  } finally {
+    root.classList.remove("print-prep");
+  }
+  document.querySelectorAll<HTMLDetailsElement>("details.evidence-details").forEach((node) => { node.open = true; });
+}
+
+/**
+ * The Print button (and Ctrl/Cmd+P): render every section, give the newly
+ * mounted charts a moment to measure their containers, then print. The view
+ * returns to the single section on afterprint. Browsers whose print() returns
+ * before printing finishes never block here, so the view also returns on the
+ * next pointer or key press instead of a fixed timer that could fire while the
+ * print snapshot is still pending.
+ */
+function printEverySection(setPrintAll: (value: boolean) => void) {
+  renderAllForPrint(setPrintAll);
+  window.setTimeout(() => {
+    window.print();
+    const reset = () => { setPrintAll(false); window.removeEventListener("pointerdown", reset); window.removeEventListener("keydown", reset); };
+    window.addEventListener("pointerdown", reset);
+    window.addEventListener("keydown", reset);
+  }, 400);
+}
 
 function LegacyDashboard() {
   const root = useRef<HTMLDivElement>(null);
@@ -862,7 +1020,7 @@ function LegacyDashboard() {
   useEffect(() => {
     fetch("./dashboard-data.json")
       .then((response) => { if (!response.ok) throw new Error(`Dashboard data returned ${response.status}`); return response.json(); })
-      .then((payload) => setData(validateDashboardPayload(payload)))
+      .then((payload) => { setData(validateDashboardPayload(payload)); loadCharts().catch(() => undefined); })
       .catch((reason) => setError(reason instanceof Error ? reason.message : "Unable to load dashboard data"));
     // The latest findings band is additive: a missing or invalid v3 file never blocks the dashboard.
     fetch("./dashboard-data-v3.json")
@@ -1038,12 +1196,24 @@ function LegacyDashboard() {
     return () => window.removeEventListener("keydown", onKey);
   }, [active, menuOpen, caveatsOpen]);
   useEffect(() => {
-    // Collapsed supporting tables must still print.
-    const beforePrint = () => { setPrintAll(true); document.querySelectorAll<HTMLDetailsElement>("details.evidence-details").forEach((node) => { node.open = true; }); };
+    // The browser's own print (Ctrl+P / Cmd+P / menu) takes its snapshot right
+    // after beforeprint returns, so every section must be in the DOM by then:
+    // render them synchronously, then open collapsed supporting tables.
+    // Sections and text are complete at that point; charts that mount for the
+    // first time size themselves one task later (Recharts measures in an
+    // effect), so Ctrl/Cmd+P is routed through the Print button's path, which
+    // waits for them. The browser menu's Print still relies on beforeprint.
+    const beforePrint = () => { renderAllForPrint(setPrintAll); };
     const afterPrint = () => setPrintAll(false);
+    const onPrintKey = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey || event.key.toLowerCase() !== "p") return;
+      event.preventDefault();
+      printEverySection(setPrintAll);
+    };
     window.addEventListener("beforeprint", beforePrint);
     window.addEventListener("afterprint", afterPrint);
-    return () => { window.removeEventListener("beforeprint", beforePrint); window.removeEventListener("afterprint", afterPrint); };
+    window.addEventListener("keydown", onPrintKey);
+    return () => { window.removeEventListener("beforeprint", beforePrint); window.removeEventListener("afterprint", afterPrint); window.removeEventListener("keydown", onPrintKey); };
   }, []);
 
   if (error) return <main className="load-state" role="alert"><span className="load-state-icon"><CircleAlert size={22} aria-hidden="true" /></span><h1>The evidence could not be loaded</h1><p>The dashboard only renders data that passes its validation contract, so nothing is shown rather than a partial view. Refreshing usually resolves a network interruption.</p><div className="load-state-actions"><button type="button" className="button button-primary" onClick={() => window.location.reload()}><RotateCcw size={14} aria-hidden="true" /> Try again</button><a className="button" href={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}full-analysis/`}><ExternalLink size={14} aria-hidden="true" /> Open the analysis archive</a></div><details className="load-state-detail"><summary>Technical detail</summary><code>{error}</code></details></main>;
@@ -1070,20 +1240,7 @@ function LegacyDashboard() {
     setPresenting((value) => !value);
     if (state) window.requestAnimationFrame(() => Flip.from(state, { duration: 0.32, ease: "power2.out", nested: true, absolute: false }));
   };
-  // Render every section, give lazy charts a moment to measure, then print.
-  // The view returns to the single section on afterprint (see the effect
-  // above). Browsers whose print() returns before printing finishes never block
-  // here, so the view also returns on the next pointer or key press instead of
-  // a fixed timer that could fire while the print snapshot is still pending.
-  const printAllSections = () => {
-    setPrintAll(true);
-    window.setTimeout(() => {
-      window.print();
-      const reset = () => { setPrintAll(false); window.removeEventListener("pointerdown", reset); window.removeEventListener("keydown", reset); };
-      window.addEventListener("pointerdown", reset);
-      window.addEventListener("keydown", reset);
-    }, 400);
-  };
+  const printAllSections = () => printEverySection(setPrintAll);
   const story = storyNumbers(brief);
   const props: SectionProps = { data, metadata, presenting, totalPipeline, coverageMix, resetToken, brief, story, onOpen: openSection };
   const renderSection = (id: SectionId) => {

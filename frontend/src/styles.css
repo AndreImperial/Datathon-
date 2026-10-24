@@ -910,3 +910,68 @@ footer p { margin: 0; max-width: 110ch; }
   .chart-card .recharts-cartesian-grid line { stroke: #d9d6d6 !important; }
   .roi-compare, .roi-compare *, .chart-legend { color: #2b2b2e !important; }
 }
+
+/* ---- Pilot plan, budget calculator, MRR evidence line (dashboard only) ---- */
+.latest-context-line { display: block; margin-top: 4px; color: var(--muted-light); }
+.pilot-plan, .pilot-calc { margin-top: 14px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 11px; background: var(--surface); }
+.pilot-plan { box-shadow: inset 0 2px 0 var(--blue); }
+.pilot-plan-head, .pilot-calc-head { padding: 13px 16px 12px; border-bottom: 1px solid var(--line); }
+.pilot-kicker { display: block; color: var(--blue-dark); font-size: 11px; font-weight: 720; letter-spacing: .06em; text-transform: uppercase; }
+.pilot-plan-head h3, .pilot-calc-head h3 { margin: 4px 0 0; color: var(--ink); font-size: 16px; font-weight: 720; letter-spacing: -.02em; line-height: 1.3; }
+.pilot-calc-head h3 { margin-top: 0; }
+.pilot-calc-head p { margin: 5px 0 0; color: var(--body); font-size: 12.5px; line-height: 1.5; }
+.pilot-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, 2fr); margin: 0; border-bottom: 1px solid var(--line); }
+.pilot-facts > div { min-width: 0; padding: 11px 16px; border-right: 1px solid var(--line); }
+.pilot-facts > div:last-child { border-right: 0; }
+.pilot-facts dt { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.pilot-facts dd { margin: 4px 0 0; color: var(--ink); font-size: 14px; font-weight: 680; line-height: 1.35; font-variant-numeric: tabular-nums; }
+.pilot-table-wrap { padding: 4px 16px 6px; }
+.pilot-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.pilot-table caption { padding: 8px 0 6px; color: var(--muted); font-size: 12px; text-align: left; }
+.pilot-table th, .pilot-table td { padding: 7px 8px 7px 0; border-bottom: 1px solid var(--line); text-align: left; }
+.pilot-table thead th { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.pilot-table tbody th { color: var(--ink-soft); font-weight: 650; }
+.pilot-table td { color: var(--ink); font-variant-numeric: tabular-nums; }
+.pilot-table .numeric { text-align: right; }
+.pilot-table tbody tr:last-child > * { border-bottom: 0; }
+.pilot-default { margin: 0; padding: 10px 16px 12px; border-top: 1px solid var(--line); color: var(--body); font-size: 12.5px; line-height: 1.5; }
+.pilot-default strong { color: var(--blue-dark); }
+.pilot-calc-body { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+.pilot-calc-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 14px 16px; border-right: 1px solid var(--line); }
+.pilot-field { display: flex; min-width: 0; flex-direction: column; gap: 5px; }
+.pilot-field label { color: var(--ink-soft); font-size: 12.5px; font-weight: 680; }
+.pilot-field input { width: 100%; min-height: 44px; padding: 8px 11px; border: 1px solid var(--line-strong); border-radius: 8px; color: var(--ink); background: var(--surface-soft); font-size: 15px; font-variant-numeric: tabular-nums; }
+.pilot-field input[aria-invalid="true"] { border-color: var(--red); }
+.pilot-field-hint { color: var(--muted); font-size: 11.5px; line-height: 1.4; }
+.pilot-field-error { color: var(--red); font-size: 12px; font-weight: 650; line-height: 1.4; }
+.pilot-calc-result { display: flex; min-width: 0; flex-direction: column; justify-content: center; gap: 5px; padding: 14px 16px; }
+.pilot-calc-label { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+.pilot-calc-value { color: var(--ink); font-size: 15px; font-weight: 700; line-height: 1.4; font-variant-numeric: tabular-nums; }
+.pilot-calc-result.is-empty .pilot-calc-value { color: var(--body); font-size: 13px; font-weight: 600; }
+.pilot-calc-result.is-invalid .pilot-calc-value { color: var(--red); font-size: 13px; }
+.pilot-calc-note { color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+@media (max-width: 900px) {
+  .pilot-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .pilot-facts > div:nth-child(3) { border-right: 0; }
+  .pilot-facts > div:last-child { grid-column: 1 / -1; border-top: 1px solid var(--line); }
+  .pilot-calc-body { grid-template-columns: 1fr; }
+  .pilot-calc-fields { border-right: 0; border-bottom: 1px solid var(--line); }
+}
+@media (max-width: 520px) {
+  .pilot-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pilot-facts > div:nth-child(2) { border-right: 0; }
+  .pilot-facts > div:nth-child(3) { border-right: 1px solid var(--line); border-top: 1px solid var(--line); }
+  .pilot-facts > div:last-child { grid-column: auto; }
+  .pilot-calc-fields { grid-template-columns: 1fr; }
+}
+
+/* Browser print (Ctrl+P): while all sections commit for print, keep the stack
+   below the viewport so freshly mounted charts render still, not mid-entrance. */
+.print-prep .section-viewport { transform: translateY(300vh); }
+@media print {
+  .app-shell [data-reveal] { opacity: 1 !important; visibility: visible !important; transform: none !important; }
+  .pilot-plan, .pilot-calc { break-inside: avoid; box-shadow: none; }
+  .pilot-plan { border-top: 2px solid #a90f1b; }
+  .pilot-field input { color: #151515; background: #fff; }
+  .pilot-field-error, .pilot-calc-result.is-invalid .pilot-calc-value { color: #a90f1b; }
+}
