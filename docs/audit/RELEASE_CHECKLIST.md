@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 86 checks — 85 pass (20 of them after fixes), 0 fail, 1 not verified (H4).**
+**Result: 86 checks — 86 pass (20 of them after fixes), 0 fail.**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -123,7 +123,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 | H1 | Six datasets attached and matching the contract | PASS | Headline, source groups, overlap and scenarios compared field by field: 0 mismatches |
 | H2 | Page headline uses the shared big idea | PASS | Exact sentence in the published page |
 | H3 | No hard-coded figures in markup or script | PASS | Only years, section numbers and fixed method constants (95% interval, 80% power, 80% resolved) appear as literals |
-| H4 | The dashboard's own check reports no failures | NOT VERIFIED | The check runs only when someone opens the page; no run is recorded yet |
+| H4 | The dashboard's own check reports no failures | PASS | Opened in the owner's browser on 2026-10-24: the page reported 0 failed sources and no failures |
 
 ## I. Accessibility, print and performance follow-up
 
@@ -150,4 +150,3 @@ Accessibility re-run on the final build: dashboard 25 views + pilot/calculator s
 ## Not verified anywhere
 
 - A real screen-reader session (automated axe-core audits pass, but no assistive-technology user test was possible here).
-- H4 above: the Claude Dashboard's own check leaves no record of a run.
