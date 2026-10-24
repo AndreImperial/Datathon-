@@ -397,13 +397,74 @@ def audience(opps: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
     return exclusions, priority.sort_values(["shortlist_eligible", "win_rate_ci_low", "eligible_domains"], ascending=[False, False, False])
 
 
+PILOT_BASELINES = (0.02, 0.05, 0.10)
+
+
+def per_arm_requirement(baseline: float, lift: float) -> float:
+    """Unrounded per-arm sample for a two-sided alpha .05, power .80 two-proportion test."""
+    p2 = baseline + lift; pbar = (baseline + p2) / 2
+    numerator = (1.96 * math.sqrt(2 * pbar * (1 - pbar)) + 0.8416 * math.sqrt(baseline * (1 - baseline) + p2 * (1 - p2))) ** 2
+    return numerator / lift**2
+
+
+def detectable_lift(baseline: float, arm_size: int, tolerance: float = 1e-12) -> float:
+    """Smallest absolute lift whose per-arm requirement equals arm_size (bisection)."""
+    if arm_size <= 0:
+        raise ValueError("arm_size must be positive")
+    low, high = 1e-9, 1 - baseline - 1e-9
+    if per_arm_requirement(baseline, high) > arm_size:
+        raise ValueError("No detectable lift: arm too small even for the largest possible lift")
+    while high - low > tolerance:
+        mid = (low + high) / 2
+        if per_arm_requirement(baseline, mid) > arm_size:
+            low = mid
+        else:
+            high = mid
+    return high
+
+
+def pilot_design(eligible: int) -> pd.DataFrame:
+    arm_size = eligible // 2
+    rows = []
+    for baseline in PILOT_BASELINES:
+        lift = detectable_lift(baseline, arm_size)
+        rows.append({"design": "Full eligible audience, 50/50", "baseline_rate": baseline, "arm_size": arm_size, "total_accounts": eligible, "detectable_lift": lift, "detectable_lift_pp": round(lift * 100, 1), "treatment_rate": baseline + lift, "horizon_days": 90, "outcome": "New CRM opportunity within 90 days", "alpha": 0.05, "power": 0.8})
+    return pd.DataFrame(rows)
+
+
+MRR_RELATIONSHIPS = [("Amount equals MRR", 1), ("Amount ≈ 3× MRR", 3), ("Amount ≈ 6× MRR", 6), ("Amount ≈ 12× MRR", 12)]
+
+
+def mrr_relationship_label(amount: float, mrr: float) -> str:
+    """Classify amount/MRR; 'equals' is exact to the cent, '≈ k×' is within ±5% of k."""
+    if round(amount, 2) == round(mrr, 2):
+        return "Amount equals MRR"
+    ratio = amount / mrr
+    for label, multiple in MRR_RELATIONSHIPS[1:]:
+        if abs(ratio - multiple) <= 0.05 * multiple:
+            return label
+    if abs(ratio - 1) <= 0.05:
+        return "Amount equals MRR"
+    return "Other ratio"
+
+
+def mrr_amount_relationship(won: pd.DataFrame) -> pd.DataFrame:
+    both = won[won["amount"].gt(0) & won["mrr"].gt(0)]
+    labels = pd.Series([mrr_relationship_label(a, m) for a, m in zip(both["amount"], both["mrr"])], dtype="object")
+    order = [label for label, _ in MRR_RELATIONSHIPS] + ["Other ratio"]
+    counts = labels.value_counts().reindex(order, fill_value=0)
+    total = int(counts.sum())
+    frame = pd.DataFrame({"relationship": counts.index, "wins": counts.values.astype(int)})
+    frame["share"] = frame["wins"] / total if total else 0.0
+    # Stable sort keeps the canonical 1x/3x/6x/12x order among ties.
+    return frame.sort_values("wins", ascending=False, kind="stable").reset_index(drop=True)
+
+
 def experiments(audience_count: int) -> pd.DataFrame:
     rows = []
     for baseline in [0.02, 0.05, 0.10]:
         for lift in [0.01, 0.02, 0.03]:
-            p2 = baseline + lift; pbar = (baseline + p2) / 2
-            numerator = (1.96 * math.sqrt(2 * pbar * (1 - pbar)) + 0.8416 * math.sqrt(baseline * (1 - baseline) + p2 * (1 - p2))) ** 2
-            per_arm = math.ceil(numerator / lift**2)
+            per_arm = math.ceil(per_arm_requirement(baseline, lift))
             feasible = audience_count >= per_arm * 2
             rows.append({"scenario": f"{baseline:.0%} hypothetical baseline / +{lift*100:.0f}pp lift", "baseline_90d_rate": baseline, "baseline_rate": baseline, "absolute_lift": lift, "required_per_arm": per_arm, "required_total": per_arm * 2, "eligible_audience": audience_count, "feasible": feasible, "feasibility": "Feasible" if feasible else "Insufficient audience for this scenario", "assumption": "Two-sided alpha .05, power .80, equal allocation"})
     return pd.DataFrame(rows)
@@ -415,8 +476,8 @@ def build_appendix(summary: dict) -> list[dict]:
         ("Metric definitions and unavailable denominators", "Win rate is won opportunities divided by resolved opportunities, excluding active outcomes. Recorded pipeline is the sum of source-recorded amount. Email events lack sent and delivered denominators; conditional engagement shares cannot establish delivery, open or click-through rates.", ["summary", "content_metadata_coverage", "email_content"], "opportunities.parquet; email_engagements.parquet; ad_metrics.parquet", "Zero amounts limit recorded revenue comparisons. CTR uses clicks divided by impressions; event composition is not a send-based email rate.", "Which denominators are unavailable?"),
         ("Attribution models, windows, and shared-domain sensitivity", "First touch and last touch use the earliest or latest retained weekly presence, after keeping the last eligible event per channel/week; ties share credit. This intentionally differs from first raw event; linear credit uses channel presence and time decay weights weekly presence with a 30-day half-life. Compare 30/90/180/365-day windows. Shared-domain linkage uses a normalized domain and may link multiple account opportunities.", ["attribution_model_sensitivity", "attribution_year_coverage", "attribution_overlap"], "opportunities.parquet; accounts.parquet; email_engagements.parquet; web_engagements.parquet; 6sense_campaign.parquet", "Filter the opportunity window before weekly compression. Shared domain does not prove a particular contact or opportunity was influenced; all allocations remain descriptive.", "How do attribution models and shared-domain linkage change interpretation?"),
         ("Conversion decomposition and loss reasons", "Compare resolved opportunity cohorts in 2022 H1 and 2024 H1. Common-support groups separate mix from within-group changes; groups absent from one period use an explicit entry or exit component. Loss reason mapping is unavailable pending a versioned rule for free text.", ["conversion_decomposition", "loss_reason_summary"], "opportunities.parquet", "Missing-period rates remain unavailable. The decomposition reconciles an observed change and does not identify a causal driver.", "How are absent-period groups and loss reasons handled?"),
-        ("Targeting eligibility and sample uncertainty", f"Exclude customer, partner, competitor and private-equity accounts, active opportunity domains, non-ICP targets and conflicting or missing profiles. {summary['eligible_domains']:,} eligible domains remain. Equal allocation means 50/50 randomization. At 80% power, 5% baseline and +2pp lift require 4,426 domains, so feasibility fails for that scenario.", ["audience_exclusions", "audience_priority", "experiment_scenarios"], "accounts.parquet; icp_database.parquet; opportunities.parquet", "Baseline and lift are assumptions. Current-fit historical associations have sample uncertainty and cannot establish incremental prospect conversion. Plan one comparison before adding channel overlays.", "Is the audience large enough for the proposed test?"),
-        ("Recorded value: amount and MRR", f"Recorded amount is zero or blank for {summary.get('zero_amount_wins', 0):,} of {summary['won']:,} wins. Those zero-amount wins carry {money(summary.get('zero_amount_win_mrr'))} of recorded monthly recurring revenue (MRR) in a separate field, {percent(summary.get('zero_amount_win_mrr_existing_share'))} of it on existing-customer deals. MRR is shown beside recorded amount and never added to it, because some positive amounts already equal their MRR. Open pipeline is {money(summary.get('open_pipeline'))}; the {money(summary.get('recorded_pipeline'))} recorded total includes closed-lost deals. A calendar-only win-probability baseline was withdrawn: its time-based holdout was near chance and predicted no wins.", ["summary", "source_group_scorecard"], "opportunities.parquet", "MRR is the CRM field as recorded; contract term and currency are not supplied, so no annualized or lifetime value is inferred. A prior-amount field is populated on many zero-amount wins but its meaning is unverified.", "Why does recorded won amount understate value?"),
+        ("Targeting eligibility and sample uncertainty", f"Exclude customer, partner, competitor and private-equity accounts, active opportunity domains, non-ICP targets and conflicting or missing profiles. {summary['eligible_domains']:,} eligible domains remain. Equal allocation means 50/50 randomization. At 80% power, 5% baseline and +2pp lift require 4,426 domains, so feasibility fails for that scenario. Using all {summary['eligible_domains']:,} domains 50/50, a 90-day test can detect +{summary.get('pilot_detectable_lift_pp_at_5pct', 0):.1f} pp from a 5% baseline.", ["audience_exclusions", "audience_priority", "experiment_scenarios"], "accounts.parquet; icp_database.parquet; opportunities.parquet", "Baseline and lift are assumptions. Current-fit historical associations have sample uncertainty and cannot establish incremental prospect conversion. Plan one comparison before adding channel overlays.", "Is the audience large enough for the proposed test?"),
+        ("Recorded value: amount and MRR", f"Recorded amount is zero or blank for {summary.get('zero_amount_wins', 0):,} of {summary['won']:,} wins. Those zero-amount wins carry {money(summary.get('zero_amount_win_mrr'))} of recorded monthly recurring revenue (MRR) in a separate field, {percent(summary.get('zero_amount_win_mrr_existing_share'))} of it on existing-customer deals. MRR is shown beside recorded amount and never added to it, because {percent(summary.get('mrr_equals_amount_share'))} of the {summary.get('mrr_both_positive_wins', 0):,} wins with both a positive amount and a positive MRR record an amount equal to MRR rather than a multi-month total. Open pipeline is {money(summary.get('open_pipeline'))}; the {money(summary.get('recorded_pipeline'))} recorded total includes closed-lost deals. A calendar-only win-probability baseline was withdrawn: its time-based holdout was near chance and predicted no wins.", ["summary", "source_group_scorecard"], "opportunities.parquet", "MRR is the CRM field as recorded; contract term and currency are not supplied, so no annualized or lifetime value is inferred. A prior-amount field is populated on many zero-amount wins but its meaning is unverified.", "Why does recorded won amount understate value?"),
     ]
     return [{"id": f"appendix-{i:02d}", "sequence": "appendix", "order": i, "title": title, "layout": "methods", "finding_ids": [], "chart_refs": refs, "metric_refs": [], "scope": "Methods and evidence boundaries", "body": body, "source_footer": sources, "visible_caveat": caveat, "speaker_notes": {"say": body, "why": f"Make {title.lower()} inspectable before using the main decision.", "do_not_claim": caveat, "transition": "Return to the main decision with this evidence boundary.", "judge_question": question, "answer": body + " " + caveat, "sources": sources.split('; ')}, "target_duration_seconds": 0} for i, (title, body, refs, sources, caveat, question) in enumerate(topics, 1)]
 
@@ -440,6 +501,9 @@ def build_contract() -> dict:
     exclusions, priority = audience(opps)
     eligible_total = int(priority["eligible_domains"].sum())
     scenarios = experiments(eligible_total)
+    pilot = pilot_design(eligible_total)
+    pilot_5 = pilot.loc[pilot["baseline_rate"].eq(0.05)].iloc[0]
+    pilot_arm = int(pilot_5["arm_size"]); pilot_lift_pp = float(pilot_5["detectable_lift_pp"])
     default_required = int(scenarios.loc[scenarios["baseline_rate"].eq(0.05) & scenarios["absolute_lift"].eq(0.02), "required_total"].iloc[0])
     groups = source_group_scorecard(opps)
     first = lambda frame: frame.iloc[0] if len(frame) else None
@@ -459,6 +523,9 @@ def build_contract() -> dict:
     won = opps[opps["won"]]
     zero_amount_wins = won[won["amount"].fillna(0).le(0)]
     zero_amount_mrr = float(zero_amount_wins["mrr"].sum())
+    mrr_relationship = mrr_amount_relationship(won)
+    mrr_both_positive = int(mrr_relationship["wins"].sum())
+    mrr_equals_share = pct(int(mrr_relationship.loc[mrr_relationship["relationship"].eq("Amount equals MRR"), "wins"].sum()), mrr_both_positive)
     existing_mrr_share = pct(zero_amount_wins.loc[zero_amount_wins["business_motion"].eq("Existing customer"), "mrr"].sum(), zero_amount_mrr)
     top_bundle = bundles.sort_values("ctr", ascending=False).iloc[0] if len(bundles) else None
     # Touch logs only cover 2024, so linkage is read against opportunities created in 2024.
@@ -466,7 +533,7 @@ def build_contract() -> dict:
     linked_ids = set(linked["_opportunity_id"])
     linked_in_window = int(linkable["_opportunity_id"].isin(linked_ids).sum())
     six_sense_touch_share = pct(int(touches["channel"].eq("6sense display").sum()), len(touches))
-    summary = {"opportunities": len(opps), "resolved": int(opps["resolved"].sum()), "won": int(opps["won"].sum()), "recorded_pipeline": float(opps["amount"].sum()), "open_pipeline": float(opps.loc[opps["active"], "amount"].sum()), "recorded_won_amount": float(won["amount"].sum()), "zero_amount_wins": len(zero_amount_wins), "zero_amount_win_mrr": zero_amount_mrr, "zero_amount_win_mrr_existing_share": existing_mrr_share, "existing_customer_win_share": pct(int(won["business_motion"].eq("Existing customer").sum()), len(won)), "linked_365": int(linked["_opportunity_id"].nunique()), "linked_share": pct(int(linked["_opportunity_id"].nunique()), len(opps)), "linkable_opportunities": len(linkable), "linked_share_of_linkable": pct(linked_in_window, len(linkable)), "six_sense_touch_share": six_sense_touch_share,"eligible_domains": eligible_total, "top_channel": top_all_name, "top_channel_win_rate": float(top_all["win_rate"]) if top_all is not None and pd.notna(top_all["win_rate"]) else None, "recent_top_amount_source": str(top_recent_amount["source_group"]) if top_recent_amount is not None else "Unavailable", "recent_best_rate_source": str(best_recent_rate["source_group"]) if best_recent_rate is not None else "Unavailable", "recent_best_win_rate": float(best_recent_rate["win_rate"]) if best_recent_rate is not None else None, "marketing_recent_win_rate": float(marketing["win_rate"]) if marketing is not None else None, "marketing_recent_opportunities": int(marketing["opportunities"]) if marketing is not None else None, "marketing_recent_rank": marketing_rank, "recent_acquisition_opportunities": recent_acquisition, "bundle_label": f"{top_bundle['_copyassettype']} / {top_bundle['_copymessaging']} / {top_bundle['_copytone']}" if top_bundle is not None else "Unavailable", "bundle_ctr": float(top_bundle["ctr"]) if top_bundle is not None else None}
+    summary = {"opportunities": len(opps), "resolved": int(opps["resolved"].sum()), "won": int(opps["won"].sum()), "recorded_pipeline": float(opps["amount"].sum()), "open_pipeline": float(opps.loc[opps["active"], "amount"].sum()), "recorded_won_amount": float(won["amount"].sum()), "zero_amount_wins": len(zero_amount_wins), "zero_amount_win_mrr": zero_amount_mrr, "zero_amount_win_mrr_existing_share": existing_mrr_share, "existing_customer_win_share": pct(int(won["business_motion"].eq("Existing customer").sum()), len(won)), "linked_365": int(linked["_opportunity_id"].nunique()), "linked_share": pct(int(linked["_opportunity_id"].nunique()), len(opps)), "linkable_opportunities": len(linkable), "linked_share_of_linkable": pct(linked_in_window, len(linkable)), "six_sense_touch_share": six_sense_touch_share,"eligible_domains": eligible_total, "top_channel": top_all_name, "top_channel_win_rate": float(top_all["win_rate"]) if top_all is not None and pd.notna(top_all["win_rate"]) else None, "recent_top_amount_source": str(top_recent_amount["source_group"]) if top_recent_amount is not None else "Unavailable", "recent_best_rate_source": str(best_recent_rate["source_group"]) if best_recent_rate is not None else "Unavailable", "recent_best_win_rate": float(best_recent_rate["win_rate"]) if best_recent_rate is not None else None, "marketing_recent_win_rate": float(marketing["win_rate"]) if marketing is not None else None, "marketing_recent_opportunities": int(marketing["opportunities"]) if marketing is not None else None, "marketing_recent_rank": marketing_rank, "recent_acquisition_opportunities": recent_acquisition, "bundle_label": f"{top_bundle['_copyassettype']} / {top_bundle['_copymessaging']} / {top_bundle['_copytone']}" if top_bundle is not None else "Unavailable", "bundle_ctr": float(top_bundle["ctr"]) if top_bundle is not None else None, "pilot_arm_size": pilot_arm, "pilot_detectable_lift_pp_at_5pct": pilot_lift_pp, "pilot_treatment_accounts": pilot_arm, "mrr_both_positive_wins": mrr_both_positive, "mrr_equals_amount_share": mrr_equals_share}
     marketing_sentence = f"Marketing-sourced acquisition converts at {percent(summary['marketing_recent_win_rate'])} in 2023–24, {marketing_position}; {summary['recent_best_rate_source']} converts at {percent(summary['recent_best_win_rate'])}." if marketing is not None else "Marketing-sourced 2023–24 conversion is unavailable."
     marketing_volume = f"Marketing supplied {summary['marketing_recent_opportunities'] or 0:,} of {recent_acquisition:,} new-logo opportunities created in 2023–24."
     findings = [
@@ -502,8 +569,8 @@ def build_contract() -> dict:
         f"Attribution ranks change by model and window. {summary['linked_365']:,} of the {len(linkable):,} opportunities created in 2024 link to a prior touch; most touches are 6sense ad impressions aimed at in-market accounts, so read journeys as paths, not lift.",
         f"{eligible_total:,} eligible ICP target domains remain after customer, pipeline, target, and profile exclusions.",
         "Actions: fix marketing-sourced conversion, protect referral, record contract value, and test creative and account coverage under control.",
-        "Randomize eligible domains 50/50. Measure new CRM opportunity creation after 90 days before evaluating broader commercial outcomes.",
-        "A planning budget is unavailable until cost per enrolled treatment account is supplied. Choose a feasible single-comparison sample first; historical tracked spend is context.",
+        f"Randomize all {eligible_total:,} eligible domains 50/50 ({pilot_arm:,} per arm). From a 5% baseline, a 90-day test can detect +{pilot_lift_pp:.1f}pp in new CRM opportunity creation before evaluating broader commercial outcomes.",
+        f"Budget = {pilot_arm:,} treatment accounts × cost per enrolled account + fixed program cost. Cost per account was not supplied, so no dollar figure is set; historical tracked spend is context.",
         f"The CMO decision is to fix marketing-sourced conversion and value capture now, protect {top_all_name.lower()} acquisition, and approve controlled creative and account-coverage tests before expanding spend.",
     ]
     chart_refs = [[], [], ["source_coverage"], ["motion_classification_coverage", "channel_scorecard"], ["source_group_scorecard"], ["source_group_scorecard", "motion_classification_coverage"], ["conversion_decomposition"], ["creative_bundles"], ["email_content", "web_content"], ["attribution_overlap"], ["attribution_model_sensitivity", "journey_outcomes"], ["audience_exclusions", "audience_priority"], ["recommendations"], ["experiment_scenarios"], ["experiment_scenarios"], ["recommendations"]]
@@ -529,8 +596,8 @@ def build_contract() -> dict:
         10: "Four exclusive groups partition the canonical population; source and touch credit are not additive causal effects.",
         11: f"Eligible pre-creation account-domain touches on 2024 opportunities; {percent(six_sense_touch_share)} of touches are 6sense impressions, so credit is descriptive, not lift.",
         12: "Current ICP profile and explicit exclusions; historical-fit associations are exploratory.",
-        14: f"One two-arm comparison at alpha .05 and 80% power. Baseline/lift assumptions are hypothetical; {eligible_total:,} is below the default {default_required:,} requirement.",
-        15: "No cost per enrolled account was supplied. No planning dollars or incremental return forecast can be established.",
+        14: f"One two-arm comparison at alpha .05 and 80% power. Baseline/lift assumptions are hypothetical; the default +2pp lift is infeasible ({eligible_total:,} is below the {default_required:,} required), but the full-audience 50/50 pilot can detect +{pilot_lift_pp:.1f}pp from a 5% baseline.",
+        15: f"Budget = {pilot_arm:,} treatment accounts × cost per account + fixed cost. No cost per enrolled account was supplied, so no planning dollars or incremental return forecast are established.",
     }
     for slide in slides:
         i = slide["order"]
@@ -545,7 +612,7 @@ def build_contract() -> dict:
     slides.extend(build_appendix(summary))
     hashes = source_hashes()
     snapshot_id = hashlib.sha256((METHOD_VERSION + json.dumps(hashes, sort_keys=True)).encode()).hexdigest()[:16]
-    datasets = {"population_reconciliation": records(reconciliation), "source_coverage": records(coverage), "channel_scorecard": records(scorecard), "motion_classification_coverage": records(motion_coverage(opps)), "channel_trends": records(channel_trends), "content_metadata_coverage": records(metadata), "ad_rankings": records(rankings), "creative_bundles": records(bundles), "email_content": records(email_content), "web_content": records(web_content), "attribution_overlap": records(overlap), "attribution_model_sensitivity": records(sensitivity), "attribution_year_coverage": records(yearly), "journey_outcomes": records(journeys), "conversion_decomposition": records(pd.concat([channel_decomp, segment_decomp], ignore_index=True)), "loss_reason_summary": [], "audience_exclusions": records(exclusions), "audience_priority": records(priority), "experiment_scenarios": records(scenarios), "source_group_scorecard": records(groups), "summary": [summary]}
+    datasets = {"population_reconciliation": records(reconciliation), "source_coverage": records(coverage), "channel_scorecard": records(scorecard), "motion_classification_coverage": records(motion_coverage(opps)), "channel_trends": records(channel_trends), "content_metadata_coverage": records(metadata), "ad_rankings": records(rankings), "creative_bundles": records(bundles), "email_content": records(email_content), "web_content": records(web_content), "attribution_overlap": records(overlap), "attribution_model_sensitivity": records(sensitivity), "attribution_year_coverage": records(yearly), "journey_outcomes": records(journeys), "conversion_decomposition": records(pd.concat([channel_decomp, segment_decomp], ignore_index=True)), "loss_reason_summary": [], "audience_exclusions": records(exclusions), "audience_priority": records(priority), "experiment_scenarios": records(scenarios), "pilot_design": records(pilot), "mrr_amount_relationship": records(mrr_relationship), "source_group_scorecard": records(groups), "summary": [summary]}
     statuses = {key: {"status": "available", "reason": "Generated from the canonical analytical population.", "source_ids": [], "population": "See dataset definition", "period": "Static snapshot"} for key in datasets}
     statuses.update({"creative_bundles": {"status": "limited", "reason": "Only five ads have complete creative metadata; dimensions are confounded.", "source_ids": ["ad_metrics.parquet"], "population": "Labeled ads", "period": "2023–2024"}, "email_content": {"status": "limited", "reason": "No sent or delivered denominators.", "source_ids": ["email_engagements.parquet"], "population": "Recorded engagement events", "period": "2024"}, "attribution_model_sensitivity": {"status": "limited", "reason": "Touchpoint sources have 2024 observation windows.", "source_ids": ["email_engagements.parquet", "web_engagements.parquet", "6sense_campaign.parquet"], "population": "Eligible linked opportunities", "period": "Lookback-specific"}, "loss_reason_summary": {"status": "unavailable", "reason": "A versioned loss-reason mapping has not been established for the supplied free text.", "source_ids": ["opportunities.parquet"], "population": "Resolved losses", "period": "All available history"}})
     provenance = {
@@ -558,6 +625,8 @@ def build_contract() -> dict:
         "audience_exclusions": (["accounts.parquet","icp_database.parquet","opportunities.parquet"], "normalized account domain / exclusion reason", "Current supplied snapshot", "customer/active pipeline/target/profile exclusions"),
         "audience_priority": (["accounts.parquet","icp_database.parquet","opportunities.parquet"], "segment/current fit", "Current supplied snapshot plus historical outcomes", "eligible domain counts; exploratory historical association"),
         "experiment_scenarios": (["accounts.parquet","icp_database.parquet","opportunities.parquet"], "hypothetical baseline/lift scenario", "Prospective 90-day outcome horizon", "hypothetical rates; actual eligible audience"),
+        "pilot_design": (["accounts.parquet","icp_database.parquet","opportunities.parquet"], "hypothetical baseline / full-audience 50/50 design", "Prospective 90-day outcome horizon", "all eligible domains split 50/50; lift solved so per-arm requirement equals arm size"),
+        "mrr_amount_relationship": (["opportunities.parquet"], "amount-to-MRR relationship bucket", "All available history", "canonical won opportunities with positive amount and positive MRR; ratios within ±5%"),
     }
     for name in datasets:
         sources, grain, period, predicate = provenance.get(name, (["opportunities.parquet"], "canonical opportunity aggregates", "Observed CRM history or explicit creation cohort", "canonical latest nondeleted opportunities; see row scope"))

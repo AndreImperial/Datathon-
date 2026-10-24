@@ -33,7 +33,7 @@ Referral has $1,472,853 in recorded new-logo won amount across 2018–2024, the 
 
 ### 3. Recorded won amount misses recurring value
 
-The canonical population contains $24.88M in recorded amount across all deals, including closed-lost, and $5.42M in recorded won amount. 699 of the 1,070 wins have a zero amount; those wins carry $3.45M of monthly recurring revenue in a separate field, 94% of it on existing-customer deals. MRR is shown beside amount, never added, because some positive amounts already equal their MRR.
+The canonical population contains $24.88M in recorded amount across all deals, including closed-lost, and $5.42M in recorded won amount. 699 of the 1,070 wins have a zero amount; those wins carry $3.45M of monthly recurring revenue in a separate field, 94% of it on existing-customer deals. MRR is shown beside amount, never added. The reason: 112 wins have both a positive amount and a positive MRR, and in 104 of them (93%) the amount equals the MRR. None is about 3, 6 or 12 times the MRR, so amount is not a multi-month contract total and adding MRR to it would double count.
 
 ### 4. Attribution needs its population and time window beside it
 
@@ -41,7 +41,7 @@ There are 684 opportunities with eligible prior touches inside the 365-day lookb
 
 ### 5. The default small-lift audience test is underpowered at current scale
 
-The eligible ICP audience has 2,034 domains. A two-arm test designed around a 5% baseline and a 2 percentage-point absolute lift needs 4,426 accounts total under the stated 80% power, two-sided 5% significance, and equal-allocation assumptions. The current audience is not large enough for that scenario. The team can consider a larger detectable effect, a broader eligible audience, or an exploratory pilot with its limits stated up front.
+The eligible ICP audience has 2,034 domains. A two-arm test designed around a 5% baseline and a 2 percentage-point absolute lift needs 4,426 accounts total under the stated 80% power, two-sided 5% significance, and equal-allocation assumptions. The current audience is not large enough for that scenario. The workable alternative is to use the whole audience: 1,017 domains per arm, split 50/50. Over 90 days that test can reliably detect a lift of about 3.1 percentage points from a 5% baseline (2.1 points from a 2% baseline, 4.0 points from a 10% baseline). Its budget is 1,017 treatment accounts times the cost per account, plus fixed cost; no cost per account was supplied.
 
 ### 6. Creative and email results are hypotheses, not benchmarks
 

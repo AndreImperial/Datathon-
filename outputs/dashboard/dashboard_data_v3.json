@@ -13,7 +13,7 @@
         "plotly": "6.7.0",
         "openpyxl": "3.1.5"
       },
-      "started_at": "2026-10-23T17:13:48.730532+00:00",
+      "started_at": "2026-10-24T03:19:01.503002+00:00",
       "source_files": [
         {
           "source_id": "Datathon_db_6sense_campaign_accounts.xlsx",
@@ -63,7 +63,7 @@
       }
     },
     "period": "CRM history 2018–2024; email, web and 6sense logs observed in 2024; ad metrics January 2023 to October 2024",
-    "generated_at": "2026-10-23T17:16:35.798765+00:00",
+    "generated_at": "2026-10-24T03:21:12.836771+00:00",
     "snapshot_id": "9c524ee116f41b8a",
     "method_version": "case-analysis-v3.3",
     "source_hashes": {
@@ -8765,6 +8765,74 @@
         "assumption": "Two-sided alpha .05, power .80, equal allocation"
       }
     ],
+    "pilot_design": [
+      {
+        "design": "Full eligible audience, 50/50",
+        "baseline_rate": 0.02,
+        "arm_size": 1017,
+        "total_accounts": 2034,
+        "detectable_lift": 0.02142333617039165,
+        "detectable_lift_pp": 2.1,
+        "treatment_rate": 0.04142333617039165,
+        "horizon_days": 90,
+        "outcome": "New CRM opportunity within 90 days",
+        "alpha": 0.05,
+        "power": 0.8
+      },
+      {
+        "design": "Full eligible audience, 50/50",
+        "baseline_rate": 0.05,
+        "arm_size": 1017,
+        "total_accounts": 2034,
+        "detectable_lift": 0.030685547345803484,
+        "detectable_lift_pp": 3.1,
+        "treatment_rate": 0.0806855473458035,
+        "horizon_days": 90,
+        "outcome": "New CRM opportunity within 90 days",
+        "alpha": 0.05,
+        "power": 0.8
+      },
+      {
+        "design": "Full eligible audience, 50/50",
+        "baseline_rate": 0.1,
+        "arm_size": 1017,
+        "total_accounts": 2034,
+        "detectable_lift": 0.040377113709251566,
+        "detectable_lift_pp": 4.0,
+        "treatment_rate": 0.14037711370925157,
+        "horizon_days": 90,
+        "outcome": "New CRM opportunity within 90 days",
+        "alpha": 0.05,
+        "power": 0.8
+      }
+    ],
+    "mrr_amount_relationship": [
+      {
+        "relationship": "Amount equals MRR",
+        "wins": 104,
+        "share": 0.9285714285714286
+      },
+      {
+        "relationship": "Other ratio",
+        "wins": 8,
+        "share": 0.07142857142857142
+      },
+      {
+        "relationship": "Amount ≈ 3× MRR",
+        "wins": 0,
+        "share": 0.0
+      },
+      {
+        "relationship": "Amount ≈ 6× MRR",
+        "wins": 0,
+        "share": 0.0
+      },
+      {
+        "relationship": "Amount ≈ 12× MRR",
+        "wins": 0,
+        "share": 0.0
+      }
+    ],
     "source_group_scorecard": [
       {
         "scope": "2023–2024",
@@ -9011,7 +9079,12 @@
         "marketing_recent_rank": 5,
         "recent_acquisition_opportunities": 1192,
         "bundle_label": "Blog / Problem / FOMO",
-        "bundle_ctr": 0.0005545457346190579
+        "bundle_ctr": 0.0005545457346190579,
+        "pilot_arm_size": 1017,
+        "pilot_detectable_lift_pp_at_5pct": 3.1,
+        "pilot_treatment_accounts": 1017,
+        "mrr_both_positive_wins": 112,
+        "mrr_equals_amount_share": 0.9285714285714286
       }
     ]
   },
@@ -9248,6 +9321,30 @@
       "period": "Prospective 90-day outcome horizon",
       "grain": "hypothetical baseline/lift scenario",
       "predicate": "hypothetical rates; actual eligible audience"
+    },
+    "pilot_design": {
+      "status": "available",
+      "reason": "Generated from the canonical analytical population.",
+      "source_ids": [
+        "accounts.parquet",
+        "icp_database.parquet",
+        "opportunities.parquet"
+      ],
+      "population": "hypothetical baseline / full-audience 50/50 design",
+      "period": "Prospective 90-day outcome horizon",
+      "grain": "hypothetical baseline / full-audience 50/50 design",
+      "predicate": "all eligible domains split 50/50; lift solved so per-arm requirement equals arm size"
+    },
+    "mrr_amount_relationship": {
+      "status": "available",
+      "reason": "Generated from the canonical analytical population.",
+      "source_ids": [
+        "opportunities.parquet"
+      ],
+      "population": "amount-to-MRR relationship bucket",
+      "period": "All available history",
+      "grain": "amount-to-MRR relationship bucket",
+      "predicate": "canonical won opportunities with positive amount and positive MRR; ratios within ±5%"
     },
     "source_group_scorecard": {
       "status": "available",
@@ -9985,16 +10082,16 @@
         ],
         "metric_refs": [],
         "scope": "Hypothetical prospective experiment",
-        "body": "Randomize eligible domains 50/50. Measure new CRM opportunity creation after 90 days before evaluating broader commercial outcomes.",
+        "body": "Randomize all 2,034 eligible domains 50/50 (1,017 per arm). From a 5% baseline, a 90-day test can detect +3.1pp in new CRM opportunity creation before evaluating broader commercial outcomes.",
         "source_footer": "accounts.parquet; icp_database.parquet; opportunities.parquet",
-        "visible_caveat": "One two-arm comparison at alpha .05 and 80% power. Baseline/lift assumptions are hypothetical; 2,034 is below the default 4,426 requirement.",
+        "visible_caveat": "One two-arm comparison at alpha .05 and 80% power. Baseline/lift assumptions are hypothetical; the default +2pp lift is infeasible (2,034 is below the 4,426 required), but the full-audience 50/50 pilot can detect +3.1pp from a 5% baseline.",
         "speaker_notes": {
-          "say": "Randomize eligible domains 50/50. Measure new CRM opportunity creation after 90 days before evaluating broader commercial outcomes.",
+          "say": "Randomize all 2,034 eligible domains 50/50 (1,017 per arm). From a 5% baseline, a 90-day test can detect +3.1pp in new CRM opportunity creation before evaluating broader commercial outcomes.",
           "why": "Connect the evidence to a CMO decision.",
-          "do_not_claim": "One two-arm comparison at alpha .05 and 80% power. Baseline/lift assumptions are hypothetical; 2,034 is below the default 4,426 requirement.",
+          "do_not_claim": "One two-arm comparison at alpha .05 and 80% power. Baseline/lift assumptions are hypothetical; the default +2pp lift is infeasible (2,034 is below the 4,426 required), but the full-audience 50/50 pilot can detect +3.1pp from a 5% baseline.",
           "transition": "Move to the next evidence layer.",
           "judge_question": "What is the denominator and source window?",
-          "answer": "Randomize eligible domains 50/50. Measure new CRM opportunity creation after 90 days before evaluating broader commercial outcomes. One two-arm comparison at alpha .05 and 80% power. Baseline/lift assumptions are hypothetical; 2,034 is below the default 4,426 requirement.",
+          "answer": "Randomize all 2,034 eligible domains 50/50 (1,017 per arm). From a 5% baseline, a 90-day test can detect +3.1pp in new CRM opportunity creation before evaluating broader commercial outcomes. One two-arm comparison at alpha .05 and 80% power. Baseline/lift assumptions are hypothetical; the default +2pp lift is infeasible (2,034 is below the 4,426 required), but the full-audience 50/50 pilot can detect +3.1pp from a 5% baseline.",
           "sources": [
             "accounts.parquet",
             "icp_database.parquet",
@@ -10017,16 +10114,16 @@
         ],
         "metric_refs": [],
         "scope": "Hypothetical sample and unavailable unit cost",
-        "body": "A planning budget is unavailable until cost per enrolled treatment account is supplied. Choose a feasible single-comparison sample first; historical tracked spend is context.",
+        "body": "Budget = 1,017 treatment accounts × cost per enrolled account + fixed program cost. Cost per account was not supplied, so no dollar figure is set; historical tracked spend is context.",
         "source_footer": "accounts.parquet; icp_database.parquet; opportunities.parquet; ad_metrics.parquet",
-        "visible_caveat": "No cost per enrolled account was supplied. No planning dollars or incremental return forecast can be established.",
+        "visible_caveat": "Budget = 1,017 treatment accounts × cost per account + fixed cost. No cost per enrolled account was supplied, so no planning dollars or incremental return forecast are established.",
         "speaker_notes": {
-          "say": "A planning budget is unavailable until cost per enrolled treatment account is supplied. Choose a feasible single-comparison sample first; historical tracked spend is context.",
+          "say": "Budget = 1,017 treatment accounts × cost per enrolled account + fixed program cost. Cost per account was not supplied, so no dollar figure is set; historical tracked spend is context.",
           "why": "Connect the evidence to a CMO decision.",
-          "do_not_claim": "No cost per enrolled account was supplied. No planning dollars or incremental return forecast can be established.",
+          "do_not_claim": "Budget = 1,017 treatment accounts × cost per account + fixed cost. No cost per enrolled account was supplied, so no planning dollars or incremental return forecast are established.",
           "transition": "Move to the next evidence layer.",
           "judge_question": "What is the denominator and source window?",
-          "answer": "A planning budget is unavailable until cost per enrolled treatment account is supplied. Choose a feasible single-comparison sample first; historical tracked spend is context. No cost per enrolled account was supplied. No planning dollars or incremental return forecast can be established.",
+          "answer": "Budget = 1,017 treatment accounts × cost per enrolled account + fixed program cost. Cost per account was not supplied, so no dollar figure is set; historical tracked spend is context. Budget = 1,017 treatment accounts × cost per account + fixed cost. No cost per enrolled account was supplied, so no planning dollars or incremental return forecast are established.",
           "sources": [
             "accounts.parquet",
             "icp_database.parquet",
@@ -10218,16 +10315,16 @@
         ],
         "metric_refs": [],
         "scope": "Methods and evidence boundaries",
-        "body": "Exclude customer, partner, competitor and private-equity accounts, active opportunity domains, non-ICP targets and conflicting or missing profiles. 2,034 eligible domains remain. Equal allocation means 50/50 randomization. At 80% power, 5% baseline and +2pp lift require 4,426 domains, so feasibility fails for that scenario.",
+        "body": "Exclude customer, partner, competitor and private-equity accounts, active opportunity domains, non-ICP targets and conflicting or missing profiles. 2,034 eligible domains remain. Equal allocation means 50/50 randomization. At 80% power, 5% baseline and +2pp lift require 4,426 domains, so feasibility fails for that scenario. Using all 2,034 domains 50/50, a 90-day test can detect +3.1 pp from a 5% baseline.",
         "source_footer": "accounts.parquet; icp_database.parquet; opportunities.parquet",
         "visible_caveat": "Baseline and lift are assumptions. Current-fit historical associations have sample uncertainty and cannot establish incremental prospect conversion. Plan one comparison before adding channel overlays.",
         "speaker_notes": {
-          "say": "Exclude customer, partner, competitor and private-equity accounts, active opportunity domains, non-ICP targets and conflicting or missing profiles. 2,034 eligible domains remain. Equal allocation means 50/50 randomization. At 80% power, 5% baseline and +2pp lift require 4,426 domains, so feasibility fails for that scenario.",
+          "say": "Exclude customer, partner, competitor and private-equity accounts, active opportunity domains, non-ICP targets and conflicting or missing profiles. 2,034 eligible domains remain. Equal allocation means 50/50 randomization. At 80% power, 5% baseline and +2pp lift require 4,426 domains, so feasibility fails for that scenario. Using all 2,034 domains 50/50, a 90-day test can detect +3.1 pp from a 5% baseline.",
           "why": "Make targeting eligibility and sample uncertainty inspectable before using the main decision.",
           "do_not_claim": "Baseline and lift are assumptions. Current-fit historical associations have sample uncertainty and cannot establish incremental prospect conversion. Plan one comparison before adding channel overlays.",
           "transition": "Return to the main decision with this evidence boundary.",
           "judge_question": "Is the audience large enough for the proposed test?",
-          "answer": "Exclude customer, partner, competitor and private-equity accounts, active opportunity domains, non-ICP targets and conflicting or missing profiles. 2,034 eligible domains remain. Equal allocation means 50/50 randomization. At 80% power, 5% baseline and +2pp lift require 4,426 domains, so feasibility fails for that scenario. Baseline and lift are assumptions. Current-fit historical associations have sample uncertainty and cannot establish incremental prospect conversion. Plan one comparison before adding channel overlays.",
+          "answer": "Exclude customer, partner, competitor and private-equity accounts, active opportunity domains, non-ICP targets and conflicting or missing profiles. 2,034 eligible domains remain. Equal allocation means 50/50 randomization. At 80% power, 5% baseline and +2pp lift require 4,426 domains, so feasibility fails for that scenario. Using all 2,034 domains 50/50, a 90-day test can detect +3.1 pp from a 5% baseline. Baseline and lift are assumptions. Current-fit historical associations have sample uncertainty and cannot establish incremental prospect conversion. Plan one comparison before adding channel overlays.",
           "sources": [
             "accounts.parquet",
             "icp_database.parquet",
@@ -10249,16 +10346,16 @@
         ],
         "metric_refs": [],
         "scope": "Methods and evidence boundaries",
-        "body": "Recorded amount is zero or blank for 699 of 1,070 wins. Those zero-amount wins carry $3.4M of recorded monthly recurring revenue (MRR) in a separate field, 94.2% of it on existing-customer deals. MRR is shown beside recorded amount and never added to it, because some positive amounts already equal their MRR. Open pipeline is $7.0M; the $24.9M recorded total includes closed-lost deals. A calendar-only win-probability baseline was withdrawn: its time-based holdout was near chance and predicted no wins.",
+        "body": "Recorded amount is zero or blank for 699 of 1,070 wins. Those zero-amount wins carry $3.4M of recorded monthly recurring revenue (MRR) in a separate field, 94.2% of it on existing-customer deals. MRR is shown beside recorded amount and never added to it, because 92.9% of the 112 wins with both a positive amount and a positive MRR record an amount equal to MRR rather than a multi-month total. Open pipeline is $7.0M; the $24.9M recorded total includes closed-lost deals. A calendar-only win-probability baseline was withdrawn: its time-based holdout was near chance and predicted no wins.",
         "source_footer": "opportunities.parquet",
         "visible_caveat": "MRR is the CRM field as recorded; contract term and currency are not supplied, so no annualized or lifetime value is inferred. A prior-amount field is populated on many zero-amount wins but its meaning is unverified.",
         "speaker_notes": {
-          "say": "Recorded amount is zero or blank for 699 of 1,070 wins. Those zero-amount wins carry $3.4M of recorded monthly recurring revenue (MRR) in a separate field, 94.2% of it on existing-customer deals. MRR is shown beside recorded amount and never added to it, because some positive amounts already equal their MRR. Open pipeline is $7.0M; the $24.9M recorded total includes closed-lost deals. A calendar-only win-probability baseline was withdrawn: its time-based holdout was near chance and predicted no wins.",
+          "say": "Recorded amount is zero or blank for 699 of 1,070 wins. Those zero-amount wins carry $3.4M of recorded monthly recurring revenue (MRR) in a separate field, 94.2% of it on existing-customer deals. MRR is shown beside recorded amount and never added to it, because 92.9% of the 112 wins with both a positive amount and a positive MRR record an amount equal to MRR rather than a multi-month total. Open pipeline is $7.0M; the $24.9M recorded total includes closed-lost deals. A calendar-only win-probability baseline was withdrawn: its time-based holdout was near chance and predicted no wins.",
           "why": "Make recorded value: amount and mrr inspectable before using the main decision.",
           "do_not_claim": "MRR is the CRM field as recorded; contract term and currency are not supplied, so no annualized or lifetime value is inferred. A prior-amount field is populated on many zero-amount wins but its meaning is unverified.",
           "transition": "Return to the main decision with this evidence boundary.",
           "judge_question": "Why does recorded won amount understate value?",
-          "answer": "Recorded amount is zero or blank for 699 of 1,070 wins. Those zero-amount wins carry $3.4M of recorded monthly recurring revenue (MRR) in a separate field, 94.2% of it on existing-customer deals. MRR is shown beside recorded amount and never added to it, because some positive amounts already equal their MRR. Open pipeline is $7.0M; the $24.9M recorded total includes closed-lost deals. A calendar-only win-probability baseline was withdrawn: its time-based holdout was near chance and predicted no wins. MRR is the CRM field as recorded; contract term and currency are not supplied, so no annualized or lifetime value is inferred. A prior-amount field is populated on many zero-amount wins but its meaning is unverified.",
+          "answer": "Recorded amount is zero or blank for 699 of 1,070 wins. Those zero-amount wins carry $3.4M of recorded monthly recurring revenue (MRR) in a separate field, 94.2% of it on existing-customer deals. MRR is shown beside recorded amount and never added to it, because 92.9% of the 112 wins with both a positive amount and a positive MRR record an amount equal to MRR rather than a multi-month total. Open pipeline is $7.0M; the $24.9M recorded total includes closed-lost deals. A calendar-only win-probability baseline was withdrawn: its time-based holdout was near chance and predicted no wins. MRR is the CRM field as recorded; contract term and currency are not supplied, so no annualized or lifetime value is inferred. A prior-amount field is populated on many zero-amount wins but its meaning is unverified.",
           "sources": [
             "opportunities.parquet"
           ]

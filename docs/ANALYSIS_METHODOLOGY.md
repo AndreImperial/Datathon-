@@ -10,7 +10,7 @@ The current browser brief is built from the schema-v3 snapshot recorded in `publ
 
 One complete latest history row is selected per opportunity. The latest-snapshot set contains 3,288 rows; 43 deleted snapshots are excluded, leaving 3,245 canonical non-deleted opportunities. Of these, 2,834 are resolved (won, lost or discontinued) and 1,070 are won. The resolved-sample win rate is therefore 37.8%. Recorded amount across all deals is $24,876,699.31, including closed-lost deals; open pipeline is $7,026,136.93. Recorded won amount is $5,419,871.93.
 
-Recorded amounts are not complete revenue. 699 of the 1,070 wins have a zero or blank amount; those wins carry $3,447,433.79 of recorded monthly recurring revenue (MRR) in `mrr_amount__c`, 94% of it on existing-customer deals. MRR is reported beside amount and never added to it, because some positive amounts already equal their MRR. Contract term and currency are not supplied, so no annualized value is inferred. A prior-amount field is populated on many zero-amount wins, but its meaning is unverified.
+Recorded amounts are not complete revenue. 699 of the 1,070 wins have a zero or blank amount; those wins carry $3,447,433.79 of recorded monthly recurring revenue (MRR) in `mrr_amount__c`, 94% of it on existing-customer deals. MRR is reported beside amount and never added to it. Among the 112 wins with both a positive amount and a positive MRR, 104 (92.9%) record an amount equal to MRR, 8 have some other ratio, and none sits within ±5% of 3×, 6× or 12× MRR (`mrr_amount_relationship`). Contract term and currency are not supplied, so no annualized value is inferred. A prior-amount field is populated on many zero-amount wins, but its meaning is unverified.
 
 ### Business motion
 
@@ -110,7 +110,7 @@ The current pool contains 2,034 eligible target domains. For the default two-sid
 
 ### Spend and ROI
 
-Tracked spend and CRM outcomes have different coverage and timing. Pipeline-per-spend and revenue-per-spend are historical ratios where reported, not marginal returns or forecasts. The current evidence does not establish an optimal channel mix. Budget-neutral holdout and experiment plans are designs for learning; no projected pipeline is attributed to them.
+Tracked spend and CRM outcomes have different coverage and timing. Pipeline-per-spend and revenue-per-spend are historical ratios where reported, not marginal returns or forecasts. The current evidence does not establish an optimal channel mix. Budget-neutral holdout and experiment plans are designs for learning; no projected pipeline is attributed to them. The `pilot_design` dataset uses the full eligible audience (2,034 domains, 1,017 per arm, 50/50) with the same two-sided alpha .05 / power .80 per-arm formula as `experiment_scenarios`; the detectable absolute lift is solved by bisection so the per-arm requirement equals the arm size. Over a 90-day horizon it detects +2.1 pp from a 2% baseline, +3.1 pp from 5% and +4.0 pp from 10%. The planning budget is treatment accounts × cost per account + fixed cost; cost per account is not supplied.
 
 ## Withdrawn predictive model
 

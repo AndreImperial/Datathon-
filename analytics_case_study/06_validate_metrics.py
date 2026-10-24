@@ -7,13 +7,15 @@ import re
 import sys
 from pathlib import Path
 
+import importlib.util
+
 import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from artifact_safety import load_contract, manifest_assets_exist
 
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT = ROOT / "frontend" / "public" / "dashboard-data-v3.json"
-REQUIRED_DATASETS = {"population_reconciliation", "source_coverage", "channel_scorecard", "channel_trends", "content_metadata_coverage", "ad_rankings", "creative_bundles", "email_content", "web_content", "attribution_overlap", "attribution_model_sensitivity", "attribution_year_coverage", "journey_outcomes", "conversion_decomposition", "loss_reason_summary", "audience_exclusions", "audience_priority", "experiment_scenarios", "source_group_scorecard"}
+REQUIRED_DATASETS = {"population_reconciliation", "source_coverage", "channel_scorecard", "channel_trends", "content_metadata_coverage", "ad_rankings", "creative_bundles", "email_content", "web_content", "attribution_overlap", "attribution_model_sensitivity", "attribution_year_coverage", "journey_outcomes", "conversion_decomposition", "loss_reason_summary", "audience_exclusions", "audience_priority", "experiment_scenarios", "pilot_design", "mrr_amount_relationship", "source_group_scorecard"}
 APPENDIX_TITLES = {
     "appendix-01": "Population and source coverage",
     "appendix-02": "Metric definitions and unavailable denominators",
@@ -83,6 +85,29 @@ def validate_appendix(appendix: list[dict]) -> None:
             assert any(signal in searchable for signal in alternatives), f"Appendix {slide_id} is missing subject signal: {' / '.join(alternatives)}"
         assert slide["title"] == APPENDIX_TITLES[slide_id], f"Appendix {slide_id} has the wrong subject title"
 
+def per_arm_requirement(baseline: float, lift: float) -> float:
+    spec = importlib.util.spec_from_file_location("case_analysis", Path(__file__).with_name("03d_case_analysis.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.per_arm_requirement(baseline, lift)
+
+
+def validate_evidence_datasets(datasets: dict, summary: dict) -> None:
+    pilot = datasets["pilot_design"]
+    assert pilot, "Pilot design must have rows"
+    for row in pilot:
+        assert row["arm_size"] * 2 <= summary["eligible_domains"], "Pilot arms exceed the eligible audience"
+        assert row["detectable_lift"] > 0, "Pilot detectable lift must be positive"
+        required = per_arm_requirement(row["baseline_rate"], row["detectable_lift"])
+        assert abs(required - row["arm_size"]) <= 1, f"Pilot lift does not reproduce arm size at baseline {row['baseline_rate']}"
+    five = [row for row in pilot if math.isclose(row["baseline_rate"], 0.05)]
+    assert five and summary["pilot_detectable_lift_pp_at_5pct"] == five[0]["detectable_lift_pp"], "Pilot summary must match the 5% baseline row"
+    assert summary["pilot_treatment_accounts"] == summary["pilot_arm_size"] == five[0]["arm_size"], "Pilot summary arm sizes disagree"
+    mrr = datasets["mrr_amount_relationship"]
+    assert math.isclose(sum(row["share"] for row in mrr), 1.0, abs_tol=1e-9), "MRR relationship shares must sum to 1"
+    assert sum(row["wins"] for row in mrr) == summary["mrr_both_positive_wins"], "MRR relationship wins must reconcile"
+
+
 def main() -> int:
     data = load_contract(CONTRACT, 3)
     assert data["schema_version"] == 3, "Expected schema version 3"
@@ -124,6 +149,7 @@ def main() -> int:
     groups = [row for row in data["datasets"]["source_group_scorecard"] if row["scope"] == "All history"]
     all_motion = [row for row in data["datasets"]["channel_scorecard"] if row["scope"] == "All history" and row["business_motion"] == "Acquisition"]
     assert sum(row["opportunities"] for row in groups) == sum(row["opportunities"] for row in all_motion), "Source groups must reconcile the acquisition population"
+    validate_evidence_datasets(data["datasets"], summary)
     assert summary["zero_amount_wins"] <= summary["won"], "Zero-amount wins cannot exceed wins"
     assert str(summary["eligible_domains"]) in json.dumps(data["presentation"]) or f"{summary['eligible_domains']:,}" in json.dumps(data["presentation"], ensure_ascii=False), "Deck must quote the computed eligible audience"
     legacy_path = CONTRACT.with_name("dashboard-data.json")
