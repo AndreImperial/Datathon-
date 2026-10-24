@@ -2,6 +2,8 @@
 
 The presentation lives at `/#present/main-01` on the dashboard (16 main slides in 18 minutes, then six appendix slides). Open the presenter console from the **Presenter** button: it shows the current and next headline, speaker notes, a transition line into the next slide, and a pace timer, and it stays in sync with the audience tab.
 
+**Two cuts.** The header toggle switches between the full deck (16 slides, 18 minutes) and the **executive cut** (8 slides, 10 minutes: main-01, 02, 04, 06, 10, 12, 14, 16 at 60/75/75/90/75/60/90/75 s). The presenter console, progress bar, overview and pace timer follow the active cut.
+
 **The big idea** (slide 1 opens on it, slide 16 closes on it): *Fix conversion before buying volume. Prove reach before scaling spend.*
 
 Headlines are computed from the data contract (`frontend/public/dashboard-data-v3.json`), so the numbers below are the current snapshot's. If the data changes, the slides change with it.
@@ -65,17 +67,17 @@ A step-down from all assessed domains to the eligible audience, and the stronges
 Each gap with its evidence and the action that answers it.
 
 ### main-14 — Controlled experiment (75 s)
-**Only 1 of 9 test designs fits 2,034 domains: it must detect +3 pp from a 2% baseline.**
-Required accounts for each baseline and lift (two-sided α .05, 80% power); the default 5% / +2 pp design needs 4,426.
+**A +2 pp test needs 4,426 domains, but all 2,034 split 50/50 can detect +3.1 pp in 90 days.**
+The 3×3 grid of required accounts (two-sided α .05, 80% power) beside the recommended pilot: 1,017 per arm, 90 days, outcome = new CRM opportunity; detectable lift +2.1 / +3.1 / +4.0 pp at 2 / 5 / 10% baselines.
 
 ### main-15 — Budget implications (45 s)
-**The test budget needs one missing input: cost per account for 588 treatment accounts.**
-Planning formula: treatment accounts × cost per account + fixed cost. No dollar figure is shown until the unit cost is supplied.
+**The pilot budget needs one missing input: cost per account for 1,017 treatment accounts.**
+Budget = 1,017 treatment accounts × cost per account + fixed cost. No dollar figure is shown until the unit cost is supplied; the dashboard's Budget section has a calculator for it.
 
 ## Ask
 
 ### main-16 — CMO decisions (60 s)
-**Decide today: fix marketing conversion, run the 90-day coverage test, record contract value.**
+**Decide today: fix marketing conversion, run the 90-day pilot on all 2,034 domains, record contract value.**
 Each decision with its owner, first measure and review point, then the big idea.
 
 ## On-demand appendix
@@ -85,4 +87,4 @@ Each decision with its owner, first measure and review point, then the big idea.
 - `appendix-03` — Attribution models, windows and shared-domain sensitivity.
 - `appendix-04` — Conversion decomposition and loss reasons.
 - `appendix-05` — Targeting eligibility and sample uncertainty.
-- `appendix-06` — Recorded value: amount and MRR, open pipeline versus the all-deal total, and why the win-probability model was withdrawn.
+- `appendix-06` — Recorded value: amount and MRR (on wins that record both, amount equals MRR 93% of the time), open pipeline versus the all-deal total, and why the win-probability model was withdrawn.

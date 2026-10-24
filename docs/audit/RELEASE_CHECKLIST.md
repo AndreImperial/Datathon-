@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 81 checks — 80 pass (19 of them after fixes), 0 fail, 1 not verified (H4).**
+**Result: 86 checks — 85 pass (20 of them after fixes), 0 fail, 1 not verified (H4).**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -135,8 +135,19 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 | I4 | Chart tooltips anywhere over a chart | PASS (fixed) | 30/30 hover points on the three charts that showed 16–18/30 |
 | I5 | No oversized chunk on the first-paint path | PASS (fixed) | Build has no chunk over 500 kB. First-paint JavaScript fell from 305 kB to 191 kB (gzip); charts load lazily. The typecheck no longer writes a stale `vite.config.js` that Vite could load instead of the source |
 
+## J. Actionability and delivery
+
+| ID | Check | Status | Evidence |
+|---|---|---|---|
+| J1 | A runnable test exists for the eligible audience | PASS | `pilot_design`: all 2,034 domains 50/50 (1,017 per arm), 90 days, detects +2.1 / +3.1 / +4.0 pp at 2 / 5 / 10% baselines. Solved with the same formula as the scenario grid; the validator checks the arm size reproduces at that lift, and the dashboard computed identical values independently |
+| J2 | The meaning of recorded amount is evidenced | PASS | `mrr_amount_relationship`: on 112 wins with both values, amount equals MRR on 104 (92.9%, all exact). Amount is a monthly value; nothing is annualised or added |
+| J3 | A 10-minute executive cut of the deck | PASS | 8 slides, 600 s, toggle in header, overview and presenter console, synced both ways; every slide in both cuts fits 1440×900 and 1280×720; headlines computed from the real contract |
+| J4 | The pilot budget can be sized without inventing costs | PASS | Budget calculator (empty by default): 1,017 × cost per account + fixed cost, accessible inputs with validation, aria-live result; unit-tested |
+| J5 | Browser-menu printing (Ctrl+P) prints everything | PASS (fixed) | `beforeprint` renders all 10 sections and opens 12 of 12 tables; all 19 charts are drawn synchronously (was 0) thanks to a print-safe initial chart size; 34-page PDF with the pilot and calculator |
+
+Accessibility re-run on the final build: dashboard 25 views + pilot/calculator states, deck 120 views (both cuts, overview, drawers, presenter): 0 axe-core violations.
+
 ## Not verified anywhere
 
 - A real screen-reader session (automated axe-core audits pass, but no assistive-technology user test was possible here).
-- Printing from the browser's own Ctrl+P (the Print button path is verified).
 - H4 above: the Claude Dashboard's own check leaves no record of a run.

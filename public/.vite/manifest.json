@@ -35,39 +35,39 @@
     "file": "assets/d3-BCKNL-0i.js",
     "name": "d3"
   },
-  "_motion-Bjcg9Ch9.js": {
-    "file": "assets/motion-Bjcg9Ch9.js",
+  "_motion-CR3kvnl3.js": {
+    "file": "assets/motion-CR3kvnl3.js",
     "name": "motion",
     "imports": [
-      "_react-CZDf6Nbr.js"
+      "_react-C2C9EsrB.js"
     ]
   },
-  "_react-CZDf6Nbr.js": {
-    "file": "assets/react-CZDf6Nbr.js",
+  "_react-C2C9EsrB.js": {
+    "file": "assets/react-C2C9EsrB.js",
     "name": "react"
   },
-  "_recharts-BcSoRSHU.js": {
-    "file": "assets/recharts-BcSoRSHU.js",
+  "_recharts-CfQAMjdV.js": {
+    "file": "assets/recharts-CfQAMjdV.js",
     "name": "recharts",
     "imports": [
-      "_react-CZDf6Nbr.js",
+      "_react-C2C9EsrB.js",
       "_d3-BCKNL-0i.js"
     ]
   },
   "index.html": {
-    "file": "assets/index-DNb7ap-g.js",
+    "file": "assets/index-CbkPzJEt.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
     "imports": [
-      "_react-CZDf6Nbr.js",
-      "_motion-Bjcg9Ch9.js"
+      "_react-C2C9EsrB.js",
+      "_motion-CR3kvnl3.js"
     ],
     "dynamicImports": [
       "src/components/Charts.tsx"
     ],
     "css": [
-      "assets/index-BEyWDPQg.css"
+      "assets/index-q_lqAXYP.css"
     ],
     "assets": [
       "assets/manrope-cyrillic-wght-normal-Dvxsihut.woff2",
@@ -81,15 +81,15 @@
     ]
   },
   "src/components/Charts.tsx": {
-    "file": "assets/Charts-DS8h8HKK.js",
+    "file": "assets/Charts-De2ftYte.js",
     "name": "Charts",
     "src": "src/components/Charts.tsx",
     "isDynamicEntry": true,
     "imports": [
-      "_react-CZDf6Nbr.js",
+      "_react-C2C9EsrB.js",
       "index.html",
-      "_recharts-BcSoRSHU.js",
-      "_motion-Bjcg9Ch9.js",
+      "_recharts-CfQAMjdV.js",
+      "_motion-CR3kvnl3.js",
       "_d3-BCKNL-0i.js"
     ]
   }
