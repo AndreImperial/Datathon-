@@ -1,14 +1,18 @@
 import { motion, useReducedMotion } from "motion/react";
+import { DURATION, EASE_BEZIER, motionAllowed } from "../motion";
 
 /**
- * Source-owned Aceternity-style navigation indicator.
+ * Sliding active-section indicator for the sidebar.
  *
- * The layout transition gives the amber rail a useful sense of continuity
- * when a section changes, while the reduced-motion branch keeps the same
- * visual affordance without any transform or spring animation.
+ * One shared layoutId means only one indicator exists; when the active link
+ * changes, motion animates it (transform only) from the old link to the new
+ * one, so the eye follows where you went. The pill carries the active
+ * background and accent rail, so nothing else on the link changes abruptly.
+ * Reduced motion and print preparation render the same pill with no
+ * transition: final state immediately.
  */
-export function AnimatedNavIndicator() {
+export function AnimatedNavIndicator({ id = "dashboard-nav-active" }: { id?: string }) {
   const reduceMotion = useReducedMotion();
-  if (reduceMotion) return <span className="nav-active" aria-hidden="true" />;
-  return <motion.span layoutId="dashboard-nav-active" className="nav-active" transition={{ type: "spring", stiffness: 500, damping: 36 }} aria-hidden="true" />;
+  if (reduceMotion || !motionAllowed()) return <span className="nav-active" aria-hidden="true"><i /></span>;
+  return <motion.span layoutId={id} className="nav-active" transition={{ duration: DURATION.base, ease: [...EASE_BEZIER] }} aria-hidden="true"><i /></motion.span>;
 }

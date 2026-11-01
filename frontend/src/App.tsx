@@ -1,6 +1,6 @@
 import { compareValues, serializeEvidenceCsv, formatField, fieldUnit, columnLabel, formatCount, formatDollarsCompact, formatPercent, listPhrase, topRows, parsePilotDesign, parseMoneyInput, pilotBudget, type PilotDesign } from "./evidence";
 import { displayName } from "./labels";
-import { lazy, Suspense, useEffect, useRef, useState, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { flushSync } from "react-dom";
 import {
   Archive, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, Check, ChevronDown, CircleAlert, Download, ExternalLink,
@@ -15,8 +15,66 @@ import { numberValue, REQUIRED_SECTION_IDS, textValue, type CaseStudyData } from
 import { AnimatedNavIndicator } from "./components/AceternityMotion";
 import { PresentationApp } from "./presentation/PresentationApp";
 import { chartPlacementIds, tableIds, validateCaseStudyPayload, validateDashboardPayload } from "./dataContract";
+import { applyMotionTokens, countUpDisplayed, DURATION, EASE, ENTER, flash, motionAllowed, STAGGER } from "./motion";
 
 gsap.registerPlugin(Flip, ScrollTrigger);
+if (typeof document !== "undefined") applyMotionTokens();
+
+/* ------------------------------------------------------------------------- *
+ * Dashboard motion. Every effect explains structure: what arrived (section
+ * entrance), what a number is (count-up), where you are (sliding nav pill,
+ * directional section change, arc fill) and what changed (flash). Each runs
+ * once per view, uses only transform/opacity/clip-path, and resolves to its
+ * final state immediately when motionAllowed() is false (reduced motion or
+ * print preparation).
+ * ------------------------------------------------------------------------- */
+
+/** Elements mounted this long after a section is first shown still join its entrance (e.g. the v3 findings band arriving a moment later); later mounts (reset, re-render) never animate. */
+const ENTRANCE_WINDOW_MS = 1500;
+/** Tiles deal in with alternating tilt; their figures count up. */
+const ENTER_TILES = ".command-kpis > div, .command-inline-kpis > div, .latest-tile, .power-tiles > div";
+/** The section's framing: big idea, band heading, action title and takeaway. */
+const ENTER_INTRO = ".command-decision, .latest-findings-head, .section-heading, .section-takeaway";
+/** Panels rise into place. */
+const ENTER_PANELS = [".chart-card", ".method-panel", ".rank-card", ".section-viewport > * > .evidence-table-card", ".pilot-plan", ".pilot-calc", ".action-queue", ".quality-tape", ".conclusion-hero", ".section-viewport .evidence-details", ".decision-queued"].join(", ");
+/** Smaller cards cascade inside or below the panels. */
+const ENTER_CARDS = ".arc-strip li, .evidence-card, .appendix-card, .decision-card, .action-row, .section-pager";
+/** Every KPI or stat figure that counts up from zero on first view. Table cells are left out: they size their column, so a changing width would shift it. */
+const COUNT_TARGETS = ".kpi-value, .command-inline-kpis dd, .latest-value, .arc-step-detail, .power-value, .pilot-facts > div:not(:last-child) dd";
+
+/** Running entrances, so print can finish them before its snapshot. */
+const runningEntrances = new Set<{ finish: () => void }>();
+function finishEntrances() { Array.from(runningEntrances).forEach((entrance) => entrance.finish()); }
+
+/** A per-element mount fade (chart data table, explanation): opacity and a few pixels of rise. */
+function useEnterOnMount<T extends HTMLElement>(ref: RefObject<T>) {
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node || !motionAllowed()) return;
+    const tween = gsap.from(node, { ...ENTER.row, duration: DURATION.base, ease: EASE.out, clearProps: "opacity,visibility,transform" });
+    return () => { tween.progress(1).kill(); };
+  }, [ref]);
+}
+
+/** Directional section change through the View Transitions API; a plain update where unsupported or when motion is off. */
+type ViewTransitionDocument = Document & { startViewTransition?: (update: () => void) => { finished: Promise<void>; ready: Promise<void>; updateCallbackDone: Promise<void> } };
+function transitionSection(update: () => void, direction: "forward" | "back") {
+  const doc = document as ViewTransitionDocument;
+  if (!motionAllowed() || typeof doc.startViewTransition !== "function") { update(); return; }
+  const root = document.documentElement;
+  root.dataset.sectionDirection = direction;
+  try {
+    const transition = doc.startViewTransition(() => { flushSync(update); window.scrollTo({ top: 0, behavior: "auto" }); });
+    // A skipped transition (a newer one started, or the tab is hidden) still runs the update; it is not an error.
+    const ignore = () => undefined;
+    transition.ready.catch(ignore);
+    transition.updateCallbackDone.catch(ignore);
+    transition.finished.catch(ignore).finally(() => { if (root.dataset.sectionDirection === direction) delete root.dataset.sectionDirection; });
+  } catch {
+    delete root.dataset.sectionDirection;
+    update();
+  }
+}
 
 // The chart chunk stays lazy, but once it has loaded charts render synchronously
 // (no Suspense round trip), so a print snapshot taken right after beforeprint
@@ -513,6 +571,13 @@ function EvidenceDetails({ title, count, children }: { title: string; count: num
   return <details className="evidence-details"><summary><span>{title}</span><small>{count} rows</small><ChevronDown size={14} aria-hidden="true" /></summary>{children}</details>;
 }
 
+/** A block that fades and rises in when it mounts (user-opened content only). */
+function FadeIn({ className, id, children }: { className?: string; id?: string; children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEnterOnMount(ref);
+  return <div ref={ref} className={className} id={id}>{children}</div>;
+}
+
 function ChartCard({ id, metadata, data, totalPipeline, coverageMix, presenting }: { id: string; metadata?: ChartMetadata; data: DashboardData; totalPipeline: number; coverageMix: DataRow[]; presenting: boolean }) {
   const [details, setDetails] = useState(false);
   const [table, setTable] = useState(false);
@@ -526,7 +591,7 @@ function ChartCard({ id, metadata, data, totalPipeline, coverageMix, presenting 
   const explanationId = `${id}-explanation`;
   // The generic placeholder adds no information; substantive caveats stay visible.
   const caveat = metadata?.caveat && metadata.caveat.trim() !== GENERIC_CAVEAT ? metadata.caveat : "";
-  return <article className="chart-card" data-chart-id={id} data-reveal aria-labelledby={`${id}-title`}>
+  return <article className="chart-card" data-chart-id={id} aria-labelledby={`${id}-title`}>
     <div className="chart-heading"><div><h3 id={`${id}-title`}>{title}</h3><p id={summaryId} className="chart-takeaway">{metadata?.accessible_summary}{source === "attribution" && " Linked opportunity counts describe the whole selected window, repeated for reference; do not sum across channels or models."}</p><span id={`${id}-subtitle`} className="chart-unit">{subtitle}</span></div><div className="chart-actions"><button type="button" className={`icon-button chart-view-toggle${table ? " is-active" : ""}`} title={table ? "Return to chart" : "View chart data"} aria-label={table ? `View chart for ${title}` : `View data for ${title}`} aria-pressed={table} aria-expanded={table} aria-controls={tableId} onClick={() => setTable((value) => !value)}><FileText size={15} /><span>{table ? "Hide data" : "Show data"}</span></button><button type="button" className="icon-button" title="Download chart data" aria-label={`Download data for ${title}`} onClick={() => downloadRows(`${id}.csv`, chartRows, { snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: metadata?.source_dataset ?? "Unavailable", scope: metadata?.subtitle ?? data.meta.period, methodology: data.meta.methodology, caveat: metadata?.caveat ?? "" })}><Download size={15} /></button></div></div>
     <div className="chart-visual" role="img" aria-labelledby={`${id}-title ${id}-subtitle`} aria-describedby={summaryId}><Suspense fallback={<div className="chart-empty" role="status">Loading visual…</div>}>{!chartRows.length ? <div className="chart-empty" role="status">Chart unavailable: {source ? data.dataset_status?.[source]?.reason ?? "No observations in this scope." : "No observations in this scope."}</div> : <ChartRenderer id={id} data={data.datasets} totalPipeline={totalPipeline} coverageMix={coverageMix} />}</Suspense></div>
     {(caveat || info) && <div className="chart-explanation">
@@ -534,9 +599,9 @@ function ChartCard({ id, metadata, data, totalPipeline, coverageMix, presenting 
         {caveat ? <p className="chart-caveat"><CircleAlert size={13} aria-hidden="true" /><span><span className="sr-only">Caveat: </span>{caveat}</span></p> : <span />}
         {info && <button type="button" className="text-button" aria-expanded={details} aria-controls={explanationId} onClick={() => setDetails((value) => !value)}>{details ? "Hide explanation" : "What this shows"}<span className="sr-only">: {title}</span><ChevronDown className={details ? "rotate" : ""} size={14} aria-hidden="true" /></button>}
       </div>
-      {info && details && <div className="explanation-body" id={explanationId}><p>{resolveCopy(info.body, data)}</p><div className="insight"><Sparkles size={14} aria-hidden="true" />{interpolate(resolveCopy(info.insight, data), data)}</div></div>}
+      {info && details && <FadeIn className="explanation-body" id={explanationId}><p>{resolveCopy(info.body, data)}</p><div className="insight"><Sparkles size={14} aria-hidden="true" />{interpolate(resolveCopy(info.insight, data), data)}</div></FadeIn>}
     </div>}
-    {table && <DataTable id={tableId} rows={chartRows} label={`${title} data`} provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: metadata?.source_dataset ?? "Unavailable", scope: subtitle, methodology: data.meta.methodology, caveat: metadata?.caveat ?? "" }} />}
+    {table && <FadeIn className="chart-data-swap"><DataTable id={tableId} rows={chartRows} label={`${title} data`} provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: metadata?.source_dataset ?? "Unavailable", scope: subtitle, methodology: data.meta.methodology, caveat: metadata?.caveat ?? "" }} /></FadeIn>}
     {presenting && <span className="presentation-mark" aria-hidden="true">Evidence</span>}
   </article>;
 }
@@ -659,8 +724,23 @@ function ArcStrip({ data, story, onOpen }: { data: DashboardData; story: StoryNu
     { stage: "Resolution", target: "s-budget", line: "Fix the handoff; size the test to the audience", detail: story.eligible && story.defaultNeed ? `${story.eligible} eligible domains; default test needs ${story.defaultNeed}` : `${metric(data, "unreached_accounts")} account domains unreached` },
     { stage: "Ask", target: "s-conclusion", line: "Approve three decisions", detail: "Each with an owner, a measure and a stop rule" },
   ];
-  return <nav className="arc-strip" aria-label="The story in four steps">
-    <ol>{steps.map((step) => <li key={step.stage} className={step.stage === "Tension" ? "is-tension" : undefined}><a href={`#${step.target}`} onClick={(event) => { event.preventDefault(); onOpen(step.target); }}><span className="arc-step-stage">{step.stage}</span><strong>{step.line}</strong><span className="arc-step-detail">{step.detail}</span></a></li>)}</ol>
+  const strip = useRef<HTMLElement>(null);
+  // The arc fills step by step as the reader scrolls through the evidence below it.
+  // At rest (no motion, print, no scroll room) every step shows filled.
+  useLayoutEffect(() => {
+    const node = strip.current;
+    if (!node || !motionAllowed()) return;
+    const fills = Array.from(node.querySelectorAll<HTMLElement>(".arc-fill"));
+    const viewport = document.querySelector<HTMLElement>(".section-viewport");
+    if (!fills.length || !viewport) return;
+    const ctx = gsap.context(() => {
+      gsap.timeline({ scrollTrigger: { trigger: viewport, start: "top 85%", end: "bottom bottom", scrub: DURATION.fast } })
+        .fromTo(fills, { scaleX: 0 }, { scaleX: 1, ease: "none", stagger: 1, duration: 1 });
+    }, node);
+    return () => ctx.revert();
+  }, []);
+  return <nav ref={strip} className="arc-strip" aria-label="The story in four steps">
+    <ol>{steps.map((step) => <li key={step.stage} className={step.stage === "Tension" ? "is-tension" : undefined}><a href={`#${step.target}`} onClick={(event) => { event.preventDefault(); onOpen(step.target); }}><span className="arc-step-stage">{step.stage}</span><strong>{step.line}</strong><span className="arc-step-detail">{step.detail}</span></a><span className="arc-fill" aria-hidden="true" /></li>)}</ol>
   </nav>;
 }
 
@@ -856,6 +936,15 @@ function PilotBudgetCalculator({ treatmentAccounts }: { treatmentAccounts: numbe
   const result = unitBad || fixedBad
     ? { state: "invalid" as const, message: unitBad ? "Cost per treatment account must be a number, for example 40 or 1250.50." : "Fixed cost must be a number, for example 40 or 1250.50." }
     : pilotBudget(treatmentAccounts, unit, fixed);
+  const resultText = result.state === "ok" ? result.message.replace(/^Pilot budget: /, "") : result.state === "empty" ? "Enter a unit cost to size the pilot budget" : result.message;
+  // Flash the result when a typed cost changes it (never on first render).
+  const resultNode = useRef<HTMLOutputElement>(null);
+  const shownResult = useRef(resultText);
+  useEffect(() => {
+    if (shownResult.current === resultText) return;
+    shownResult.current = resultText;
+    if (resultNode.current && result.state === "ok") flash(resultNode.current);
+  }, [resultText, result.state]);
   return <section className="pilot-calc" aria-labelledby="pilot-calc-title">
     <div className="pilot-calc-head"><h3 id="pilot-calc-title">Size the pilot budget</h3><p>Budget = {formatCount(treatmentAccounts)} treatment accounts × cost per account + any fixed cost. No cost is assumed; enter your own.</p></div>
     <div className="pilot-calc-body">
@@ -865,7 +954,7 @@ function PilotBudgetCalculator({ treatmentAccounts }: { treatmentAccounts: numbe
       </div>
       <div className={`pilot-calc-result is-${result.state}`}>
         <span className="pilot-calc-label">Pilot budget</span>
-        <output htmlFor="pilot-unit-cost pilot-fixed-cost" className="pilot-calc-value" aria-live="polite" aria-atomic="true">{result.state === "ok" ? result.message.replace(/^Pilot budget: /, "") : result.state === "empty" ? "Enter a unit cost to size the pilot budget" : result.message}</output>
+        <output ref={resultNode} htmlFor="pilot-unit-cost pilot-fixed-cost" className="pilot-calc-value" aria-live="polite" aria-atomic="true">{resultText}</output>
         <span className="pilot-calc-note">Holdout domains receive no outreach, so only the treatment arm is costed.</span>
       </div>
     </div>
@@ -966,6 +1055,8 @@ function Progress({ value, tone, label }: { value: number; tone: string; label: 
 function renderAllForPrint(setPrintAll: (value: boolean) => void) {
   const root = document.documentElement;
   root.classList.add("print-prep");
+  // Print shows final states: land any entrance or count-up still in flight.
+  finishEntrances();
   try {
     flushSync(() => setPrintAll(true));
   } finally {
@@ -1016,6 +1107,20 @@ function LegacyDashboard() {
   const [resetToken, setResetToken] = useState(0);
   const [printAll, setPrintAll] = useState(false);
   const [brief, setBrief] = useState<LatestBrief | null>(null);
+  // Section changes slide in the reading direction (next: up, previous: down).
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  // A hash change fires both hashchange and popstate: the second request for the same
+  // section while its transition is pending is dropped instead of restarting it.
+  const pendingSection = useRef<SectionId | null>(null);
+  const changeSection = (id: SectionId, alongside?: () => void) => {
+    const from = activeRef.current;
+    if (pendingSection.current === id) { alongside?.(); return; }
+    const update = () => { pendingSection.current = null; setActive(id); alongside?.(); };
+    if (id === from || !document.querySelector(".section-viewport")) { update(); return; }
+    pendingSection.current = id;
+    transitionSection(update, sectionOrder.indexOf(id) > sectionOrder.indexOf(from) ? "forward" : "back");
+  };
 
   useEffect(() => {
     fetch("./dashboard-data.json")
@@ -1030,7 +1135,7 @@ function LegacyDashboard() {
   }, []);
 
   useEffect(() => {
-    const syncRoute = () => { const hash = window.location.hash.replace(/^#/, "") as SectionId; if (REQUIRED_SECTION_IDS.includes(hash)) { setActive(hash); window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } };
+    const syncRoute = () => { const hash = window.location.hash.replace(/^#/, "") as SectionId; if (REQUIRED_SECTION_IDS.includes(hash)) { changeSection(hash); window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } };
     syncRoute();
     window.addEventListener("hashchange", syncRoute);
     window.addEventListener("popstate", syncRoute);
@@ -1051,25 +1156,83 @@ function LegacyDashboard() {
     return () => window.cancelAnimationFrame(frame);
   }, [data, active]);
 
-  useEffect(() => {
-    if (!data || !root.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  /*
+   * Section entrance, once per section: tiles deal in with alternating tilt
+   * while their figures count up, the intro follows, then panels rise and
+   * cards cascade, all settled within ~1.3 s. Runs before paint (layout
+   * effect) so nothing flashes in its final place first. Elements may only be
+   * hidden while the shell carries .js-motion: styles.css forces [data-enter]
+   * visible otherwise, so a failed or stalled tween never hides evidence, and
+   * a fallback timer lands everything regardless.
+   */
+  const entranceStarted = useRef(new Map<SectionId, number>());
+  const entered = useRef(new WeakSet<Element>());
+  useLayoutEffect(() => {
     const shell = root.current;
-    const targets = Array.from(shell.querySelectorAll<HTMLElement>("[data-reveal]"));
-    if (!targets.length) { ScrollTrigger.refresh(); return; }
-    // Cards may only be hidden once GSAP is running: styles.css forces
-    // [data-reveal] visible unless the shell carries .js-motion, so a failed or
-    // interrupted tween can never leave evidence invisible.
-    const reveal = () => targets.forEach((node) => { node.style.removeProperty("opacity"); node.style.removeProperty("visibility"); node.style.removeProperty("transform"); });
-    let ctx: gsap.Context | null = null;
+    if (!data || !shell || printAll) return;
+    const started = entranceStarted.current;
+    if (!motionAllowed()) { if (!started.has(active)) started.set(active, -Infinity); return; }
+    const now = performance.now();
+    if (!started.has(active)) started.set(active, now);
+    if (now - (started.get(active) ?? -Infinity) > ENTRANCE_WINDOW_MS) return;
+    const fresh = (selector: string) => Array.from(shell.querySelectorAll<HTMLElement>(selector)).filter((node) => !entered.current.has(node));
+    const tiles = fresh(ENTER_TILES);
+    const intro = fresh(ENTER_INTRO);
+    const panels = fresh(ENTER_PANELS);
+    const cards = fresh(ENTER_CARDS);
+    const counters = fresh(COUNT_TARGETS);
+    const targets = [...tiles, ...intro, ...panels, ...cards];
+    [...targets, ...counters].forEach((node) => entered.current.add(node));
+    if (!targets.length && !counters.length) return;
+    // Long lists share a fixed cascade budget so a busy section settles as fast as a light one.
+    const each = (count: number, budget: number, step: number) => Math.min(step, budget / Math.max(1, count - 1));
+    const stops: Array<() => void> = [];
+    let timeline: gsap.core.Timeline | null = null;
+    const entrance = { finish: () => { timeline?.progress(1); stops.forEach((stop) => stop()); } };
+    const release = () => {
+      runningEntrances.delete(entrance);
+      targets.forEach((node) => node.removeAttribute("data-enter"));
+      if (!runningEntrances.size) shell.classList.remove("js-motion");
+      window.clearTimeout(fallback);
+      ScrollTrigger.refresh();
+    };
+    const fallback = window.setTimeout(() => entrance.finish(), 2500);
     try {
-      ctx = gsap.context(() => { gsap.fromTo(targets, { autoAlpha: 0, y: 12 }, { autoAlpha: 1, y: 0, duration: 0.38, stagger: 0.045, ease: "power2.out", clearProps: "opacity,visibility,transform" }); ScrollTrigger.refresh(); }, shell);
       shell.classList.add("js-motion");
+      targets.forEach((node) => node.setAttribute("data-enter", ""));
+      runningEntrances.add(entrance);
+      const clearProps = "opacity,visibility,transform";
+      const tileStep = each(tiles.length, 0.35, STAGGER.base);
+      // Figures finish counting just after their tile lands. Started before the entrance
+      // transforms apply, so each figure's box is measured at rest.
+      counters.forEach((node, index) => {
+        const tile = tiles.findIndex((candidate) => candidate.contains(node));
+        stops.push(countUpDisplayed(node, { delay: tile >= 0 ? tile * tileStep : Math.min(index * STAGGER.tight, STAGGER.loose * 3) }));
+      });
+      timeline = gsap.timeline({ onComplete: release, onInterrupt: release });
+      tiles.forEach((node, index) => timeline!.from(node, { ...ENTER.tile(index), duration: DURATION.slow, ease: EASE.settle, clearProps }, index * tileStep));
+      if (intro.length) timeline.from(intro, { ...ENTER.card, duration: DURATION.base, ease: EASE.out, stagger: STAGGER.tight, clearProps }, tiles.length ? STAGGER.loose : 0);
+      if (panels.length) timeline.from(panels, { ...ENTER.panel, duration: DURATION.slow, ease: EASE.out, stagger: each(panels.length, 0.42, STAGGER.base), clearProps }, STAGGER.loose * 2);
+      if (cards.length) timeline.from(cards, { ...ENTER.card, duration: DURATION.base, ease: EASE.out, stagger: each(cards.length, 0.36, STAGGER.tight), clearProps }, STAGGER.loose * 3);
+      if (!targets.length) release();
     } catch {
-      shell.classList.remove("js-motion");
-      reveal();
+      entrance.finish();
+      release();
     }
-    const fallback = window.setTimeout(() => { shell.classList.remove("js-motion"); reveal(); }, 2500);
-    return () => { window.clearTimeout(fallback); ctx?.revert(); shell.classList.remove("js-motion"); };
+  }, [data, active, brief, printAll]);
+  // Leaving the dashboard (e.g. for the deck) lands anything still moving.
+  useEffect(() => () => finishEntrances(), []);
+
+  // Back to top fades in once the reader has scrolled away from the top.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    let frame = 0;
+    const update = () => { frame = 0; const scrollable = document.documentElement.scrollHeight - window.innerHeight > 40; setScrolled(!scrollable || window.scrollY > window.innerHeight * 0.5); };
+    const onScroll = () => { if (!frame) frame = window.requestAnimationFrame(update); };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+    return () => { window.cancelAnimationFrame(frame); window.removeEventListener("scroll", onScroll); window.removeEventListener("resize", onScroll); };
   }, [data, active]);
 
   useEffect(() => { document.body.classList.toggle("presentation-mode", presenting); try { localStorage.setItem("dashboardMode", presenting ? "presentation" : "analyst"); } catch { /* In-memory mode remains usable. */ } const timer = window.setTimeout(() => ScrollTrigger.refresh(), 200); return () => { clearTimeout(timer); document.body.classList.remove("presentation-mode"); }; }, [presenting]);
@@ -1189,7 +1352,7 @@ function LegacyDashboard() {
       if (index < 0 || index >= sectionOrder.length) return;
       event.preventDefault();
       const id = sectionOrder[index];
-      setActive(id);
+      changeSection(id);
       if (window.location.hash !== `#${id}`) window.history.pushState(null, "", `#${id}`);
     };
     window.addEventListener("keydown", onKey);
@@ -1232,13 +1395,12 @@ function LegacyDashboard() {
   const activeSection = activeGroup?.children.find((child) => child.id === active);
   const filteredGroups = groups.map((group) => ({ ...group, children: group.children.filter((child) => !search.trim() || `${group.label} ${child.label}`.toLowerCase().includes(search.trim().toLowerCase())) })).filter((group) => group.children.length || !search.trim());
   const hasSearchResults = filteredGroups.some((group) => group.children.length > 0);
-  const openSection = (id: SectionId) => { setActive(id); setMenuOpen(false); if (window.location.hash !== `#${id}`) window.history.pushState(null, "", `#${id}`); };
+  const openSection = (id: SectionId) => { changeSection(id, () => setMenuOpen(false)); if (window.location.hash !== `#${id}`) window.history.pushState(null, "", `#${id}`); };
   const togglePresentation = () => {
-    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const targets = root.current ? Array.from(root.current.querySelectorAll<HTMLElement>(".command-strip, .command-canvas")) : [];
-    const state = !reduced && targets.length ? Flip.getState(targets) : null;
+    const state = motionAllowed() && targets.length ? Flip.getState(targets) : null;
     setPresenting((value) => !value);
-    if (state) window.requestAnimationFrame(() => Flip.from(state, { duration: 0.32, ease: "power2.out", nested: true, absolute: false }));
+    if (state) window.requestAnimationFrame(() => Flip.from(state, { duration: DURATION.base, ease: EASE.out, nested: true, absolute: false }));
   };
   const printAllSections = () => printEverySection(setPrintAll);
   const story = storyNumbers(brief);
@@ -1259,14 +1421,14 @@ function LegacyDashboard() {
   return <div ref={root} className="app-shell">
     {/* A div, not <aside>: ARIA forbids role="dialog" on <aside>. Closed it is the complementary landmark; open (mobile) it is a modal dialog. */}
     <div id="dashboard-navigation" className={`sidebar ${menuOpen ? "is-open" : ""}`} role={menuOpen ? "dialog" : "complementary"} aria-label="Dashboard sections" aria-modal={menuOpen ? "true" : undefined}><div className="brand"><span>RC</span><div><strong>Revenue Command</strong><small>Decision analytics · {data.meta.period}</small></div></div><button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button><div className="nav-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a section" aria-label="Search dashboard sections" />{search && <button type="button" aria-label="Clear section search" onClick={() => setSearch("")}><X size={14} /></button>}</div><div className={`section-nav-scroll${navMore ? " has-more" : ""}`}><nav ref={sectionNav} className="section-nav" aria-label="Section navigation">{filteredGroups.map((group) => <div className="nav-group" key={group.id}><div className="nav-group-label">{group.icon}<span>{group.label}</span></div>{group.children.map((item) => <a key={item.id} href={`#${item.id}`} className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={(event) => { event.preventDefault(); openSection(item.id); }}><span>{item.label}</span>{active === item.id && <AnimatedNavIndicator />}</a>)}</div>)}</nav><span className="nav-more-cue" aria-hidden="true"><ChevronDown size={13} />More sections</span></div>{search.trim() && !hasSearchResults && <p className="nav-empty" role="status">No sections match “{search}”.</p>}<a className="legacy-link" href={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}full-analysis/`}><ExternalLink size={15} /><span><strong>Full analysis archive</strong><small>Original Plotly reference</small></span></a><div className="sidebar-note"><ShieldCheck size={16} /><span>Validated Parquet evidence<br />Schema v{data.schema_version}</span></div></div>{menuOpen && <button type="button" className="nav-backdrop" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation" />}
-      <main id="main-content" tabIndex={-1}><header className="topbar"><div className="topbar-left"><button ref={menuButton} className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="dashboard-navigation"><Menu size={18} /></button><div><h1>Revenue Command<span className="wide-title"> Center</span></h1><span className="top-context">{activeGroup && activeSection && activeSection.label !== activeGroup.label ? `${activeGroup.label} / ${activeSection.label}` : activeSection?.label ?? activeGroup?.label ?? "Dashboard"} · {data.meta.period}<span className="context-refresh"> · {refreshed} · {metrics.total_opportunities} opportunities</span></span></div></div><div className="top-actions"><span className="validated"><Check size={13} /> Validated snapshot</span><button ref={caveatsTrigger} className="action-button" type="button" title="View data caveats" onClick={() => setCaveatsOpen(true)} aria-haspopup="dialog" aria-expanded={caveatsOpen}><Info size={15} /> Caveats</button><button className="action-button utility-export" type="button" title="Export all evidence" onClick={() => downloadEvidence(data)}><Download size={15} /> Export</button><button className="action-button utility-print" type="button" title="Print all dashboard sections" onClick={() => { printAllSections(); }}><Printer size={15} /> Print</button><a className="action-button browser-deck-link" href="#present/main-01" title="Open the browser findings deck"><Presentation size={15} /> Findings deck</a><button className={`mode-button ${presenting ? "active" : ""}`} type="button" title={presenting ? "Switch to analyst mode" : "Switch to presentation mode"} onClick={togglePresentation} aria-pressed={presenting}><Presentation size={15} /> {presenting ? "Analyst mode" : "Presentation mode"}</button><button className="icon-button utility-reset" type="button" onClick={() => { setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }} title="Reset dashboard" aria-label="Reset dashboard"><RotateCcw size={16} /></button><div ref={utilityMenu} className="utility-menu-wrap"><button ref={utilityTrigger} className="icon-button utility-more" type="button" aria-label="More dashboard actions" aria-haspopup={undefined} aria-expanded={utilityOpen} aria-controls="utility-menu" onClick={() => setUtilityOpen((value) => !value)}><MoreHorizontal size={18} /></button>{utilityOpen && <div id="utility-menu" className="utility-menu-popover" role="group" aria-label="Dashboard actions"><button type="button"  onClick={() => { downloadEvidence(data); setUtilityOpen(false); }}><Download size={16} /><span><strong>Export evidence</strong><small>Download the full validated dataset</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); printAllSections(); }}><Printer size={16} /><span><strong>Print dashboard</strong><small>Prepare every section for print</small></span></button><button type="button"  aria-pressed={presenting} onClick={() => { togglePresentation(); setUtilityOpen(false); }}><Presentation size={16} /><span><strong>{presenting ? "Analyst mode" : "Presentation mode"}</strong><small>{presenting ? "Restore the working layout" : "Expand the executive canvas"}</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }}><RotateCcw size={16} /><span><strong>Reset dashboard</strong><small>Return to the essential view</small></span></button></div>}</div></div></header>
+      <main id="main-content" tabIndex={-1}><header className="topbar"><div className="topbar-left"><button ref={menuButton} className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="dashboard-navigation"><Menu size={18} /></button><div><h1>Revenue Command<span className="wide-title"> Center</span></h1><span className="top-context">{activeGroup && activeSection && activeSection.label !== activeGroup.label ? `${activeGroup.label} / ${activeSection.label}` : activeSection?.label ?? activeGroup?.label ?? "Dashboard"} · {data.meta.period}<span className="context-refresh"> · {refreshed} · {metrics.total_opportunities} opportunities</span></span></div></div><div className="top-actions"><span className="validated"><span className="status-dot motion-breathe" aria-hidden="true" /> Validated snapshot</span><button ref={caveatsTrigger} className="action-button" type="button" title="View data caveats" onClick={() => setCaveatsOpen(true)} aria-haspopup="dialog" aria-expanded={caveatsOpen}><Info size={15} /> Caveats</button><button className="action-button utility-export" type="button" title="Export all evidence" onClick={() => downloadEvidence(data)}><Download size={15} /> Export</button><button className="action-button utility-print" type="button" title="Print all dashboard sections" onClick={() => { printAllSections(); }}><Printer size={15} /> Print</button><a className="action-button browser-deck-link" href="#present/main-01" title="Open the browser findings deck"><Presentation size={15} /> Findings deck</a><button className={`mode-button ${presenting ? "active" : ""}`} type="button" title={presenting ? "Switch to analyst mode" : "Switch to presentation mode"} onClick={togglePresentation} aria-pressed={presenting}><Presentation size={15} /> {presenting ? "Analyst mode" : "Presentation mode"}</button><button className="icon-button utility-reset" type="button" onClick={() => { setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }} title="Reset dashboard" aria-label="Reset dashboard"><RotateCcw size={16} /></button><div ref={utilityMenu} className="utility-menu-wrap"><button ref={utilityTrigger} className="icon-button utility-more" type="button" aria-label="More dashboard actions" aria-haspopup={undefined} aria-expanded={utilityOpen} aria-controls="utility-menu" onClick={() => setUtilityOpen((value) => !value)}><MoreHorizontal size={18} /></button>{utilityOpen && <div id="utility-menu" className="utility-menu-popover" role="group" aria-label="Dashboard actions"><button type="button"  onClick={() => { downloadEvidence(data); setUtilityOpen(false); }}><Download size={16} /><span><strong>Export evidence</strong><small>Download the full validated dataset</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); printAllSections(); }}><Printer size={16} /><span><strong>Print dashboard</strong><small>Prepare every section for print</small></span></button><button type="button"  aria-pressed={presenting} onClick={() => { togglePresentation(); setUtilityOpen(false); }}><Presentation size={16} /><span><strong>{presenting ? "Analyst mode" : "Presentation mode"}</strong><small>{presenting ? "Restore the working layout" : "Expand the executive canvas"}</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }}><RotateCcw size={16} /><span><strong>Reset dashboard</strong><small>Return to the essential view</small></span></button></div>}</div></div></header>
       {/* The conclusion restates the big idea in its own hero, so the compact strip would only repeat it. */}
       {active === "s-conclusion" && !printAll ? null : active !== "s-essential" && !printAll ? <section className="command-strip is-compact" aria-label="The big idea"><div className="command-decision"><h2>{BIG_IDEA}</h2></div><dl className="command-inline-kpis"><div><dt>Pipeline</dt><dd>{metrics.total_pipeline}</dd></div><div><dt>Won</dt><dd>{metrics.won_revenue}</dd></div><div><dt>Win rate</dt><dd>{metrics.closed_deal_win_rate}</dd></div></dl></section> : <section className="command-strip" aria-label="The big idea"><div className="command-decision"><span>The big idea</span><h2>{BIG_IDEA}</h2><p>{bigIdeaSupport(data, story)}</p></div><dl className="command-kpis"><div><dt>Recorded pipeline</dt><dd className="kpi-value">{metrics.total_pipeline}</dd><dd className="kpi-context">{metrics.total_opportunities} opportunities, {metrics.data_year_range}</dd></div>{story.openPipeline ? <div><dt>Still open</dt><dd className="kpi-value">{story.openPipeline}</dd><dd className="kpi-context">The rest is already resolved</dd></div> : null}<div><dt>Recorded won</dt><dd className="kpi-value">{metrics.won_revenue}</dd><dd className="kpi-context">{metrics.closed_deal_win_rate} resolved win rate</dd></div><div><dt>Marketing-sourced</dt><dd className="kpi-value">{metrics.marketing_sourced_pipeline}</dd><dd className="kpi-context">{metrics.marketing_sourced_share} of recorded pipeline</dd></div>{story.openPipeline ? null : <div><dt>Marketing-linked</dt><dd className="kpi-value">{metrics.marketing_influenced_pipeline}</dd><dd className="kpi-context">{metrics.attribution_linked_won_share} of wins linked</dd></div>}</dl></section>}
       {(active === "s-essential" || printAll) && <ArcStrip data={data} story={story} onOpen={openSection} />}
       {(active === "s-essential" || printAll) && brief && <LatestFindings brief={brief} data={data} />}
       <div className="progress-rail" role="progressbar" aria-label="Story progress" aria-valuemin={1} aria-valuemax={sectionOrder.length} aria-valuenow={sectionOrder.indexOf(active) + 1} aria-valuetext={`Section ${sectionOrder.indexOf(active) + 1} of ${sectionOrder.length}`}><span style={{ width: "100%", transform: `scaleX(${(sectionOrder.indexOf(active) + 1) / sectionOrder.length})`, transformOrigin: "left center" }} /></div>
       <div className={`section-viewport ${printAll ? "print-all" : ""}`}>{printAll ? sectionOrder.map((id) => <div className="print-section" key={id}>{renderSection(id)}</div>) : <>{renderSection(active)}<SectionPager active={active} onOpen={openSection} /></>}</div>
-      <footer><div className="footer-id"><strong>Marketing Analytics Decision System</strong><span>{refreshed}{data.meta.snapshot_id ? ` · Snapshot ${data.meta.snapshot_id}` : ""} · Schema v{data.schema_version}</span></div><p><span className="footer-label">Source</span> {data.meta.generated_from} · {data.meta.methodology}</p><button type="button" className="text-button back-to-top" onClick={() => { window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); document.querySelector<HTMLElement>("#main-content")?.focus({ preventScroll: true }); }}><ArrowUp size={14} aria-hidden="true" /> Back to top</button></footer>
+      <footer><div className="footer-id"><strong>Marketing Analytics Decision System</strong><span>{refreshed}{data.meta.snapshot_id ? ` · Snapshot ${data.meta.snapshot_id}` : ""} · Schema v{data.schema_version}</span></div><p><span className="footer-label">Source</span> {data.meta.generated_from} · {data.meta.methodology}</p><button type="button" className={`text-button back-to-top${scrolled ? " is-visible" : ""}`} onClick={() => { window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); document.querySelector<HTMLElement>("#main-content")?.focus({ preventScroll: true }); }}><ArrowUp size={14} aria-hidden="true" /> Back to top</button></footer>
     </main>
     {caveatsOpen && <><button type="button" tabIndex={-1} className="drawer-backdrop" aria-hidden="true" aria-label="Close caveats" onClick={() => setCaveatsOpen(false)} /><aside className="caveats-drawer" role="dialog" aria-modal="true" aria-labelledby="caveats-title"><div className="drawer-head"><h2 id="caveats-title">Data Caveats</h2><button ref={caveatsClose} type="button" className="icon-button" onClick={() => setCaveatsOpen(false)} aria-label="Close caveats"><X size={17} /></button></div><p>These constraints stay visible because they change what the dashboard can safely claim.</p><ul>{data.context.caveats.map((caveat) => <li key={caveat}>{caveat}</li>)}</ul><div className="drawer-source"><strong>Methodology</strong><span>{data.meta.methodology}</span></div></aside></>}
   </div>;

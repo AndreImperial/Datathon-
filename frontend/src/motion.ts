@@ -104,3 +104,82 @@ export function flash(element: HTMLElement): void {
   void element.offsetWidth;
   element.classList.add("motion-flash");
 }
+
+// ---------------------------------------------------------------------------------------------
+// Additive helpers shared by the dashboard, charts and deck.
+
+// EASE.css as a cubic-bezier tuple, for libraries (motion/react, WAAPI) that take numbers.
+export const EASE_BEZIER = [0.22, 1, 0.36, 1] as const;
+
+// Publish the timing tokens as CSS custom properties so stylesheet transitions and keyframes use
+// the same values as scripted motion (styles.css reads var(--motion-*) with matching fallbacks).
+export function applyMotionTokens(root: HTMLElement = document.documentElement): void {
+  (Object.keys(DURATION) as Array<keyof typeof DURATION>).forEach((key) => root.style.setProperty(`--motion-${key}`, `${Math.round(DURATION[key] * 1000)}ms`));
+  root.style.setProperty("--motion-ease", EASE.css);
+}
+
+const NUMBER_TOKEN = /\d[\d,]*(?:\.\d+)?/g;
+const YEAR_TOKEN = /^(?:19|20)\d\d$/;
+const GROUPED = /^\d{1,3}(?:,\d{3})+(?:\.\d+)?$/;
+
+type NumberPart = { value: number; decimals: number; grouped: boolean };
+
+// A displayed figure ("$24.9M", "10.2%", "2,034 domains", "30.1% → 20.5%", "+3.1 pp") as a
+// template: format(progress) rebuilds the same text with every number scaled by progress, keeping
+// its decimals and thousands grouping, so $24.9M counts $0.0M → $24.9M and format(1) is the
+// original text exactly. Years stay fixed. Returns null when the text has nothing to count.
+export function numberTemplate(text: string): ((progress: number) => string) | null {
+  const parts: Array<string | NumberPart> = [];
+  let last = 0;
+  let counted = 0;
+  for (const match of text.matchAll(NUMBER_TOKEN)) {
+    const raw = match[0].replace(/,+$/, "");
+    const index = match.index ?? 0;
+    const value = Number(raw.replaceAll(",", ""));
+    const yearRangeEnd = /(?:19|20)\d\d[–-]$/.test(text.slice(Math.max(0, index - 5), index));
+    if (!Number.isFinite(value) || YEAR_TOKEN.test(raw) || yearRangeEnd || (raw.includes(",") && !GROUPED.test(raw))) continue;
+    parts.push(text.slice(last, index), { value, decimals: raw.split(".")[1]?.length ?? 0, grouped: raw.includes(",") });
+    last = index + raw.length;
+    if (value !== 0) counted += 1;
+  }
+  if (!counted) return null;
+  parts.push(text.slice(last));
+  const format = (progress: number) => parts.map((part) => {
+    if (typeof part === "string") return part;
+    const value = progress >= 1 ? part.value : part.value * Math.max(0, progress);
+    return part.grouped
+      ? value.toLocaleString("en-US", { minimumFractionDigits: part.decimals, maximumFractionDigits: part.decimals })
+      : value.toFixed(part.decimals);
+  }).join("");
+  return format(1) === text ? format : null;
+}
+
+// Count the figure an element already displays (rendered by React with the dashboard's own
+// formatter) up from zero. The element's original text nodes are restored when the count ends,
+// so the framework keeps ownership of them; at rest the text is the final value.
+export function countUpDisplayed(element: HTMLElement, options: { duration?: number; delay?: number } = {}): () => void {
+  const text = element.textContent ?? "";
+  const format = numberTemplate(text);
+  if (!format || !motionAllowed()) return () => undefined;
+  const original = Array.from(element.childNodes);
+  // Hold the box at its final size while the digits change, so a shorter interim value
+  // ("$9.9M" before "$24.9M") never reflows its neighbours: count-up adds no layout shift.
+  // Call it before any entrance transform is applied: the box is measured as rendered.
+  const box = element.getBoundingClientRect();
+  const held = { minWidth: element.style.minWidth, minHeight: element.style.minHeight };
+  element.style.minWidth = `${box.width}px`;
+  element.style.minHeight = `${box.height}px`;
+  const stop = countUp(element, 1, format, options);
+  let restored = false;
+  const restore = () => {
+    if (restored) return;
+    restored = true;
+    window.clearTimeout(timer);
+    stop();
+    if (element.textContent === text) element.replaceChildren(...original);
+    element.style.minWidth = held.minWidth;
+    element.style.minHeight = held.minHeight;
+  };
+  const timer = window.setTimeout(restore, ((options.delay ?? 0) + (options.duration ?? DURATION.count)) * 1000 + 80);
+  return restore;
+}
