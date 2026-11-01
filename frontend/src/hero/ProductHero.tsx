@@ -1,4 +1,4 @@
-﻿import { Archive, GitBranch, Sparkles, TrendingUp } from 'lucide-react'
+﻿import { Archive, GitBranch, LayoutDashboard, TrendingUp } from 'lucide-react'
 // Imported per module rather than from kit/index, so the brand-mark registry
 // (and its SVGs) stays out of the bundle
 import { Stage } from '../stage/kit/stage'
@@ -127,8 +127,8 @@ export function ProductHero({ numbers, exampleCost = EXAMPLE_COST, className }: 
             lead={
               layout === 'wide' ? (
                 <span className="rcc-heading">
-                  <span data-on={s.view === 'essential' || undefined}>Essential View</span>
-                  <span data-on={s.view === 'budget' || undefined}>Budget Measurement</span>
+                  <span data-on={s.view === 'essential' || undefined}>Essential view</span>
+                  <span data-on={s.view === 'budget' || undefined}>Budget measurement</span>
                 </span>
               ) : (
                 <Tabs view={s.view} rect={rect} />
@@ -161,7 +161,7 @@ function Sidebar({ view, rect }: { view: View; rect: (name: string) => Rect }) {
   return (
     <nav className="rcc-side">
       <span className="rcc-group">
-        <Sparkles size={13} strokeWidth={2} />
+        <LayoutDashboard size={13} strokeWidth={2} />
         <Bar w={58} h={5} tone={2} />
       </span>
       <div className="rcc-items" style={{ ['--rcc-active' as string]: `${offset}px` }}>
@@ -169,7 +169,7 @@ function Sidebar({ view, rect }: { view: View; rect: (name: string) => Rect }) {
           <i />
         </span>
         <span className="rcc-item" data-target="nav-essential" data-cursor="hand" data-on={view === 'essential' || undefined}>
-          Essential View
+          Essential view
         </span>
         <span className="rcc-item">
           <Bar w={84} h={6} tone={2} />
@@ -184,7 +184,7 @@ function Sidebar({ view, rect }: { view: View; rect: (name: string) => Rect }) {
           </span>
         ))}
         <span className="rcc-item" data-target="nav-budget" data-cursor="hand" data-on={view === 'budget' || undefined}>
-          Budget Measurement
+          Budget measurement
         </span>
         <span className="rcc-item">
           <Bar w={76} h={6} tone={2} />
@@ -210,10 +210,10 @@ function Tabs({ view, rect }: { view: View; rect: (name: string) => Rect }) {
     <div className="rcc-tabs">
       <span className="rcc-tab-mark" aria-hidden style={{ width: on.width || undefined, transform: `translateX(${on.x - a.x}px)` }} />
       <span className="rcc-tab" data-target="nav-essential" data-cursor="hand" data-on={view === 'essential' || undefined}>
-        Essential View
+        Essential view
       </span>
       <span className="rcc-tab" data-target="nav-budget" data-cursor="hand" data-on={view === 'budget' || undefined}>
-        Budget Measurement
+        Budget measurement
       </span>
     </div>
   )

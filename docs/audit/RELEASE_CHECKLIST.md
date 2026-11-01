@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 92 checks — 92 pass (20 of them after fixes), 0 fail.**
+**Result: 98 checks — 98 pass (20 of them after fixes), 0 fail.**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -159,6 +159,19 @@ Verified on the merged build (dashboard, charts and deck motion together).
 | K4 | Reduced motion shows the final state immediately | PASS | Dashboard first frame equals final values; 0 deck animations and final numbers on the first frame; charts skip their entrance |
 | K5 | Printing mid-animation is complete | PASS | Dashboard and Print-button paths during the entrance: 10/10 sections, 22/22 charts, 0 empty or partial, final labels (not mid-count) |
 | K6 | Motion adds no accessibility or layout regressions | PASS | axe-core 0 violations (dashboard 20 views, deck 24 pages); cumulative layout shift 0; 0 console errors; every slide fits both cuts at 1440×900 and 1280×720 |
+
+## L. Stageshow restyle and product hero (v1.2.0)
+
+Verified on the merged build (restyle, hero and v1.1.0 motion together).
+
+| ID | Check | Status | Evidence |
+|---|---|---|---|
+| L1 | Restyle keeps every real figure | PASS | Pipeline PASS (snapshot 9c524ee116f41b8a, 23 datasets); dashboard values at rest unchanged ($24.9M, 83.3%, 38% → 22%, 2,034 domains); hero figures come from `frontend/src/hero/numbers.ts`, which matches the contract (10.2% vs 26.8%, 1,017 accounts per arm, +3.1 pp) |
+| L2 | Hero plays in the slot | PASS | Lazy chunk (68 kB JS, 52 kB CSS) mounts at 690×326 and moves from the win-rate count-up to the pilot frame; it pauses while the tab is hidden |
+| L3 | Hero is accessible and never steals focus | PASS | Slot is `role="img"` with a full text description; the inner stage is `aria-hidden` and `inert`; axe-core 0 violations (dashboard 20 views) |
+| L4 | Reduced motion and print | PASS | Reduced motion holds the final pilot frame with no change over 10 s; print sets the slot to `display: none`; printed dashboard still has 10/10 sections and 22/22 charts |
+| L5 | Hero failure cannot break the dashboard | PASS | With the hero chunk deleted from the build, the dashboard renders fully and the slot shows its static placeholder (`HeroBoundary` error boundary) |
+| L6 | No regressions elsewhere | PASS | CLS 0 (load, interactions, reduced); 0 console errors; deck: every slide fits both cuts at 1440×900 and 1280×720, 24 pages with 0 axe violations; 63 frontend + 43 Python tests pass; npm audit 0 |
 
 ## Not verified anywhere
 

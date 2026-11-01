@@ -1,6 +1,6 @@
 import { compareValues, serializeEvidenceCsv, formatField, fieldUnit, columnLabel, formatCount, formatDollarsCompact, formatPercent, listPhrase, topRows, parsePilotDesign, parseMoneyInput, pilotBudget, type PilotDesign } from "./evidence";
 import { displayName } from "./labels";
-import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { Component, lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { flushSync } from "react-dom";
 import {
   Archive, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, Check, ChevronDown, CircleAlert, Download, ExternalLink,
@@ -15,6 +15,9 @@ import { AnimatedNavIndicator } from "./components/AceternityMotion";
 import { PresentationApp } from "./presentation/PresentationApp";
 import { chartPlacementIds, tableIds, validateCaseStudyPayload, validateDashboardPayload } from "./dataContract";
 import { applyMotionTokens, countUpDisplayed, DURATION, EASE, ENTER, flash, motionAllowed, STAGGER } from "./motion";
+import { EXAMPLE_COST, HERO_NUMBERS } from "./hero/numbers";
+
+const ProductHero = lazy(() => import("./hero/ProductHero"));
 
 gsap.registerPlugin(Flip, ScrollTrigger);
 if (typeof document !== "undefined") applyMotionTokens();
@@ -648,11 +651,35 @@ function LatestFindings({ brief, data }: { brief: LatestBrief; data: DashboardDa
  * here in place of the placeholder; the slot itself paints nothing, so the
  * stage sits on the page with no plate behind it.
  */
+function HeroStagePlaceholder() {
+  return <div className="hero-stage-placeholder" aria-hidden="true">
+    <span className="hero-stage-chrome"><i /><i /><i /></span>
+    <span className="hero-stage-rows">{[62, 46, 70, 52].map((width) => <i key={width} style={{ width: `${width}%` }} />)}</span>
+  </div>;
+}
+
+// The product demo is an illustration of the dashboard, not part of it: one labelled image to
+// assistive technology, its fake cursor and field inert, loaded after the first paint.
+// The demo is optional decoration: if its chunk fails to load, keep the quiet placeholder
+// instead of letting the error reach the dashboard.
+class HeroBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch() { /* the placeholder is the fallback; nothing else to report */ }
+  render() { return this.state.failed ? <HeroStagePlaceholder /> : this.props.children; }
+}
+
+function heroDescription(): string {
+  const n = HERO_NUMBERS;
+  const pct = (value: number) => `${(value * 100).toFixed(1)}%`;
+  const count = (value: number) => value.toLocaleString("en-US");
+  return `Animated walkthrough: the marketing-sourced win rate counts up to ${pct(n.marketingWinRate)} against ${n.bestSource}'s ${pct(n.bestWinRate)}, then the Budget measurement section shows a 90-day pilot of ${count(n.pilotArmSize)} accounts per arm that can detect +${n.pilotLiftPp.toFixed(1)} points, and typing an example cost of ${count(EXAMPLE_COST)} dollars per account gives an example pilot budget of ${count(n.treatmentAccounts * EXAMPLE_COST)} dollars.`;
+}
+
 function HeroStageSlot() {
-  return <div className="hero-stage-slot" data-hero-slot>
-    <div className="hero-stage-placeholder" aria-hidden="true">
-      <span className="hero-stage-chrome"><i /><i /><i /></span>
-      <span className="hero-stage-rows">{[62, 46, 70, 52].map((width) => <i key={width} style={{ width: `${width}%` }} />)}</span>
+  return <div className="hero-stage-slot" data-hero-slot role="img" aria-label={heroDescription()}>
+    <div aria-hidden="true" {...{ inert: "" }}>
+      <HeroBoundary><Suspense fallback={<HeroStagePlaceholder />}><ProductHero /></Suspense></HeroBoundary>
     </div>
   </div>;
 }

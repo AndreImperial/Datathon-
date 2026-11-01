@@ -265,11 +265,11 @@
   .rcc-kicker {
     display: block;
     color: var(--ss-accent-text);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 720;
-    letter-spacing: 0.06em;
+    letter-spacing: 0;
     line-height: 1.3;
-    text-transform: uppercase;
+    text-transform: none;
   }
 
   .rcc-facts {
@@ -334,11 +334,11 @@
 
   .rcc-result-label {
     color: var(--ss-text-faint);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.05em;
+    letter-spacing: 0;
     line-height: 1.3;
-    text-transform: uppercase;
+    text-transform: none;
   }
 
   .rcc-result-value {
@@ -395,11 +395,11 @@
     border: 1px solid var(--ss-line);
     border-radius: 5px;
     color: var(--ss-text-faint);
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0;
     line-height: 1.3;
-    text-transform: uppercase;
+    text-transform: none;
   }
 
   .rcc-panel--rows {
