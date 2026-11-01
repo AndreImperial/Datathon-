@@ -1,0 +1,533 @@
+﻿/* Revenue Command Center hero. Every rule is nested under .rcc-hero (the
+   Stage's outer wrapper), so nothing here reaches the dashboard around it. */
+.rcc-hero {
+  /* The product's look (frontend/src/styles.css :root, DESIGN.md), mapped to
+     the kit's tokens. The page is the ground: the stage is transparent on
+     the dashboard's #070708, so the window steps lighter than the page and
+     carries a hairline, as dark products do. */
+  & .ss-stage {
+    --gutter: 36px;
+    --ss-font: "Manrope Variable", "Manrope", ui-sans-serif, system-ui, sans-serif;
+    --ss-accent: #e12636;
+    --ss-accent-text: #ff6672;
+    --ss-accent-soft: #251013;
+    --ss-canvas: #0c0c0d;
+    --ss-surface: #111113;
+    --ss-raised: #171719;
+    --ss-chrome: #0c0c0d;
+    --ss-line: #2d2829;
+    --ss-line-faint: rgba(255, 255, 255, 0.05);
+    --ss-text-strong: #f7f4f4;
+    --ss-text: #c2babb;
+    --ss-text-faint: #91888a;
+    --ss-icon: #c6b7b9;
+    --ss-icon-faint: #6f6769;
+    --ss-radius-sm: 7px;
+    --ss-radius-md: 8px;
+    --ss-radius-lg: 12px;
+    --ss-control: 34px;
+    --rcc-risk: #ff6672;
+    overflow: hidden;
+    background: transparent;
+    font-family: var(--ss-font);
+  }
+
+  /* Corner bleed: one gutter in from the top and left, off the right and the
+     bottom. The columns end a gutter inside the stage, so only the window's
+     empty margin and the filler run off. */
+  .rcc-win {
+    position: absolute;
+    top: var(--gutter);
+    left: var(--gutter);
+    width: 760px;
+    height: 400px;
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06), 0 0 0 1px rgb(255 255 255 / 0.07);
+  }
+
+  /* The two headings share one cell and crossfade with the page swap */
+  .rcc-heading {
+    display: grid;
+    padding-left: 4px;
+    color: var(--ss-text-strong);
+    font-size: 13px;
+    font-weight: 720;
+    letter-spacing: -0.018em;
+  }
+
+  .rcc-heading > span {
+    grid-area: 1 / 1;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.24s ease;
+  }
+
+  .rcc-heading > span[data-on] {
+    opacity: 1;
+  }
+
+  /* ---- Sidebar: the near-black spine ---- */
+
+  .rcc-side {
+    display: grid;
+    align-content: start;
+    gap: 2px;
+    padding: 6px 10px 0;
+  }
+
+  .rcc-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 22px;
+    padding: 0 10px;
+    color: var(--ss-icon-faint);
+  }
+
+  .rcc-group svg {
+    flex: none;
+  }
+
+  .rcc-group--in {
+    margin-top: 6px;
+  }
+
+  .rcc-items {
+    position: relative;
+    display: grid;
+    gap: 2px;
+  }
+
+  .rcc-item {
+    position: relative;
+    display: flex;
+    align-items: center;
+    height: 26px;
+    padding: 0 10px 0 31px;
+    color: var(--ss-text);
+    font-size: 11.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+  }
+
+  .rcc-item[data-on] {
+    color: var(--ss-text-strong);
+  }
+
+  .rcc-item[data-hover]:not([data-on]) {
+    color: var(--ss-text-strong);
+  }
+
+  /* One marker that slides between the two views' rows (the product's
+     .nav-active: a crimson hairline box on a blush fill, a 2px bar at its
+     left). Its offset is measured from the two rows, never hard-coded. */
+  .rcc-active {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 26px;
+    border: 1px solid rgba(224, 90, 99, 0.38);
+    border-radius: 7px;
+    background: var(--ss-accent-soft);
+    transform: translateY(var(--rcc-active, 0px));
+    transition: transform 0.42s cubic-bezier(0.45, 0, 0.1, 1);
+  }
+
+
+  .rcc-active i {
+    position: absolute;
+    inset: 6px auto 6px -1px;
+    width: 2px;
+    border-radius: 0 2px 2px 0;
+    background: #ff626e;
+  }
+
+  /* ---- Body and the two views ---- */
+
+  .rcc-body {
+    position: relative;
+    height: 100%;
+    padding: 16px 20px 0;
+    background: var(--ss-surface);
+  }
+
+  /* One fixed column: the views end a gutter inside the stage; only the
+     Essential tiles' filler tile is allowed to run past it */
+  .rcc-views {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    width: 440px;
+  }
+
+  /* The product's page swap: the old body leaves, the new one rises 8px in */
+  .rcc-view {
+    grid-area: 1 / 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: start;
+    gap: 12px;
+    opacity: 0;
+    transform: translateY(8px);
+    visibility: hidden;
+    transition: opacity 0.24s ease, transform 0.24s ease, visibility 0s 0.24s;
+    will-change: transform;
+  }
+
+  .rcc-view[data-on] {
+    opacity: 1;
+    transform: none;
+    visibility: visible;
+    transition: opacity 0.24s ease, transform 0.32s cubic-bezier(0.25, 0.8, 0.25, 1), visibility 0s;
+  }
+
+  /* ---- Essential: the finding ---- */
+
+  .rcc-tiles {
+    display: grid;
+    grid-template-columns: 190px 124px 168px;
+    gap: 10px;
+  }
+
+  .rcc-tile {
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    padding: 12px 14px 14px;
+    border: 1px solid var(--ss-line);
+    border-radius: 12px;
+    background: var(--ss-raised);
+  }
+
+  .rcc-label {
+    color: var(--ss-text);
+    font-size: 11px;
+    font-weight: 650;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  .rcc-value {
+    color: var(--ss-text-strong);
+    font-size: 26px;
+    font-weight: 720;
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+    margin-bottom: 2px;
+    /* The figure rises in as it counts, so a zero never reads as data */
+    opacity: 0;
+    transform: translateY(4px);
+    will-change: transform;
+    transition: opacity 0.35s ease, transform 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
+  }
+
+  .rcc-value[data-on] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .rcc-value .ss-count__unit {
+    font-size: 0.62em;
+    letter-spacing: 0;
+    color: inherit;
+  }
+
+  .rcc-value--risk {
+    color: var(--rcc-risk);
+  }
+
+  /* Bars in the real lines' boxes, so the filler tile keeps the real pitch */
+  .rcc-line {
+    display: flex;
+    align-items: center;
+  }
+
+  .rcc-line--label {
+    height: 14.3px;
+  }
+
+  .rcc-line--value {
+    height: 30px;
+    margin-bottom: 2px;
+  }
+
+  /* ---- Budget: the pilot and its cost ---- */
+
+  .rcc-pilot {
+    padding: 12px 16px 14px;
+    border: 1px solid var(--ss-line);
+    border-radius: 12px;
+    background: var(--ss-raised);
+    box-shadow: inset 0 2px 0 var(--ss-accent);
+  }
+
+  .rcc-kicker {
+    display: block;
+    color: var(--ss-accent-text);
+    font-size: 10px;
+    font-weight: 720;
+    letter-spacing: 0.06em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .rcc-facts {
+    display: flex;
+    gap: 28px;
+    margin: 3px 0 0;
+  }
+
+  .rcc-facts > div {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
+  }
+
+  .rcc-facts dt {
+    color: var(--ss-text-strong);
+    font-size: 20px;
+    font-weight: 720;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rcc-facts dd {
+    margin: 0;
+    color: var(--ss-text);
+    font-size: 11.5px;
+    font-weight: 600;
+  }
+
+  .rcc-calc {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    border: 1px solid var(--ss-line);
+    border-radius: 12px;
+    background: var(--ss-raised);
+  }
+
+  .rcc-field {
+    padding: 12px 16px 14px;
+    border-right: 1px solid var(--ss-line);
+  }
+
+  .rcc-field .ss-field__label {
+    color: var(--ss-text-strong);
+    font-size: 11px;
+    font-weight: 680;
+  }
+
+  .rcc-field .ss-field__box {
+    background: var(--ss-surface);
+    border-color: #433a3b;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rcc-result {
+    display: grid;
+    align-content: center;
+    gap: 2px;
+    padding: 12px 16px;
+  }
+
+  .rcc-result-label {
+    color: var(--ss-text-faint);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .rcc-result-value {
+    min-height: 22px;
+  }
+
+  .rcc-result-empty {
+    color: var(--ss-text);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 22px;
+  }
+
+  .rcc-result-ok {
+    display: inline-flex;
+    gap: 6px;
+    color: var(--ss-text-strong);
+    font-size: 16px;
+    font-weight: 720;
+    line-height: 22px;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ---- Filler chart panel, running off the bottom ---- */
+
+  .rcc-panel {
+    height: 220px;
+    padding: 14px 16px 0;
+    overflow: hidden;
+    border: 1px solid var(--ss-line);
+    border-radius: 12px;
+    background: var(--ss-raised);
+  }
+
+  .rcc-panel-head {
+    display: grid;
+    gap: 7px;
+  }
+
+  .rcc-cols {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    height: 96px;
+    margin-top: 18px;
+  }
+
+  /* The example label is quiet, so the figure is the heaviest mark */
+  .rcc-example {
+    align-self: center;
+    padding: 1px 6px;
+    border: 1px solid var(--ss-line);
+    border-radius: 5px;
+    color: var(--ss-text-faint);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    line-height: 1.3;
+    text-transform: uppercase;
+  }
+
+  .rcc-panel--rows {
+    padding-bottom: 0;
+  }
+
+  .rcc-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    align-items: center;
+    height: 30px;
+    border-top: 1px solid var(--ss-line-faint);
+  }
+
+  .rcc-row > .ss-bar:not(:first-child) {
+    justify-self: end;
+  }
+
+  .rcc-panel--rows .rcc-panel-head {
+    padding-bottom: 10px;
+  }
+
+  .rcc-rest {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+  }
+
+  /* ---- Compact: the phone column, a second design ---- */
+
+  & .ss-stage[data-layout="compact"] {
+    --gutter: 16px;
+  }
+
+  & .ss-stage[data-layout="compact"] .rcc-win {
+    width: 380px;
+    height: 400px;
+  }
+
+  & .ss-stage[data-layout="compact"] .rcc-body {
+    padding: 12px 16px 0;
+  }
+
+  & .ss-stage[data-layout="compact"] .rcc-views {
+    width: 294px;
+  }
+
+  & .ss-stage[data-layout="compact"] .rcc-tiles {
+    grid-template-columns: 172px 112px;
+  }
+
+  & .ss-stage[data-layout="compact"] .rcc-tile {
+    padding: 12px 12px 14px;
+  }
+
+  & .ss-stage[data-layout="compact"] .rcc-calc {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  & .ss-stage[data-layout="compact"] .rcc-field {
+    border-right: 0;
+    border-bottom: 1px solid var(--ss-line);
+  }
+
+  /* Each fact stacks its figure over its words, so nothing wraps mid-phrase */
+  & .ss-stage[data-layout="compact"] .rcc-facts {
+    gap: 28px;
+  }
+
+  & .ss-stage[data-layout="compact"] .rcc-facts > div {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+  }
+
+  & .ss-stage[data-layout="compact"] .rcc-facts dd {
+    white-space: nowrap;
+  }
+
+  /* The result shares one line with its label, so the card ends well clear
+     of the stage's foot */
+  & .ss-stage[data-layout="compact"] .rcc-result {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 12px;
+  }
+
+  & .ss-stage[data-layout="compact"] .rcc-result-value {
+    justify-self: end;
+  }
+
+  .rcc-tabs {
+    position: relative;
+    display: inline-grid;
+    grid-auto-flow: column;
+    gap: 4px;
+    margin-left: 4px;
+  }
+
+  .rcc-tab {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    height: 28px;
+    padding: 0 11px;
+    color: var(--ss-text);
+    font-size: 11.5px;
+    font-weight: 650;
+    white-space: nowrap;
+    transition: color 0.2s ease;
+  }
+
+  .rcc-tab[data-on] {
+    color: var(--ss-text-strong);
+  }
+
+  .rcc-tab-mark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 28px;
+    border: 1px solid rgba(224, 90, 99, 0.38);
+    border-radius: 7px;
+    background: var(--ss-accent-soft);
+    transition: transform 0.42s cubic-bezier(0.45, 0, 0.1, 1), width 0.42s cubic-bezier(0.45, 0, 0.1, 1);
+  }
+
+
+}
