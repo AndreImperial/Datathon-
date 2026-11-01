@@ -26,6 +26,7 @@ import {
   CONTEXT_LIGHT,
   ChartNote,
   ChartShell,
+  MotionRegion,
   DIVERGE_HIGH,
   DIVERGE_LOW,
   DIVERGE_MID,
@@ -201,7 +202,7 @@ export function PipelineChart({ data, won = false }: { data: DataRow[]; won?: bo
   const metric = won ? "Won revenue" : "Pipeline";
   const limited = shaped.filter((row) => row.deals < LIMITED_N).map((row) => row.channel);
   return <>
-    <ChartShell minHeight={height}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={shaped} layout="vertical" margin={{ left: 4, right: 60, top: 8, bottom: 12 }} {...handlers}>
+    <ChartShell minHeight={height} choreo={{ bars: "x", pulse: true }}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={shaped} layout="vertical" margin={{ left: 4, right: 60, top: 8, bottom: 12 }} {...handlers}>
       <CartesianGrid {...gridProps} horizontal={false} vertical />
       <XAxis type="number" {...valueAxis} domain={[0, ticks[ticks.length - 1]]} ticks={narrow ? ticks.filter((_, index) => index % 2 === 0) : ticks} tickFormatter={money} />
       <YAxis type="category" dataKey="channel" width={narrow ? 112 : 160} tick={tick} interval={0} {...categoryAxis} />
@@ -268,7 +269,7 @@ export function MonthlyPipelineChart({ data }: { data: DataRow[] }) {
   const yearTicks = (narrow ? januaries.filter((_, index) => index % 2 === 0) : januaries);
   const yTicks = bestTicks(Math.max(...rows.map((row) => Number(row.total))));
   return <>
-    <ChartShell minHeight={320}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={320}><ComposedChart data={rows} margin={{ left: 0, right: 16, top: 10, bottom: 8 }} barCategoryGap={0}>
+    <ChartShell minHeight={320} choreo={{ stacked: true }}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={320}><ComposedChart data={rows} margin={{ left: 0, right: 16, top: 10, bottom: 8 }} barCategoryGap={0}>
       <CartesianGrid {...gridProps} />
       <XAxis dataKey="month" {...categoryAxis} tick={axisTick} ticks={yearTicks.length >= 2 ? yearTicks : undefined} interval={yearTicks.length >= 2 ? 0 : "preserveStartEnd"} minTickGap={8} tickFormatter={(value: string) => yearTicks.length >= 2 ? value.slice(0, 4) : value} tickMargin={6} />
       <YAxis {...valueAxis} domain={[0, yTicks[yTicks.length - 1]]} ticks={yTicks} tickFormatter={money} width={56} />
@@ -348,7 +349,7 @@ export function CohortChart({ data }: { data: DataRow[] }) {
       </ResponsiveContainer>}
     </ChartShell>
     <div className="mini-chart-label">Closed-deal quality and cohort maturity</div>
-    <ChartShell minHeight={190} part={1}>
+    <ChartShell minHeight={190} part={1} choreo={{ pulse: true }}>
       <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={190}>
         <ComposedChart data={lineRows} margin={{ left: 0, right: 12, top: 8, bottom: 8 }}>
           <CartesianGrid {...gridProps} />
@@ -403,7 +404,7 @@ export function ContributionChart({ data, totalPipeline }: { data: DataRow[]; to
       <text x={end + 8} y={y + Number(props.height ?? 0) / 2} dominantBaseline="middle" fill={COLORS.ink} fontSize={TICK_SIZE}><tspan fontWeight={700}>{money(row.amount)}</tspan><tspan fill={COLORS.muted}>{` · ${(row.share * 100).toFixed(0)}% of total`}</tspan></text>
     </g>;
   };
-  return <ChartShell minHeight={200}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={200}><ComposedChart data={rows} layout="vertical" margin={{ left: 8, right: 24, top: 30, bottom: 8 }} barCategoryGap="38%">
+  return <ChartShell minHeight={200} choreo={{ bars: "x", pulse: true }}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={200}><ComposedChart data={rows} layout="vertical" margin={{ left: 8, right: 24, top: 30, bottom: 8 }} barCategoryGap="38%">
     <CartesianGrid {...gridProps} horizontal={false} vertical />
     <XAxis type="number" {...valueAxis} domain={[0, ticks[ticks.length - 1]]} ticks={ticks} tickFormatter={money} />
     <YAxis type="category" dataKey="metric" hide />
@@ -454,12 +455,12 @@ export function CoverageChart({ data }: { data: DataRow[] }) {
   }));
   return <div className="chart-stack coverage-chart">
     <div className="mini-chart-label">CRM account domains by coverage tier</div>
-    <ChartShell minHeight={200}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={200}><ComposedChart data={rows} margin={{ left: 0, right: 12, top: 20, bottom: 4 }}>
+    <ChartShell minHeight={200} choreo={{ pulse: true }}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={200}><ComposedChart data={rows} margin={{ left: 0, right: 12, top: 20, bottom: 4 }}>
       <CartesianGrid {...gridProps} /><XAxis {...xAxisProps} /><YAxis {...valueAxis} width={52} domain={[0, accountTicks[accountTicks.length - 1]]} ticks={accountTicks} tickFormatter={(value: number) => value.toLocaleString()} /><Tooltip {...tooltipBase} cursor={bandCursor} content={tip} />
       <Bar dataKey="accounts" radius={[4, 4, 0, 0]} maxBarSize={24} {...motion}>{rows.map((row) => <Cell key={row.tier} fill={tierColor(row.tier)} />)}<LabelList dataKey="accounts" position="top" formatter={(value: number) => value.toLocaleString()} fill={COLORS.ink} fontSize={TICK_SIZE} /></Bar>
     </ComposedChart></ResponsiveContainer>}</ChartShell>
     <div className="mini-chart-label">Historical opportunity prevalence · 95% Wilson interval</div>
-    <ChartShell minHeight={200} part={1}><ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={200}><ComposedChart data={rows} margin={{ left: 0, right: 12, top: 12, bottom: 4 }}>
+    <ChartShell minHeight={200} part={1} choreo={{ pulse: true }}><ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={200}><ComposedChart data={rows} margin={{ left: 0, right: 12, top: 12, bottom: 4 }}>
       <CartesianGrid {...gridProps} /><XAxis {...xAxisProps} />{bandAlign}<YAxis {...valueAxis} domain={[0, 60]} ticks={[0, 15, 30, 45, 60]} tickFormatter={(value) => `${value}%`} width={52} /><Tooltip {...tooltipBase} cursor={lineCursor} content={tip} />
       <Line dataKey="rate" name="Historical opportunity prevalence" stroke="transparent" strokeWidth={0} dot={(props: { cx?: number; cy?: number; index?: number; payload?: { tier?: string } }) => <circle key={`coverage-dot-${props.index}`} cx={props.cx} cy={props.cy} r={5.5} fill={tierColor(props.payload?.tier ?? "")} stroke={SURFACE} strokeWidth={2} />} activeDot={{ r: 7, fill: COLORS.ink, stroke: SURFACE, strokeWidth: 2 }} isAnimationActive={false}><ErrorBar dataKey="error" direction="y" width={5} stroke={COLORS.slate} /><LabelList dataKey="rate" position="right" offset={12} formatter={(value: number) => `${value.toFixed(1)}%`} fill={COLORS.ink} fontSize={TICK_SIZE} /></Line>
     </ComposedChart></ResponsiveContainer></ChartShell>
@@ -474,16 +475,16 @@ export function CoverageMixChart({ data }: { data: DataRow[] }) {
   const total = rows.reduce((sum, row) => sum + row.value, 0);
   const focus = rows[rows.length - 1];
   const share = total ? focus.value / total : 0;
-  return <div style={{ display: "grid", gap: 10, padding: "12px 0 4px" }}>
+  return <MotionRegion part="meter" choreo={{ pulse: true }} style={{ display: "grid", gap: 10, padding: "12px 0 4px" }}>
     <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-      <strong style={{ color: COLORS.ink, fontSize: 40, fontWeight: 700, lineHeight: 1 }}>{pct(share, 0)}</strong>
+      <strong data-motion-part="value" style={{ color: COLORS.ink, fontSize: 40, fontWeight: 700, lineHeight: 1 }}>{pct(share, 0)}</strong>
       <span style={{ color: COLORS.muted, fontSize: 13 }}>{focus.name} · {count(focus.value)} of {count(total)} accounts</span>
     </div>
     <div role="img" aria-label={rows.map((row) => `${row.name}: ${count(row.value)}`).join("; ")} style={{ position: "relative", height: 10, borderRadius: 5, background: CONTEXT }}>
-      <div style={{ position: "absolute", inset: "0 auto 0 0", width: `${share * 100}%`, borderRadius: 5, background: ACCENT }} />
+      <div data-motion-part="bar" data-accent="true" style={{ position: "absolute", inset: "0 auto 0 0", width: `${share * 100}%`, borderRadius: 5, background: ACCENT }} />
     </div>
-    <div className="chart-legend" style={legendStyle} aria-label="Coverage mix legend">{rows.map((row) => <span key={row.name}><LegendKey color={row === focus ? ACCENT : CONTEXT} />{row.name} · {count(row.value)}</span>)}</div>
-  </div>;
+    <div className="chart-legend" data-motion-part="legend" style={legendStyle} aria-label="Coverage mix legend">{rows.map((row) => <span key={row.name}><LegendKey color={row === focus ? ACCENT : CONTEXT} />{row.name} · {count(row.value)}</span>)}</div>
+  </MotionRegion>;
 }
 
 const ATTRIBUTION_MODELS = ["First-Touch", "Last-Touch", "Linear", "Time-Decay"];
@@ -518,7 +519,7 @@ export function AttributionComparison({ data }: { data: DataRow[] }) {
   if (!rows.length) return <><EmptyChart message="No channel has linked touches under the four attribution models." /><UnlinkedNote channels={unlinked} /></>;
   const height = Math.max(180, rows.length * 72 + 40);
   const ticks = bestTicks(Math.max(...rows.flatMap((row) => models.map((model) => Number((row as Record<string, unknown>)[model])))));
-  return <><ChartShell minHeight={height}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 84, top: 10, bottom: 12 }} barCategoryGap="18%" barGap={3}>
+  return <><ChartShell minHeight={height} choreo={{ bars: "x" }}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 84, top: 10, bottom: 12 }} barCategoryGap="18%" barGap={3}>
     <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} domain={[0, ticks[ticks.length - 1]]} ticks={narrow ? ticks.filter((_, index) => index % 2 === 0) : ticks} tickFormatter={money} /><YAxis type="category" dataKey="channel" width={narrow ? 92 : 130} tick={narrow ? stackedTick((value) => wrapText(value, 11, 2)) : lineTick} interval={0} {...categoryAxis} />
     <Tooltip {...tooltipBase} cursor={bandCursor} content={tooltipContent((row) => ({
       title: String(row.channel),
@@ -540,7 +541,7 @@ export function CreditShiftChart({ data }: { data: DataRow[] }) {
   const half = niceTicks(Math.max(...rows.map((row) => Math.abs(row.delta)), 1), 2);
   const extent = half[half.length - 1];
   const shiftTicks = [...half.slice(1).reverse().map((value) => -value), ...half];
-  return <><ChartShell minHeight={height}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 68, top: 10, bottom: 12 }}>
+  return <><ChartShell minHeight={height} choreo={{ bars: "x" }}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 68, top: 10, bottom: 12 }}>
     <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} domain={[-extent, extent]} ticks={narrow ? shiftTicks.filter((_, index) => index % 2 === 0) : shiftTicks} tickFormatter={(value: number) => value === 0 ? "$0" : signedMoney(value)} /><YAxis type="category" dataKey="channel" width={narrow ? 92 : 130} tick={narrow ? stackedTick((value) => wrapText(value, 11, 2)) : lineTick} interval={0} axisLine={false} tickLine={false} /><ReferenceLine x={0} stroke={COLORS.pale} strokeOpacity={0.7} />
     <Tooltip {...tooltipBase} cursor={bandCursor} content={tooltipContent((row) => ({
       title: String(row.channel),
@@ -579,21 +580,21 @@ export function RoiChart({ data }: { data: DataRow[] }) {
   const scaleMax = Math.max(1.25, ...rows.map((row) => Math.max(row.multiple, row.revenueMultiple) * 1.1));
   const at = (value: number) => `${Math.min(100, Math.max(0, (value / scaleMax) * 100))}%`;
   const muted: CSSProperties = { color: COLORS.muted, fontSize: 12 };
-  return <div className="roi-compare" style={{ display: "grid", gap: 14, padding: "6px 0 2px" }}>
-    {rows.map((row) => <div key={row.channel} style={{ display: "grid", gap: 6, paddingBottom: 12, borderBottom: `1px solid ${COLORS.grid}` }}>
+  return <MotionRegion part="roi" choreo={{ pulse: true }} className="roi-compare" style={{ display: "grid", gap: 14, padding: "6px 0 2px" }}>
+    {rows.map((row, rowIndex) => <div key={row.channel} style={{ display: "grid", gap: 6, paddingBottom: 12, borderBottom: `1px solid ${COLORS.grid}` }}>
       <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: "4px 12px", alignItems: "baseline" }}>
         <strong style={{ color: COLORS.ink, fontSize: 14 }}>{row.channel}</strong>
-        <span style={{ color: COLORS.ink, fontSize: 13, fontVariantNumeric: "tabular-nums" }}><b>{row.multiple.toFixed(2)}×</b> pipeline · <b>{row.revenueMultiple.toFixed(2)}×</b> won</span>
+        <span style={{ color: COLORS.ink, fontSize: 13, fontVariantNumeric: "tabular-nums" }}><b data-motion-part="value" data-row={rowIndex}>{row.multiple.toFixed(2)}×</b> pipeline · <b data-motion-part="value" data-row={rowIndex}>{row.revenueMultiple.toFixed(2)}×</b> won</span>
       </div>
       <div style={{ ...muted, fontVariantNumeric: "tabular-nums" }}>{money(row.spend)} tracked spend → {money(row.pipeline)} recorded pipeline · {money(row.won)} won</div>
       <div aria-hidden="true" style={{ position: "relative", height: 10, marginTop: 2, borderRadius: 5, background: "rgba(255,255,255,.06)" }}>
-        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: at(row.multiple), minWidth: row.multiple > 0 ? 3 : 0, borderRadius: "0 4px 4px 0", background: row.multiple >= 1 ? ACCENT : CONTEXT_LIGHT }} />
-        <div style={{ position: "absolute", left: at(1), top: -4, bottom: -4, borderLeft: `2px dashed ${COLORS.pale}` }} />
+        <div data-motion-part="bar" data-row={rowIndex} data-accent={row.multiple >= 1 ? "true" : "false"} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: at(row.multiple), minWidth: row.multiple > 0 ? 3 : 0, borderRadius: "0 4px 4px 0", background: row.multiple >= 1 ? ACCENT : CONTEXT_LIGHT }} />
+        <div data-motion-part="rule" style={{ position: "absolute", left: at(1), top: -4, bottom: -4, borderLeft: `2px dashed ${COLORS.pale}` }} />
       </div>
     </div>)}
-    <div aria-hidden="true" style={{ position: "relative", height: 16, marginTop: -6, ...muted }}><span style={{ position: "absolute", left: 0 }}>0×</span><span style={{ position: "absolute", left: at(1), transform: "translateX(-50%)", whiteSpace: "nowrap", color: COLORS.pale }}>1× break-even</span></div>
-    <div style={{ ...muted }}><i style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: ACCENT, marginRight: 6, verticalAlign: "-1px" }} />At or above break-even · <i style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: CONTEXT_LIGHT, marginRight: 6, verticalAlign: "-1px" }} />Below break-even. Bar = same-period recorded pipeline ÷ tracked spend; dashed line = 1×.</div>
-  </div>;
+    <div aria-hidden="true" style={{ position: "relative", height: 16, marginTop: -6, ...muted }}><span style={{ position: "absolute", left: 0 }}>0×</span><span data-motion-part="rule-label" style={{ position: "absolute", left: at(1), transform: "translateX(-50%)", whiteSpace: "nowrap", color: COLORS.pale }}>1× break-even</span></div>
+    <div data-motion-part="legend" style={{ ...muted }}><i style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: ACCENT, marginRight: 6, verticalAlign: "-1px" }} />At or above break-even · <i style={{ display: "inline-block", width: 10, height: 10, borderRadius: 2, background: CONTEXT_LIGHT, marginRight: 6, verticalAlign: "-1px" }} />Below break-even. Bar = same-period recorded pipeline ÷ tracked spend; dashed line = 1×.</div>
+  </MotionRegion>;
 }
 
 // Four separate populations = four validated categorical slots in fixed order;
@@ -687,22 +688,22 @@ export function Heatmap({ data, xKey, yKey, valueKey, valueFormatter = (value: n
   const headerStyle: CSSProperties = { fontSize: 12 };
   // Wide enough for the longest column header on one line at 12px.
   const columnMin = Math.max(64, Math.ceil(Math.max(...xs.map((x) => x.length)) * 7.4) + 10);
-  return <div className="heatmap-wrap">
+  return <MotionRegion part="heatmap" className="heatmap-wrap">
     <div className="heatmap" role="table" tabIndex={0} aria-label={`${valueKey}; ${scaleText}; dash means unavailable; Low n means below 30`} style={{ gridTemplateColumns: `minmax(84px, 1.1fr) repeat(${xs.length}, minmax(${columnMin}px, 1fr))` }}>
       {/* Header row: `.heatmap-row` is display: contents, so the cells still sit on the grid. */}
       <div className="heatmap-row" role="row"><div className="heatmap-corner" role="columnheader" style={headerStyle}>{diverging ? <>vs overall {valueFormatter(anchor as number)}</> : <>{valueFormatter(min)} → {valueFormatter(max)}<small> · saturated endpoints</small></>}</div>{xs.map((x) => <div className="heatmap-x" role="columnheader" key={x} title={x} style={{ ...headerStyle, overflowWrap: "normal", wordBreak: "normal" }}>{x}</div>)}</div>
-      {ys.map((y) => <div className="heatmap-row" role="row" key={y}><div className="heatmap-y" role="rowheader" title={y} style={headerStyle}>{y}</div>{xs.map((x) => {
+      {ys.map((y, rowIndex) => <div className="heatmap-row" role="row" key={y}><div className="heatmap-y" role="rowheader" title={y} style={headerStyle}>{y}</div>{xs.map((x, colIndex) => {
         const row = data.find((item) => textValue(item, yKey) === y && textValue(item, xKey) === x);
         const value = row ? numberValue(row, valueKey) : Number.NaN;
         const low = lowSampleKey && row ? numberValue(row, lowSampleKey) < 30 : false;
         const count = countKey && row ? numberValue(row, countKey) : Number.NaN;
         const text = `${y} · ${x}: ${Number.isFinite(value) ? describe(value) : "Unavailable"}${Number.isFinite(count) ? ` · n=${count.toLocaleString()}` : ""}${low ? " · Low n" : ""}`;
-        return <div className={`heatmap-cell${low ? " is-low" : ""}`} key={`${y}-${x}`} style={{ backgroundColor: fill(value), color: textOn(fill(value)), fontSize: 12 }} role="cell" aria-label={text} title={text}>{row && Number.isFinite(value) ? <><strong style={{ fontSize: 13 }}>{valueFormatter(value)}</strong>{Number.isFinite(count) && <small style={{ fontSize: 12 }}>n={count.toLocaleString()}</small>}{low && <small style={{ fontSize: 12 }}>Low n</small>}</> : <span>—</span>}</div>;
+        return <div className={`heatmap-cell${low ? " is-low" : ""}`} key={`${y}-${x}`} data-motion-part="cell" data-row={rowIndex} data-col={colIndex} style={{ backgroundColor: fill(value), color: textOn(fill(value)), fontSize: 12 }} role="cell" aria-label={text} title={text}>{row && Number.isFinite(value) ? <><strong style={{ fontSize: 13 }}>{valueFormatter(value)}</strong>{Number.isFinite(count) && <small style={{ fontSize: 12 }}>n={count.toLocaleString()}</small>}{low && <small style={{ fontSize: 12 }}>Low n</small>}</> : <span>—</span>}</div>;
       })}</div>)}
     </div>
-    {diverging ? <div className="chart-legend" style={{ ...legendStyle, marginTop: 8, alignItems: "center" }} aria-label="Heatmap colour legend"><span>Below overall</span><span aria-hidden="true" style={{ display: "inline-flex", gap: 2 }}>{[1, 0.5, 0, 0.5, 1].map((t, index) => <i key={index} style={{ width: 18, height: 10, borderRadius: 2, background: mixHex(DIVERGE_MID, index < 2 ? DIVERGE_LOW : DIVERGE_HIGH, t) }} />)}</span><span>Above overall {valueFormatter(anchor as number)} · deeper = larger gap</span></div>
-      : <div className="chart-legend" style={{ ...legendStyle, marginTop: 8, alignItems: "center" }} aria-label="Heatmap colour legend"><span>{valueFormatter(min)}</span><span aria-hidden="true" style={{ display: "inline-flex", gap: 2 }}>{[0, 0.25, 0.5, 0.75, 1].map((t) => <i key={t} style={{ width: 18, height: 10, borderRadius: 2, background: mixHex(SEQ_LOW, SEQ_HIGH, 0.08 + t * 0.92) }} />)}</span><span>{valueFormatter(max)} · stronger red = more</span></div>}
-  </div>;
+    {diverging ? <div className="chart-legend" data-motion-part="legend" style={{ ...legendStyle, marginTop: 8, alignItems: "center" }} aria-label="Heatmap colour legend"><span>Below overall</span><span aria-hidden="true" style={{ display: "inline-flex", gap: 2 }}>{[1, 0.5, 0, 0.5, 1].map((t, index) => <i key={index} style={{ width: 18, height: 10, borderRadius: 2, background: mixHex(DIVERGE_MID, index < 2 ? DIVERGE_LOW : DIVERGE_HIGH, t) }} />)}</span><span>Above overall {valueFormatter(anchor as number)} · deeper = larger gap</span></div>
+      : <div className="chart-legend" data-motion-part="legend" style={{ ...legendStyle, marginTop: 8, alignItems: "center" }} aria-label="Heatmap colour legend"><span>{valueFormatter(min)}</span><span aria-hidden="true" style={{ display: "inline-flex", gap: 2 }}>{[0, 0.25, 0.5, 0.75, 1].map((t) => <i key={t} style={{ width: 18, height: 10, borderRadius: 2, background: mixHex(SEQ_LOW, SEQ_HIGH, 0.08 + t * 0.92) }} />)}</span><span>{valueFormatter(max)} · stronger red = more</span></div>}
+  </MotionRegion>;
 }
 
 export function SegmentWinRateChart({ data }: { data: DataRow[] }) {
@@ -725,7 +726,7 @@ export function SegmentWinRateChart({ data }: { data: DataRow[] }) {
   const tickLines = new Map(rows.map((row) => [row.segment, narrow ? [row.segment, `n=${row.deals.toLocaleString()}`] : [row.segment, `n=${row.deals.toLocaleString()} · avg ${money(row.avg)}`]]));
   const tick = stackedTick((value) => tickLines.get(value) ?? [value]);
   const height = Math.max(240, rows.length * 62 + 60);
-  return <><ChartShell minHeight={height}><ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 24, top: 24, bottom: 12 }} {...handlers}>
+  return <><ChartShell minHeight={height} choreo={{ pulse: true }}><ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 24, top: 24, bottom: 12 }} {...handlers}>
     <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} domain={[0, 100]} ticks={narrow ? [0, 50, 100] : [0, 25, 50, 75, 100]} tickFormatter={(value) => `${value}%`} /><YAxis type="category" dataKey="segment" width={narrow ? 96 : 150} tick={tick} interval={0} padding={{ top: 26, bottom: 26 }} {...categoryAxis} />
     {Number.isFinite(overall) && <ReferenceLine x={overall} stroke={COLORS.pale} strokeDasharray="4 4" strokeOpacity={0.8} label={{ value: `All segments ${overall.toFixed(1)}%`, position: "top", fill: COLORS.pale, fontSize: TICK_SIZE }} />}
     <Tooltip {...tooltipBase} cursor={false} content={tooltipContent((row) => ({
@@ -766,7 +767,7 @@ function CreativeFacet({ platform, part, rows: source, axisWidth, tick }: { plat
   const ctrStep = ctrTicks[1] * 100;
   const ctrDigits = ctrStep >= 1 ? 0 : ctrStep >= 0.1 ? 1 : 2;
   const height = Math.max(200, rows.length * 44 + 30);
-  return <div className="facet"><div className="mini-chart-label">{platform}: top high-volume ads</div><ChartShell minHeight={height} part={part}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 0, right: 52, top: 14, bottom: 8 }} {...handlers}>
+  return <div className="facet"><div className="mini-chart-label">{platform}: top high-volume ads</div><ChartShell minHeight={height} part={part} choreo={{ bars: "x", pulse: true }}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 0, right: 52, top: 14, bottom: 8 }} {...handlers}>
     <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} domain={[0, ctrTicks[ctrTicks.length - 1]]} ticks={ctrTicks} tickFormatter={(value: number) => value === 0 ? "0%" : `${(value * 100).toFixed(ctrDigits)}%`} /><YAxis type="category" dataKey="ad_name" width={axisWidth} tick={tick} interval={0} {...categoryAxis} />
     <Tooltip {...tooltipBase} cursor={false} content={tooltipContent((row) => ({
       title: String(row.ad_name).replaceAll("_", " "),
@@ -802,7 +803,7 @@ export function SimpleRankedChart({ data, labelKey, valueKey, color = COLORS.blu
   const eligible = rows.filter((row) => !UNLABELED.test(row.label) && !(Number.isFinite(row.sample) && row.sample < LIMITED_N));
   const leaderLabel = eligible.length && clearLeader(eligible.map((row) => row.value)) ? eligible[0].label : null;
   const limited = rows.filter((row) => Number.isFinite(row.sample) && row.sample < LIMITED_N).map((row) => row.label);
-  return <><ChartShell minHeight={height}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 64, top: 16, bottom: 12 }} {...handlers}>
+  return <><ChartShell minHeight={height} choreo={{ bars: "x", pulse: true }}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 64, top: 16, bottom: 12 }} {...handlers}>
     <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} tickFormatter={formatter} tickCount={narrow ? 3 : 5} /><YAxis type="category" dataKey="label" width={170} tick={tick} interval={0} {...categoryAxis} />
     <Tooltip {...tooltipBase} cursor={false} content={tooltipContent((row) => ({
       title: String(row.label),
@@ -856,7 +857,7 @@ export function BudgetChart({ data }: { data: DataRow[] }) {
     return <text x={x} y={y - 8} fontSize={TICK_SIZE}><tspan fill={COLORS.ink} fontWeight={700}>{row.scenario}</tspan><tspan fill={COLORS.muted}>{` · ${detail}`}</tspan></text>;
   };
   const height = rows.length * (narrow ? 92 : 76) + 44;
-  return <><ChartShell minHeight={height}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 20, top: narrow ? 40 : 26, bottom: 8 }} barCategoryGap="44%">
+  return <><ChartShell minHeight={height} choreo={{ bars: "x", stacked: true }}>{(motion) => <ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 20, top: narrow ? 40 : 26, bottom: 8 }} barCategoryGap="44%">
     <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} domain={[0, ticks[ticks.length - 1]]} ticks={ticks} tickFormatter={money} /><YAxis type="category" dataKey="scenario" hide />
     <Tooltip {...tooltipBase} cursor={bandCursor} content={tooltipContent((row) => ({
       title: String(row.scenario),
@@ -886,7 +887,7 @@ export function VelocityChart({ data }: { data: DataRow[] }) {
   const height = Math.max(260, rows.length * 48 + 50);
   const ticks = bestTicks(Math.max(...rows.map((row) => row.p75)));
   const limited = rows.filter((row) => row.limited);
-  return <><ChartShell minHeight={height}><ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 24, top: 12, bottom: 12 }} {...handlers}>
+  return <><ChartShell minHeight={height} choreo={{ pulse: true }}><ResponsiveContainer initialDimension={PRINT_SAFE_SIZE} width="100%" height={height}><ComposedChart data={rows} layout="vertical" margin={{ left: 4, right: 24, top: 12, bottom: 12 }} {...handlers}>
     <CartesianGrid {...gridProps} horizontal={false} vertical /><XAxis type="number" {...valueAxis} domain={[0, ticks[ticks.length - 1]]} ticks={narrow ? ticks.filter((_, index) => index % 2 === 0) : ticks} tickFormatter={(value) => `${value}d`} /><YAxis type="category" dataKey="channel" width={narrow ? 128 : 160} tick={tick} interval={0} padding={{ top: 20, bottom: 20 }} {...categoryAxis} />
     <Tooltip {...tooltipBase} cursor={false} content={tooltipContent((row) => ({
       title: String(row.channel),
