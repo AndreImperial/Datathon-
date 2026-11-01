@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 86 checks — 86 pass (20 of them after fixes), 0 fail.**
+**Result: 92 checks — 92 pass (20 of them after fixes), 0 fail.**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -146,6 +146,19 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 | J5 | Browser-menu printing (Ctrl+P) prints everything | PASS (fixed) | `beforeprint` renders all 10 sections and opens 12 of 12 tables; all 19 charts are drawn synchronously (was 0) thanks to a print-safe initial chart size; 34-page PDF with the pilot and calculator |
 
 Accessibility re-run on the final build: dashboard 25 views + pilot/calculator states, deck 120 views (both cuts, overview, drawers, presenter): 0 axe-core violations.
+
+## K. Motion (v1.1.0)
+
+Verified on the merged build (dashboard, charts and deck motion together).
+
+| ID | Check | Status | Evidence |
+|---|---|---|---|
+| K1 | Dashboard entrance plays and lands on exact values | PASS | KPI tiles deal in with alternating tilt; figures count $0.0M → $24.9M etc. and end on the exact rendered text; settles in 1.28 s; sidebar pill slides; directional section transitions |
+| K2 | Charts animate and settle on identical geometry | PASS | Bars grow, lines draw, dots and heatmaps wave in; after settling, 22 of 22 charts are element-for-element identical to the reduced-motion render; no replay on revisit, Show data toggles or resize |
+| K3 | Deck transitions and builds | PASS | Directional View Transitions under 240 ms; build order kicker → headline → numbers → visual → footer, settled under 1.2 s; 10 rapid presses land on the right slide with nothing queued |
+| K4 | Reduced motion shows the final state immediately | PASS | Dashboard first frame equals final values; 0 deck animations and final numbers on the first frame; charts skip their entrance |
+| K5 | Printing mid-animation is complete | PASS | Dashboard and Print-button paths during the entrance: 10/10 sections, 22/22 charts, 0 empty or partial, final labels (not mid-count) |
+| K6 | Motion adds no accessibility or layout regressions | PASS | axe-core 0 violations (dashboard 20 views, deck 24 pages); cumulative layout shift 0; 0 console errors; every slide fits both cuts at 1440×900 and 1280×720 |
 
 ## Not verified anywhere
 
