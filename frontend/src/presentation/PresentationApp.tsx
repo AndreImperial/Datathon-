@@ -1,4 +1,5 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { flushSync } from "react-dom";
 
 import { ChevronLeft, ChevronRight, Clock3, ExternalLink, Expand, Grid2X2, Play, RotateCcw, Square, X } from "lucide-react";
 
@@ -8,6 +9,7 @@ import "./deck.css";
 import { applyCommand, cutOf, cutSlides, CUTS, elapsedAt, EXECUTIVE_TIMING, initialState, slideFromHash, storageRead, storageWrite, validCommand, validState, type Cut, type DeckCommand, type SharedState } from "./deckState";
 import { readableSources, SECTIONS, sectionFor } from "./labels";
 import { actionTitle, BIG_IDEA, EvidenceDrawer, evidenceFor, pilotDesign, SlideVisual, transitionFor } from "./slides";
+import { navigate, playBuild, playOverviewOpen, playZoomFrom, takeEntrance, type Build, type Direction } from "./deckMotion";
 
 /** First section of the dashboard (App.tsx); used by the exit link and Escape. */
 const DASHBOARD_HASH = "#s-essential";
@@ -35,7 +37,33 @@ const CUT_NAMES: Record<Cut, string> = { full: "Full", executive: "Executive" };
 
 /** Full / Executive switch. Shown in the deck header, the overview and the presenter console. */
 function CutToggle({ cut, minutes, onChange, disabled = false, className = "" }: { cut: Cut; minutes: Record<Cut, number>; onChange: (cut: Cut) => void; disabled?: boolean; className?: string }) {
-  return <div role="group" aria-label="Presentation length" className={`deck-cut ${className}`.trim()}>{CUTS.map(option => <button key={option} type="button" aria-pressed={option === cut} disabled={disabled} onClick={() => onChange(option)}>{CUT_NAMES[option]}<span aria-hidden="true"> · </span><small>{minutes[option]} min</small></button>)}</div>;
+  const group = useRef<HTMLDivElement>(null);
+  // The pressed state is drawn by one pill that slides between options (transform only); it is measured from the
+  // pressed button, and until it is measured (or without layout, e.g. in tests) the button draws its own state.
+  const [pill, setPill] = useState<{ x: number; width: number } | null>(null);
+  useLayoutEffect(() => {
+    const element = group.current;
+    if (!element) return;
+    const measure = () => {
+      const pressed = element.querySelector<HTMLElement>("button[aria-pressed=true]");
+      if (!pressed || !(pressed.offsetWidth > 0)) { setPill(null); return; }
+      setPill(previous => previous && previous.x === pressed.offsetLeft && previous.width === pressed.offsetWidth ? previous : { x: pressed.offsetLeft, width: pressed.offsetWidth });
+    };
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [cut]);
+  return <div ref={group} role="group" aria-label="Presentation length" className={`deck-cut ${className}`.trim()} data-pill={pill ? "" : undefined}>
+    {pill && <span className="deck-cut-pill" aria-hidden="true" style={{ transform: `translateX(${pill.x}px) scaleX(${pill.width / 100})` }} />}
+    {CUTS.map(option => <button key={option} type="button" aria-pressed={option === cut} disabled={disabled} onClick={() => onChange(option)}>{CUT_NAMES[option]}<span aria-hidden="true"> · </span><small>{minutes[option]} min</small></button>)}
+  </div>;
+}
+
+/** Headline as word spans so the build can rise it word by word; textContent stays the exact headline. */
+function Words({ text }: { text: string }) {
+  return <>{text.split(" ").map((word, index) => <Fragment key={index}>{index > 0 && " "}<span className="deck-word">{word}</span></Fragment>)}</>;
 }
 
 /** Scale factor that fits a STAGE_W × STAGE_H slide into the frame, or null for reflow mode. */
@@ -92,6 +120,12 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
   const frame = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLElement | null>(null);
   const scale = useStageScale(frame);
+  const stage = useRef<HTMLDivElement>(null);
+  const dialog = useRef<HTMLDivElement>(null);
+  /** The running build of the visible slide; finished at once when the presenter moves on. */
+  const build = useRef<Build | null>(null);
+  /** Rectangle of the overview card just selected; the stage zooms up from it. */
+  const zoomFrom = useRef<DOMRect | null>(null);
   const openOverview = () => { overviewFocus.current = document.activeElement as HTMLElement; setOverview(true); };
   useEffect(() => { if (surface.current) surface.current.inert = overview; if (!overview) overviewFocus.current?.focus(); }, [overview]);
   const cut = cutOf(state);
@@ -114,9 +148,20 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
   const slideSeconds = (slide: (typeof main)[number]) => cut === "executive" ? EXECUTIVE_TIMING[slide.id] ?? 0 : slide.target_duration_seconds ?? 0;
   const counterText = state.sequence === "appendix" ? `Appendix ${currentIndex + 1} / ${appendix.length}` : pathIndex < 0 ? `Extra · not in ${CUT_NAMES[cut].toLowerCase()} cut` : `${pathIndex + 1} / ${mainPath.length}`;
   const send = (payload: Record<string, unknown>) => channel.current?.postMessage({ ...payload, session, snapshotId: data.meta.snapshot_id });
-  const command = (cmd: DeckCommand) => {
+  /**
+   * Every audience-side slide change goes through here: the in-flight build is completed at once, then the
+   * change commits inside a directional View Transition (or directly, with the crossfade fallback).
+   */
+  const changeState = (update: (previous: SharedState) => SharedState, viaOverview = false) => {
+    const previous = stateRef.current;
+    const next = update(previous);
+    if (next.slideId === previous.slideId || viaOverview) { if (next.slideId !== previous.slideId) build.current?.finish(); setState(update); return; }
+    const direction: Direction = deckPosition(next.slideId) >= deckPosition(previous.slideId) ? "next" : "prev";
+    navigate(direction, () => flushSync(() => setState(update)), () => build.current?.finish());
+  };
+  const command = (cmd: DeckCommand, viaOverview = false) => {
     if (presenter) { if (connection === "connected") send({ type: "command", command: cmd, controllerId: controllerId.current, commandId: ++commandCounter.current }); }
-    else setState(previous => applyCommand(previous, cmd, identities, Date.now()));
+    else changeState(previous => applyCommand(previous, cmd, identities, Date.now()), viaOverview);
   };
   const setCut = (next: Cut) => command({ kind: "cut", cut: next });
   useEffect(() => {
@@ -136,7 +181,7 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
         const seen = lastCommands.current.get(p.controllerId) ?? 0;
         if (p.commandId <= seen) return;
         lastCommands.current.set(p.controllerId, p.commandId);
-        setState(previous => applyCommand(previous, p.command, identities, Date.now()));
+        changeState(previous => applyCommand(previous, p.command, identities, Date.now()));
       } else if (presenter && p.type === "bye") setConnection("stale");
     };
     bus.addEventListener("message", receive);
@@ -160,7 +205,7 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
     if (presenter) return;
     const route = () => {
       const selected = slideFromHash(location.hash, identities);
-      if (selected) setState(previous => selected.id === previous.slideId ? previous : applyCommand(previous, { kind: "go", slideId: selected.id }, identities, Date.now()));
+      if (selected) changeState(previous => selected.id === previous.slideId ? previous : applyCommand(previous, { kind: "go", slideId: selected.id }, identities, Date.now()));
       else if (location.hash.startsWith("#present/")) history.replaceState(null, "", `#present/${stateRef.current.slideId}`);
     };
     route(); window.addEventListener("hashchange", route); return () => window.removeEventListener("hashchange", route);
@@ -192,6 +237,27 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
     };
     window.addEventListener("keydown", listener); return () => window.removeEventListener("keydown", listener);
   }, [overview, presenter, connection, identities]);
+
+  // Slide entry: the build sequence plays once per slide; Next during it completes it instantly (changeState).
+  useLayoutEffect(() => {
+    if (presenter || !current) return;
+    const entrance = takeEntrance();
+    const run = playBuild(canvas.current, { stage: stage.current, direction: entrance.direction, stageEntrance: !entrance.viaTransition && !zoomFrom.current });
+    build.current = run;
+    return () => { run.finish(); if (build.current === run) build.current = null; };
+  }, [presenter, current?.id]);
+  // Printing (menu or Ctrl+P) mid-build captures the final state.
+  useEffect(() => {
+    const settle = () => build.current?.finish();
+    window.addEventListener("beforeprint", settle);
+    return () => window.removeEventListener("beforeprint", settle);
+  }, []);
+  // Overview: cards stagger in and the current card zooms down from the slide; closing after a selection zooms the stage up from that card.
+  useLayoutEffect(() => {
+    if (presenter) return;
+    if (overview) { const run = playOverviewOpen(dialog.current, stage.current); return () => run.finish(); }
+    if (zoomFrom.current) { playZoomFrom(stage.current, zoomFrom.current); zoomFrom.current = null; }
+  }, [overview, presenter]);
 
   // Evidence density: if a slide's visual overflows its stage area, step its zoom down (to a floor) so it fits.
   const [density, setDensity] = useState<{ id: string; value: number }>({ id: "", value: 1 });
@@ -232,8 +298,8 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
       {limitation}
       <div className="presenter-top">
         <section className="presenter-current" aria-label="Current slide"><p>Now · {label(current)}</p><h1>{current ? headlines.get(current.id) : ""}</h1>{current && headlines.get(current.id) !== current.title && <p className="presenter-topic">{current.title}</p>}</section>
-        <section className="presenter-clock" aria-label="Timer"><div className="timer"><Clock3 /> {fmt(elapsed / 1000)} <small>/ {fmt(target)}</small></div>{pace ? <p className={`presenter-pace ${pace.tone}`}>{pace.label} <small>· {pathIndex < 0 ? "extra slide" : `slide ${pathIndex + 1}`} due at {fmt(expected ?? 0)}</small></p> : <p className="presenter-pace">Timer not started</p>}<div className="presenter-progress" aria-hidden="true"><b style={{ width: `${Math.min(100, elapsed / 1000 / target * 100)}%` }} /><i style={{ left: `${expected === null ? 0 : expected / target * 100}%` }} /></div></section>
-        <section className="presenter-upnext" aria-label="Next slide"><p>Next · {upcoming ? label(upcoming) : state.sequence === "main" ? "Appendix" : "End"}</p><h2>{upcoming ? headlines.get(upcoming.id) : state.sequence === "main" ? "End of main deck · open the appendix from the overview" : "Last appendix slide"}</h2></section>
+        <section className="presenter-clock" aria-label="Timer"><div className="timer"><Clock3 /> {fmt(elapsed / 1000)} <small>/ {fmt(target)}</small></div>{pace ? <p className={`presenter-pace ${pace.tone}`}>{pace.label} <small>· {pathIndex < 0 ? "extra slide" : `slide ${pathIndex + 1}`} due at {fmt(expected ?? 0)}</small></p> : <p className="presenter-pace">Timer not started</p>}<div className="presenter-progress" aria-hidden="true"><b style={{ transform: `scaleX(${Math.min(1, elapsed / 1000 / target)})` }} /><i style={{ transform: `translateX(${Math.min(100, expected === null ? 0 : expected / target * 100)}%)` }} /></div></section>
+        <section className="presenter-upnext" aria-label="Next slide"><div key={upcoming?.id ?? "end"} className="presenter-upnext-card"><p>Next · {upcoming ? label(upcoming) : state.sequence === "main" ? "Appendix" : "End"}</p><h2>{upcoming ? headlines.get(upcoming.id) : state.sequence === "main" ? "End of main deck · open the appendix from the overview" : "Last appendix slide"}</h2></div></section>
       </div>
       <p className="presenter-bigidea"><b>Big idea</b> {BIG_IDEA}</p>
       <section className="presenter-notes"><h2>Speaker notes</h2><p><b>Say:</b> {current?.speaker_notes.say}</p>{current && <p className="presenter-transition"><b>Transition:</b> {transitionFor(data, current, upcoming)}</p>}<p><b>Do not claim:</b> {current?.speaker_notes.do_not_claim}</p><p><b>Likely question:</b> {current?.speaker_notes.judge_question}</p><p><b>Answer:</b> {current?.speaker_notes.answer}</p>{limits.length > 0 && <><h3>Evidence limits and owners</h3><ul>{limits.map(item => <li key={item}>{item}</li>)}</ul></>}<p className="presenter-sources"><b>Sources:</b> {(current?.speaker_notes.sources.length ? current.speaker_notes.sources : current?.source_footer.split(";").map(s => s.trim()) ?? []).join("; ")} · scope: {current?.scope}</p></section>
@@ -247,18 +313,18 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
   return <main id={MAIN_ID} className={`presentation-shell deck ${scale === null ? "is-flow" : "is-stage"}`} tabIndex={0} aria-label="Presentation keyboard controls"><div ref={surface}>
     <header className="presentation-header">
       <a href={DASHBOARD_HASH} className="wordmark">REVENUE <span>COMMAND</span> / CMO BRIEF</a>
-      <ol className="deck-sections" aria-label="Deck sections">{[...SECTIONS.filter(name => pathRuns.some(run => run.name === name)), "Appendix" as const].map(name => <li key={name} aria-current={name === section ? "step" : undefined}>{name}</li>)}</ol>
+      <ol className="deck-sections" aria-label="Deck sections">{[...SECTIONS.filter(name => pathRuns.some(run => run.name === name)), "Appendix" as const].map(name => <li key={name} aria-current={name === section ? "step" : undefined}>{name === section ? <span key={`on-${name}`} className="deck-label-on">{name}</span> : name}</li>)}</ol>
       <span className="deck-counter">{counterText}</span>
       <CutToggle cut={cut} minutes={minutes} onChange={setCut} className="deck-cut-header" />
       <div><button aria-label="Overview" onClick={openOverview}><Grid2X2 /></button><button aria-label="Fullscreen" onClick={() => document.documentElement.requestFullscreen?.().catch(() => undefined)}><Expand /></button><a aria-label="Open presenter console" href={`${location.pathname}#presenter/${session}`} target="_blank" rel="noopener"><ExternalLink /> <span>Presenter</span></a><a href={DASHBOARD_HASH} aria-label="Exit presentation"><X /></a></div>
     </header>
     {limitation}
     <div className="deck-frame" ref={frame}>
-      <div className="deck-stage" style={stageStyle}>
+      <div className="deck-stage" ref={stage} style={stageStyle}>
         <article ref={canvas} key={current?.id} className={`slide-canvas deck-slide ${isAppendix ? "layout-split" : "layout-stack"} slide-${current?.id}`} style={canvasStyle} aria-label={`Slide ${current?.order}: ${current?.title}`}>
           <div className="deck-slide-head">
             <div className="slide-kicker"><span>{section}</span>{current && headlines.get(current.id) !== current.title && <em>{current.title}</em>}<b>{state.sequence === "appendix" ? `A${currentIndex + 1}` : pathIndex < 0 ? `${String(current?.order ?? 0).padStart(2, "0")} · extra` : `${String(pathIndex + 1).padStart(2, "0")} / ${mainPath.length}`}</b></div>
-            <h1>{current ? headlines.get(current.id) : ""}</h1>
+            <h1>{current ? <Words text={headlines.get(current.id) ?? ""} /> : ""}</h1>
             {current && !BODY_REPEATS_HEADLINE.has(current.id) && !(hasPilot && PILOT_SLIDES.has(current.id)) && <p className="slide-body">{current.body}</p>}
           </div>
           <div className="deck-visual"><div className="deck-visual-inner">{current && <SlideVisual data={data} slide={current} />}</div></div>
@@ -273,12 +339,13 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
       <button disabled={!hasPrevious} onClick={() => command({kind:"previous"})}><ChevronLeft /> Previous</button>
       <div className="deck-progress" aria-hidden="true">{(state.sequence === "main" ? pathRuns : [{ name: "Appendix", slides: appendix }]).map(run => {
         const done = run.slides.filter(slide => deckPosition(slide.id) <= deckPosition(current?.id)).length;
-        return <span key={run.name} className={run.slides.some(slide => slide.id === current?.id) ? "is-current" : undefined} style={{ flexGrow: run.slides.length }}><b style={{ width: `${done / run.slides.length * 100}%` }} /><small>{run.name}</small></span>;
+        const isCurrent = run.slides.some(slide => slide.id === current?.id);
+        return <span key={run.name} className={isCurrent ? "is-current" : undefined} style={{ flexGrow: run.slides.length }}><b style={{ transform: `scaleX(${done / run.slides.length})` }} /><small key={isCurrent ? "on" : "off"} className={isCurrent ? "deck-label-on" : undefined}>{run.name}</small></span>;
       })}</div>
       <span className="deck-elapsed"><span className="sr-only">Elapsed presentation time </span>{fmt(elapsed / 1000)} / {fmt(target)}</span>
       {state.sequence === "main" && !hasNext ? <button onClick={openOverview}>Appendix <Grid2X2 /></button> : <button className="red" disabled={!hasNext} onClick={() => command({kind:"next"})}>Next <ChevronRight /></button>}
     </nav>
   </div>
-  {overview && <div className="slide-overview" role="dialog" aria-modal="true" aria-labelledby="overview-title" onKeyDown={event => { if (event.key === "Tab") { const elements = event.currentTarget.querySelectorAll<HTMLButtonElement>("button"); const first = elements[0]; const last = elements[elements.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } } }}><button autoFocus aria-label="Close slide overview" className="close" onClick={() => setOverview(false)}><X /></button><h2 id="overview-title">Slide overview</h2><div className="overview-cut"><CutToggle cut={cut} minutes={minutes} onChange={setCut} /><p className="overview-hint">{cut === "executive" ? `Executive cut · ${mainPath.length} of ${main.length} main slides` : `${main.length} main slides`} · {appendix.length} appendix · Esc to close</p></div><div className="overview-groups">{[...pathRuns, { name: "Appendix" as const, slides: appendix }].map(run => <section key={run.name} aria-label={run.name}><h3>{run.name}</h3><div>{run.slides.map(slide => <button key={slide.id} aria-current={slide.id === current?.id ? "true" : undefined} onClick={() => { command({kind:"go",slideId:slide.id}); setOverview(false); }}><small>{slide.sequence === "main" ? `${String(cut === "executive" ? mainPath.indexOf(slide) + 1 : slide.order).padStart(2, "0")} · ${slide.title}` : `A${slide.order}`}</small><span>{headlines.get(slide.id)}</span></button>)}</div></section>)}</div></div>}
+  {overview && <div ref={dialog} className="slide-overview" role="dialog" aria-modal="true" aria-labelledby="overview-title" onKeyDown={event => { if (event.key === "Tab") { const elements = event.currentTarget.querySelectorAll<HTMLButtonElement>("button"); const first = elements[0]; const last = elements[elements.length - 1]; if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); } else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); } } }}><button autoFocus aria-label="Close slide overview" className="close" onClick={() => setOverview(false)}><X /></button><h2 id="overview-title">Slide overview</h2><div className="overview-cut"><CutToggle cut={cut} minutes={minutes} onChange={setCut} /><p className="overview-hint">{cut === "executive" ? `Executive cut · ${mainPath.length} of ${main.length} main slides` : `${main.length} main slides`} · {appendix.length} appendix · Esc to close</p></div><div className="overview-groups">{[...pathRuns, { name: "Appendix" as const, slides: appendix }].map(run => <section key={run.name} aria-label={run.name}><h3>{run.name}</h3><div>{run.slides.map(slide => <button key={slide.id} aria-current={slide.id === current?.id ? "true" : undefined} onClick={event => { zoomFrom.current = event.currentTarget.getBoundingClientRect(); command({kind:"go",slideId:slide.id}, true); setOverview(false); }}><small>{slide.sequence === "main" ? `${String(cut === "executive" ? mainPath.indexOf(slide) + 1 : slide.order).padStart(2, "0")} · ${slide.title}` : `A${slide.order}`}</small><span>{headlines.get(slide.id)}</span></button>)}</div></section>)}</div></div>}
   </main>;
 }

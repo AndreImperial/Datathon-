@@ -100,7 +100,7 @@
 .deck .deck-progress { display: flex; flex: 1; gap: 6px; min-width: 0; align-self: center; }
 .deck .deck-progress > span { display: grid; flex-basis: 0; gap: 5px; min-width: 0; }
 .deck .deck-progress > span::before { content: ""; grid-area: 1 / 1; height: 4px; border-radius: 2px; background: var(--deck-track); }
-.deck .deck-progress b { grid-area: 1 / 1; height: 4px; border-radius: 2px; background: var(--deck-accent); transition: width 180ms var(--deck-ease); }
+.deck .deck-progress b { grid-area: 1 / 1; width: 100%; height: 4px; border-radius: 2px; background: var(--deck-accent); transform-origin: left center; transition: transform 320ms var(--deck-ease); }
 .deck .deck-progress small { overflow: hidden; color: var(--deck-muted); font-size: 11px; font-weight: 700; letter-spacing: .06em; text-overflow: ellipsis; text-transform: uppercase; white-space: nowrap; }
 .deck .deck-progress > span.is-current small { color: var(--deck-ink); }
 /* The deck's <main> carries #main-content for the page skip link; undo the dashboard's #main-content layout (sidebar offset). */
@@ -357,8 +357,9 @@ body:has(.deck) { background: var(--deck-bg); }
 .deck .presenter-pace.behind { color: var(--deck-accent-text); }
 .deck .presenter-pace.ahead { color: #ffd479; }
 .deck .presenter-progress { position: relative; height: 6px; border-radius: 3px; background: var(--deck-track); }
-.deck .presenter-progress b { display: block; height: 100%; border-radius: 3px; background: var(--deck-ink-soft); }
-.deck .presenter-progress i { position: absolute; top: -4px; bottom: -4px; border-left: 2px solid var(--deck-accent); }
+.deck .presenter-progress b { display: block; width: 100%; height: 100%; border-radius: 3px; background: var(--deck-ink-soft); transform-origin: left center; transition: transform 260ms linear; }
+/* the pace marker spans the bar so translateX(%) is a share of the bar's width */
+.deck .presenter-progress i { position: absolute; top: -4px; bottom: -4px; left: 0; width: 100%; border-left: 2px solid var(--deck-accent); transition: transform 400ms var(--deck-ease); }
 .deck .presenter-notes { color: var(--deck-ink-soft); font-size: 20px; }
 @media (max-width: 860px) { .deck .presenter-top { grid-template-columns: 1fr; grid-template-areas: "now" "clock" "next"; } }
 .deck .presenter-notes h2, .deck .presenter-notes h3 { margin: 0 0 10px; color: var(--deck-muted); font-size: 14px; letter-spacing: .08em; text-transform: uppercase; }
@@ -479,14 +480,10 @@ body:has(.deck) { background: var(--deck-bg); }
 .deck .deck-matrix td em { display: block; color: var(--deck-ink-soft); font-size: 17px; font-style: normal; font-weight: 700; }
 .deck .deck-matrix td small { display: block; margin-top: 4px; color: var(--deck-muted); font-size: 15px; }
 
-/* slide entry: a quick crossfade, then the headline and evidence settle in. Restarts on each slide (keyed), so rapid Next never queues. */
-@keyframes deck-fade { from { opacity: 0; } }
-@keyframes deck-rise { from { opacity: 0; transform: translateY(8px); } }
-@keyframes deck-grow { from { transform: scaleX(0); } }
-.deck .slide-canvas.deck-slide { animation: deck-fade 150ms ease-out both; }
-.deck .deck-slide-head { animation: deck-rise 180ms var(--deck-ease) both; }
-.deck .deck-visual-inner { animation: deck-rise 200ms var(--deck-ease) 40ms both; }
-.deck .slide-canvas .slide-bar b, .deck .deck-waterfall i b { transform-origin: left center; animation: deck-grow 200ms var(--deck-ease) 60ms both; }
+/* slide entry: the build sequence (deckMotion.ts) animates these with Web Animations; at rest they are final. */
+.deck .slide-canvas .slide-bar b, .deck .deck-waterfall i b, .deck .deck-timeline li i b, .deck .deck-diverging i b.positive, .deck .deck-share-bar b { transform-origin: left center; }
+.deck .deck-diverging i b.negative { transform-origin: right center; }
+.deck .slide-canvas h1 .deck-word { display: inline-block; }
 
 /* reflow (phones) for round-2 pieces */
 .deck.is-flow .deck-kpis .deck-kpi dd.deck-kpi-note { font-size: 16px; }
@@ -537,7 +534,7 @@ body:has(.deck) { background: var(--deck-bg); }
 .deck .deck-share figcaption { color: var(--deck-ink); font-size: 19px; font-weight: 750; }
 .deck .deck-share figcaption span { margin-left: 10px; color: var(--deck-muted); font-size: 16px; font-weight: 600; }
 .deck .deck-share-bar { display: flex; gap: 2px; height: 34px; }
-.deck .deck-share-bar b { min-width: 4px; border-radius: 4px; background: var(--deck-bar-muted); transform-origin: left center; animation: deck-grow 220ms var(--deck-ease) 60ms both; }
+.deck .deck-share-bar b { min-width: 4px; border-radius: 4px; background: var(--deck-bar-muted); transform-origin: left center; }
 .deck .deck-share-bar b.is-accent { background: var(--deck-accent); }
 .deck .deck-share ul { display: flex; gap: 2px; margin: 0; padding: 0; list-style: none; }
 .deck .deck-share li { display: grid; min-width: 0; align-content: start; }
@@ -674,3 +671,56 @@ body:has(.deck) { background: var(--deck-bg); }
 .deck.is-flow .deck-pilot-layout, .deck.is-flow .deck-summary-split { grid-template-columns: 1fr; }
 .deck.is-flow .deck-pilot-layout .deck-scenarios th[scope="row"] { width: 70px; }
 .deck.is-flow .deck-pilot-layout .deck-scenarios td strong { font-size: 17px; }
+
+/* ---------- motion layer: transitions, highlights, progress, overview, presenter ---------- */
+
+/* Directional slide transition (View Transitions API). Next: the new slide arrives from the right and slightly
+   below while the old one leaves left and up; Previous mirrors it. ≤ 240 ms; a new press skips an in-flight one. */
+.deck.presentation-shell .deck-stage { view-transition-name: deck-slide; }
+::view-transition-group(deck-slide) { animation-duration: 240ms; }
+::view-transition-old(root), ::view-transition-new(root) { animation-duration: 160ms; }
+html[data-deck-dir="next"]::view-transition-old(deck-slide) { animation: deck-vt-out-next 180ms cubic-bezier(.4, 0, 1, 1) both; }
+html[data-deck-dir="next"]::view-transition-new(deck-slide) { animation: deck-vt-in-next 240ms cubic-bezier(.22, 1, .36, 1) both; }
+html[data-deck-dir="prev"]::view-transition-old(deck-slide) { animation: deck-vt-out-prev 180ms cubic-bezier(.4, 0, 1, 1) both; }
+html[data-deck-dir="prev"]::view-transition-new(deck-slide) { animation: deck-vt-in-prev 240ms cubic-bezier(.22, 1, .36, 1) both; }
+@keyframes deck-vt-out-next { to { opacity: 0; transform: translate(-36px, -6px); } }
+@keyframes deck-vt-in-next { from { opacity: 0; transform: translate(48px, 8px); } }
+@keyframes deck-vt-out-prev { to { opacity: 0; transform: translate(36px, 6px); } }
+@keyframes deck-vt-in-prev { from { opacity: 0; transform: translate(-48px, -8px); } }
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
+}
+
+/* Highlight ring for the feasible cell and the pilot callout: an overlay whose opacity pulses once (never at rest). */
+.deck .deck-scenarios td.feasible, .deck .deck-pilot { position: relative; }
+.deck .deck-scenarios td.feasible::after, .deck .deck-pilot::after { content: ""; position: absolute; inset: -3px; border-radius: inherit; box-shadow: 0 0 0 2px var(--deck-accent), 0 0 22px rgba(225, 38, 54, .4); opacity: 0; pointer-events: none; }
+
+/* Header section pill and progress label crossfade: the pill fades between sections, the new label fades up. */
+.deck .deck-sections li { position: relative; isolation: isolate; }
+.deck .deck-sections li::before { content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: var(--deck-tint); box-shadow: inset 0 0 0 1px var(--deck-accent); opacity: 0; transition: opacity 220ms var(--deck-ease); }
+.deck .deck-sections li[aria-current] { background: none; box-shadow: none; }
+.deck .deck-sections li[aria-current]::before { opacity: 1; }
+@keyframes deck-label-in { from { opacity: .35; } }
+.deck .deck-label-on { animation: deck-label-in 220ms var(--deck-ease) both; }
+
+/* Full / Executive: one pill slides between the options. Base width 100px, scaled to the pressed button. */
+.deck .deck-cut { position: relative; isolation: isolate; }
+.deck .deck-cut-pill { position: absolute; top: 2px; bottom: 2px; left: 0; z-index: -1; width: 100px; border-radius: 8px; background: var(--deck-tint); box-shadow: inset 0 0 0 1px var(--deck-accent); transform-origin: left center; transition: transform 240ms var(--deck-ease); pointer-events: none; }
+.deck.presentation-shell .deck-cut[data-pill] button[aria-pressed="true"], .deck.presenter-console .deck-cut[data-pill] button[aria-pressed="true"] { background: transparent; box-shadow: none; }
+.deck.presentation-shell .deck-cut[data-pill] button, .deck.presenter-console .deck-cut[data-pill] button { transition: color 160ms var(--deck-ease); }
+
+/* Overview: the current card sits above its neighbours while it zooms; no scrollbars flash during the zoom. */
+.deck.presentation-shell .overview-groups button[aria-current] { position: relative; z-index: 1; }
+.deck .slide-overview.is-zooming { overflow: hidden; }
+
+/* Presenter: the next-slide preview slides up each time the deck advances. */
+@keyframes deck-upnext-in { from { opacity: 0; transform: translateY(14px); } }
+.deck .presenter-upnext-card { animation: deck-upnext-in 260ms var(--deck-ease) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .deck *, .deck *::before, .deck *::after { transition: none !important; animation: none !important; }
+}
+@media print {
+  .deck.presentation-shell .deck-stage { view-transition-name: none; }
+  .deck *, .deck *::before, .deck *::after { transition: none !important; animation: none !important; }
+}

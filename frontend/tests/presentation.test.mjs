@@ -5,7 +5,7 @@ import { build } from 'esbuild';
 import { JSDOM } from 'jsdom';
 import React, { act } from 'react';
 import { createRoot } from 'react-dom/client';
-const compiled = await build({entryPoints:['frontend/src/presentation/PresentationApp.tsx'],bundle:true,write:false,platform:'node',format:'esm',jsx:'automatic',external:['react','react/jsx-runtime','lucide-react'],loader:{'.css':'empty'}});
+const compiled = await build({entryPoints:['frontend/src/presentation/PresentationApp.tsx'],bundle:true,write:false,platform:'node',format:'esm',jsx:'automatic',external:['react','react-dom','react/jsx-runtime','lucide-react'],loader:{'.css':'empty'}});
 // Resolve external imports from a file URL, rather than a data URL.
 const { writeFile, unlink } = await import('node:fs/promises');
 const output = new URL('../../.presentation-test.mjs', import.meta.url);
@@ -225,3 +225,56 @@ test('without pilot_design the main-14 to 16 headlines and visuals fall back to 
     assert.match(document.querySelector('h1').textContent,/run the 90-day coverage test/);
   },{data:withoutPilot});
 });
+
+/* ---------- motion layer ---------- */
+const motionBundle=await build({entryPoints:['frontend/src/presentation/deckMotion.ts'],bundle:true,write:false,format:'esm',platform:'neutral'});
+const deckMotion=await import('data:text/javascript;base64,'+Buffer.from(motionBundle.outputFiles[0].text).toString('base64'));
+test('count-up formats rebuild the exact authored text at progress 1 and keep separators and decimals on the way',()=>{
+  for(const text of ['12.3%','41 of 1,070','$4.1M','2,034','+3.1 pp','−0.42 pp','60%']) {
+    const format=deckMotion.progressFormat(text);
+    assert.equal(format(1),text);
+    assert.equal(format(0),text.replace(/\d[\d,]*(?:\.\d+)?/g,t=>t.includes('.')?(0).toFixed(t.split('.')[1].length):'0'));
+  }
+  assert.equal(deckMotion.progressFormat('41 of 1,070')(0.5),'21 of 535');
+  assert.equal(deckMotion.progressFormat('1,234,567')(0.5),'617,284');
+  assert.equal(deckMotion.progressFormat('Not supplied'),null);
+});
+test('the headline renders word by word with its exact text',async()=>mounted('#present/main-06',async()=>{
+  const h1=document.querySelector('.slide-canvas h1');
+  const words=[...h1.querySelectorAll('.deck-word')].map(x=>x.textContent);
+  assert.ok(words.length>3); assert.equal(words.join(' '),h1.textContent);
+}));
+/** Mount with Web Animations and rAF stubbed, recording every animation the deck starts. */
+async function withAnimations(hash, run, reduce=false) {
+  const created=[]; const old={Element:globalThis.Element,raf:globalThis.requestAnimationFrame,caf:globalThis.cancelAnimationFrame};
+  globalThis.requestAnimationFrame=cb=>setTimeout(()=>cb(performance.now()),16); globalThis.cancelAnimationFrame=id=>clearTimeout(id);
+  try {
+    await mounted(hash,async(dom)=>run(dom,created),{},dom=>{
+      globalThis.Element=dom.window.Element;
+      dom.window.matchMedia=query=>({matches:reduce&&/reduce/.test(query),media:query,addEventListener(){},removeEventListener(){}});
+      dom.window.Element.prototype.animate=function(keyframes,options){ const a={target:this,keyframes,options,state:'running',finished:new Promise(()=>{}),finish(){this.state='finished';},cancel(){this.state='idle';}}; created.push(a); return a; };
+    });
+  } finally { globalThis.Element=old.Element; globalThis.requestAnimationFrame=old.raf; globalThis.cancelAnimationFrame=old.caf; }
+}
+test('slide entry builds kicker, headline, tiles and footer, and Next during the build completes it at once',async()=>withAnimations('#present/main-01',async(dom,created)=>{
+  const targets=created.map(a=>a.target);
+  const delayOf=selector=>Math.min(...created.filter(a=>a.target.matches(selector)).map(a=>a.options.delay));
+  assert.ok(targets.some(t=>t.matches('.slide-kicker')) && targets.some(t=>t.matches('.deck-word')) && targets.some(t=>t.matches('.deck-slide-foot')));
+  assert.ok(delayOf('.slide-kicker')<delayOf('.deck-word') && delayOf('.deck-word')<delayOf('.deck-kpi') && delayOf('.deck-kpi')<delayOf('.deck-slide-foot'),'build order');
+  const tiles=created.filter(a=>a.target.matches('.deck-kpi'));
+  assert.equal(tiles.length,3); assert.match(tiles[0].keyframes[0].transform,/rotate\(-2\.5deg\)/); assert.match(tiles[1].keyframes[0].transform,/rotate\(2\.5deg\)/);
+  for(const a of created) assert.ok(a.options.delay+a.options.duration<=900,`${a.target.className} ends at ${a.options.delay+a.options.duration} ms`);
+  assert.ok(created.every(a=>a.keyframes.every(k=>Object.keys(k).every(p=>['opacity','transform','transformOrigin','offset','clipPath'].includes(p)))),'only transform, opacity and clip-path animate');
+  const value=document.querySelector('.deck-kpi dd'); assert.match(value.textContent,/^0/,'the lead number counts up from zero');
+  const before=created.length;
+  await act(async()=>button('Next').click());
+  assert.equal(location.hash,'#present/main-02','Next advances immediately');
+  assert.ok(created.slice(0,before).every(a=>a.state==='finished'),'the interrupted build jumped to its final state');
+}));
+test('reduced motion renders every slide in its final state with no animation',async()=>withAnimations('#present/main-01',async(dom,created)=>{
+  const s=data.datasets.summary[0];
+  assert.equal(created.length,0);
+  assert.equal(document.querySelector('.deck-kpi dd').textContent,`${(s.marketing_recent_win_rate*100).toFixed(1)}%`);
+  await act(async()=>button('Next').click());
+  assert.equal(created.length,0); assert.equal(location.hash,'#present/main-02');
+},true));
