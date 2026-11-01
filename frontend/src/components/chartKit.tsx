@@ -1,7 +1,10 @@
 // Shared chart primitives: palette semantics, axis presets, the one tooltip
 // used by every Recharts chart, hover-dimming and the entrance-motion shell.
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactElement, ReactNode } from "react";
+import { DURATION } from "../motion";
+import { useChartEntrance } from "./chartMotion";
+import type { ChoreoOptions } from "./chartMotion";
 
 export const COLORS = {
   ink: "#F7F4F4",
@@ -87,7 +90,8 @@ export function dataEndBar(orientation: "horizontal" | "vertical", radius = 4, r
     const rawW = Number(props.width ?? 0); const rawH = Number(props.height ?? 0);
     const x = Math.min(rawX, rawX + rawW); const w = Math.abs(rawW);
     const y = Math.min(rawY, rawY + rawH); const h = Math.abs(rawH);
-    const common = { fill: props.fill as string | undefined, fillOpacity: props.fillOpacity as number | undefined, stroke: props.stroke as string | undefined, strokeWidth: props.strokeWidth as number | undefined };
+    // data-sign tells the entrance which end is the baseline (diverging bars grow outward from zero).
+    const common = { fill: props.fill as string | undefined, fillOpacity: props.fillOpacity as number | undefined, stroke: props.stroke as string | undefined, strokeWidth: props.strokeWidth as number | undefined, "data-sign": (orientation === "horizontal" ? rawW : rawH) < 0 ? "negative" : "positive" };
     if (!w || !h) return <g />;
     if (!rounded(props)) return <rect x={x} y={y} width={w} height={h} {...common} />;
     if (orientation === "horizontal") {
@@ -176,11 +180,19 @@ export function tooltipContent(build: (datum: Record<string, unknown>, payload: 
   };
 }
 
-/** Shared <Tooltip> props: stays inside the chart box, no lag animation. */
+const reducedMotion = typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/**
+ * Shared <Tooltip> props: stays inside the chart box and glides 120 ms between
+ * categories (instant under reduced motion).  The panel itself fades/slides in
+ * (`.chart-tooltip` keyframes, injected by chartMotion).
+ */
 export const tooltipBase = {
   allowEscapeViewBox: { x: false, y: false },
   wrapperStyle: { outline: "none", zIndex: 6 },
-  isAnimationActive: false,
+  isAnimationActive: !reducedMotion,
+  animationDuration: Math.round(DURATION.instant * 1000),
+  animationEasing: "ease-out",
   offset: 14,
 } as const;
 // ComposedChart draws its cursor as a line, so keep it a faint hairline; charts
@@ -213,17 +225,14 @@ export function useActiveIndex() {
 // Entrance motion
 // ---------------------------------------------------------------------------
 
+/**
+ * Recharts' own tweening stays off: it animates geometry (height, path data),
+ * would replay on data changes and can print half-grown.  The entrance is
+ * choreographed on the final marks by chartMotion (transform, opacity and
+ * stroke-dashoffset only), so these are the only motion props Recharts gets.
+ */
 export interface ChartMotion { isAnimationActive: boolean; animationDuration: number; animationEasing: "ease-out"; onAnimationEnd?: () => void }
 const STILL: ChartMotion = { isAnimationActive: false, animationDuration: 0, animationEasing: "ease-out" };
-const ENTRANCE_MS = 600;
-// Charts that already played their entrance this page session; remounts
-// (filters, reset, Show data toggles) never replay it.
-const played = new Set<string>();
-let anonymousShell = 0;
-
-function prefersReducedMotion() {
-  return typeof window === "undefined" || typeof window.matchMedia !== "function" || window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-}
 
 // ---------------------------------------------------------------------------
 // Full-surface hover target
@@ -271,35 +280,27 @@ function useSurfaceHover(ref: { current: HTMLDivElement | null }) {
 }
 
 /**
- * Chart container.  Pass a render function to receive the motion props for
- * bars: a short ease-out grow only on first mount, only when the chart is on
- * screen and only when reduced motion is not requested.
+ * Chart container.  Renders the final chart in the first commit (print-safe),
+ * then plays a once-per-session entrance the first time it is on screen:
+ * bars grow from their baseline with a per-bar stagger, lines draw in, points
+ * pop by row, reference lines and labels follow, the accent pulses once.
+ * `choreo` names the bar axis ("x" for horizontal bars), stacking and pulse.
+ * A render-function child still receives motion props (always still).
  */
-export function ChartShell({ children, minHeight = 280, part = 0 }: { children: ReactNode | ((motion: ChartMotion) => ReactNode); minHeight?: number; part?: number }) {
+export function ChartShell({ children, minHeight = 280, part = 0, choreo }: { children: ReactNode | ((motion: ChartMotion) => ReactNode); minHeight?: number; part?: number; choreo?: ChoreoOptions }) {
   const ref = useRef<HTMLDivElement>(null);
-  const [motion, setMotion] = useState<ChartMotion | null>(typeof children === "function" ? null : STILL);
   useSurfaceHover(ref);
-  useLayoutEffect(() => {
-    if (motion) return;
-    const element = ref.current;
-    const id = `${element?.closest("[data-chart-id]")?.getAttribute("data-chart-id") ?? `anon-${anonymousShell++}`}:${part}`;
-    const rect = element?.getBoundingClientRect();
-    const onScreen = !!rect && rect.top < window.innerHeight && rect.bottom > 0;
-    const animate = onScreen && !played.has(id) && !prefersReducedMotion();
-    played.add(id);
-    // Once the grow finishes, switch animation off so later data changes
-    // (filters) re-render instantly instead of replaying the transition.
-    setMotion(animate ? { isAnimationActive: true, animationDuration: ENTRANCE_MS, animationEasing: "ease-out", onAnimationEnd: () => setMotion(STILL) } : STILL);
-  }, []);
-  useEffect(() => {
-    if (!motion?.isAnimationActive) return;
-    // Safety net in case the chart never mounts its bars (e.g. empty data).
-    const timer = window.setTimeout(() => setMotion(STILL), ENTRANCE_MS + 4000);
-    return () => window.clearTimeout(timer);
-  }, [motion]);
-  return <div ref={ref} className="chart-stage" style={{ minHeight }} data-motion={motion ? (motion.isAnimationActive ? "enter" : "still") : "pending"}>
-    {motion ? (typeof children === "function" ? children(motion) : children) : null}
+  useChartEntrance(ref, part, "svg", choreo);
+  return <div ref={ref} className="chart-stage" style={{ minHeight }}>
+    {typeof children === "function" ? children(STILL) : children}
   </div>;
+}
+
+/** Wrapper for the HTML charts (heatmaps, ROI rows, meters): the same once-per-session entrance. */
+export function MotionRegion({ children, part = "html", choreo, className, style }: { children: ReactNode; part?: string; choreo?: ChoreoOptions; className?: string; style?: CSSProperties }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useChartEntrance(ref, part, "html", choreo);
+  return <div ref={ref} className={className} style={style}>{children}</div>;
 }
 
 /** Plain-text explanatory line under a chart (limited samples, omissions). */
