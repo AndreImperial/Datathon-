@@ -4,8 +4,7 @@ import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, type Reac
 import { flushSync } from "react-dom";
 import {
   Archive, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, Check, ChevronDown, CircleAlert, Download, ExternalLink,
-  FileText, GitBranch, Info, Menu, MoreHorizontal, Presentation, Printer, RotateCcw, Search, ShieldCheck,
-  Sparkles, TrendingUp, X,
+  FileText, GitBranch, Info, Menu, MoreHorizontal, Presentation, Printer, RotateCcw, LayoutDashboard, Search, TrendingUp, X,
 } from "lucide-react";
 import { gsap } from "gsap";
 import { Flip } from "gsap/Flip";
@@ -98,42 +97,42 @@ type SectionGroup = {
 const groups: SectionGroup[] = [
   {
     id: "essential-group",
-    label: "Essential View",
-    icon: <Sparkles size={16} />,
+    label: "Overview",
+    icon: <LayoutDashboard size={14} />,
     children: [
-      { id: "s-essential", label: "Essential View" },
-      { id: "s-exec", label: "Executive Summary" },
+      { id: "s-essential", label: "Essential view" },
+      { id: "s-exec", label: "Executive summary" },
     ],
   },
   {
     id: "attrib-group",
     label: "Attribution",
-    icon: <GitBranch size={16} />,
-    children: [{ id: "s-attrib", label: "Attribution Analysis" }],
+    icon: <GitBranch size={14} />,
+    children: [{ id: "s-attrib", label: "Attribution analysis" }],
   },
   {
     id: "channel-group",
     label: "Channel ROI",
-    icon: <TrendingUp size={16} />,
+    icon: <TrendingUp size={14} />,
     children: [
-      { id: "s-channel", label: "Channel Performance" },
+      { id: "s-channel", label: "Channel performance" },
       { id: "s-segment", label: "Segment & ICP" },
-      { id: "s-creative", label: "Creative & Email" },
-      { id: "s-budget", label: "Budget Measurement" },
-      { id: "s-advanced", label: "Advanced Analytics" },
+      { id: "s-creative", label: "Creative & email" },
+      { id: "s-budget", label: "Budget measurement" },
+      { id: "s-advanced", label: "Advanced analytics" },
     ],
   },
   {
     id: "appendix-group",
-    label: "Analyst Appendix",
-    icon: <Archive size={16} />,
-    children: [{ id: "s-appendix", label: "Case Deliverable Coverage" }],
+    label: "Analyst appendix",
+    icon: <Archive size={14} />,
+    children: [{ id: "s-appendix", label: "Case deliverable coverage" }],
   },
   {
     id: "recommendation-group",
     label: "Recommendation",
-    icon: <Check size={16} />,
-    children: [{ id: "s-conclusion", label: "Conclusion & Action Plan" }],
+    icon: <Check size={14} />,
+    children: [{ id: "s-conclusion", label: "Conclusion & action plan" }],
   },
 ];
 
@@ -142,7 +141,6 @@ const groups: SectionGroup[] = [
 // groups retain the separately locked primary-navigation order above.
 const sectionOrder: SectionId[] = [...REQUIRED_SECTION_IDS];
 const sectionLabel = (id: SectionId) => groups.flatMap((group) => group.children).find((child) => child.id === id)?.label ?? id;
-const sectionGroupLabel = (id: SectionId) => groups.find((group) => group.children.some((child) => child.id === id))?.label ?? "";
 
 /**
  * Headline findings from the current case analysis (schema v3). The legacy v2
@@ -599,7 +597,7 @@ function ChartCard({ id, metadata, data, totalPipeline, coverageMix, presenting 
         {caveat ? <p className="chart-caveat"><CircleAlert size={13} aria-hidden="true" /><span><span className="sr-only">Caveat: </span>{caveat}</span></p> : <span />}
         {info && <button type="button" className="text-button" aria-expanded={details} aria-controls={explanationId} onClick={() => setDetails((value) => !value)}>{details ? "Hide explanation" : "What this shows"}<span className="sr-only">: {title}</span><ChevronDown className={details ? "rotate" : ""} size={14} aria-hidden="true" /></button>}
       </div>
-      {info && details && <FadeIn className="explanation-body" id={explanationId}><p>{resolveCopy(info.body, data)}</p><div className="insight"><Sparkles size={14} aria-hidden="true" />{interpolate(resolveCopy(info.insight, data), data)}</div></FadeIn>}
+      {info && details && <FadeIn className="explanation-body" id={explanationId}><p>{resolveCopy(info.body, data)}</p><div className="insight">{interpolate(resolveCopy(info.insight, data), data)}</div></FadeIn>}
     </div>}
     {table && <FadeIn className="chart-data-swap"><DataTable id={tableId} rows={chartRows} label={`${title} data`} provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: metadata?.source_dataset ?? "Unavailable", scope: subtitle, methodology: data.meta.methodology, caveat: metadata?.caveat ?? "" }} /></FadeIn>}
     {presenting && <span className="presentation-mark" aria-hidden="true">Evidence</span>}
@@ -615,10 +613,9 @@ function SectionIntro({ id, data, story }: { id: SectionId; data: DashboardData;
   const item = sectionCopy(id, data, story);
   const [label, ...rest] = item.takeaway.split(":");
   const position = sectionOrder.indexOf(id) + 1;
-  const group = sectionGroupLabel(id);
-  const sectionName = sectionLabel(id);
   const stage = arcStage[id];
-  return <><div className="section-heading"><div className="section-title-block"><span className="section-eyebrow"><span className="section-index"><span className="sr-only">Section </span>{String(position).padStart(2, "0")}<span className="sr-only"> of {sectionOrder.length}</span><span aria-hidden="true"> / {String(sectionOrder.length).padStart(2, "0")}</span></span><span className={`arc-stage arc-${stage.toLowerCase().replace(" ", "-")}`}>{stage}</span><span className="section-topic">{group && group !== sectionName ? `${group} · ${sectionName}` : sectionName}</span></span><h2>{item.title}</h2></div><p>{item.description}</p></div><div className="section-takeaway"><div className="takeaway-copy"><strong>{label}:</strong><span>{rest.join(":")}</span></div></div></>;
+  // The topbar already names the group and section; the eyebrow only places the section in the story.
+  return <><div className="section-heading"><div className="section-title-block"><span className="section-eyebrow"><span className="section-index"><span className="sr-only">Section </span>{String(position).padStart(2, "0")}<span className="sr-only"> of {sectionOrder.length}</span><span aria-hidden="true"> / {String(sectionOrder.length).padStart(2, "0")}</span></span><span className={`arc-stage arc-${stage.toLowerCase().replace(" ", "-")}`}>{stage}</span></span><h2>{item.title}</h2></div><p>{item.description}</p></div><div className="section-takeaway"><div className="takeaway-copy"><strong>{label}:</strong><span>{rest.join(":")}</span></div></div></>;
 }
 
 /** Method notes stay one click away instead of standing between a title and its evidence. */
@@ -639,9 +636,25 @@ function LatestFindings({ brief, data }: { brief: LatestBrief; data: DashboardDa
   if (withdrawnCaveat) tiles.push({ key: "model", label: "Win-probability model", value: "Withdrawn", context: <>Holdout was near chance, so no deal scores are published</>, status: "Not used", tone: "neutral" });
   if (!tiles.length) return null;
   return <section className="latest-findings" aria-labelledby="latest-findings-title">
-    <div className="latest-findings-head"><div><span className="latest-kicker">Evidence{brief.methodVersion && ` · ${brief.methodVersion}`}</span><h2 id="latest-findings-title">{countWord(tiles.length)} finding{tiles.length === 1 ? "" : "s"} behind the decision</h2></div><a className="text-button latest-deck-link" href="#present/main-01">Walk through the findings deck <ArrowRight size={14} aria-hidden="true" /></a></div>
+    <div className="latest-findings-head"><div><h2 id="latest-findings-title">{countWord(tiles.length)} finding{tiles.length === 1 ? "" : "s"} behind the decision</h2></div><a className="text-button latest-deck-link" href="#present/main-01">Walk through the findings deck <ArrowRight size={14} aria-hidden="true" /></a></div>
     <dl className="latest-findings-grid">{tiles.map((tile) => <div key={tile.key} className={`latest-tile tone-${tile.tone}`}><dt>{tile.label}</dt><dd className="latest-value">{tile.value}</dd><dd className="latest-context">{tile.context}</dd><dd className="latest-status">{tile.status}</dd></div>)}</dl>
   </section>;
+}
+
+/**
+ * The product-demo slot beside the big idea: a sized container at the
+ * stageshow "hero beside copy" proportions (720 × 340 on desktop, full width
+ * under the copy below ~1100 px, 358 × 320 on phones). <ProductHero/> mounts
+ * here in place of the placeholder; the slot itself paints nothing, so the
+ * stage sits on the page with no plate behind it.
+ */
+function HeroStageSlot() {
+  return <div className="hero-stage-slot" data-hero-slot>
+    <div className="hero-stage-placeholder" aria-hidden="true">
+      <span className="hero-stage-chrome"><i /><i /><i /></span>
+      <span className="hero-stage-rows">{[62, 46, 70, 52].map((width) => <i key={width} style={{ width: `${width}%` }} />)}</span>
+    </div>
+  </div>;
 }
 
 function SectionPager({ active, onOpen }: { active: SectionId; onOpen: (id: SectionId) => void }) {
@@ -650,7 +663,7 @@ function SectionPager({ active, onOpen }: { active: SectionId; onOpen: (id: Sect
   const next = index < sectionOrder.length - 1 ? sectionOrder[index + 1] : undefined;
   const link = (id: SectionId, direction: "previous" | "next") => <a className={`pager-link pager-${direction}`} href={`#${id}`} onClick={(event) => { event.preventDefault(); onOpen(id); }} aria-keyshortcuts={direction === "next" ? "]" : "["}>
     {direction === "previous" && <ArrowLeft size={16} aria-hidden="true" />}
-    <span><small>{direction === "previous" ? "Previous" : "Next"} · {String(sectionOrder.indexOf(id) + 1).padStart(2, "0")} · {arcStage[id]}</small><strong>{sectionLabel(id)}</strong></span>
+    <span><small>{direction === "previous" ? "Previous" : "Next"} · {arcStage[id]}</small><strong>{sectionLabel(id)}</strong></span>
     {direction === "next" && <ArrowRight size={16} aria-hidden="true" />}
   </a>;
   return <nav className="section-pager" aria-label="Section pagination">
@@ -662,7 +675,7 @@ function SectionPager({ active, onOpen }: { active: SectionId; onOpen: (id: Sect
 
 function DashboardSkeleton() {
   return <div className="app-shell skeleton-shell" aria-busy="true">
-    <aside className="sidebar skeleton-sidebar" aria-hidden="true"><div className="brand"><span>RC</span><div><strong>Revenue Command</strong><small>Decision analytics</small></div></div>{Array.from({ length: 9 }, (_, index) => <i key={index} className="sk sk-nav" />)}</aside>
+    <aside className="sidebar skeleton-sidebar" aria-hidden="true"><div className="brand"><strong>Revenue Command</strong></div>{Array.from({ length: 9 }, (_, index) => <i key={index} className="sk sk-nav" />)}</aside>
     <main id="main-content" className="skeleton-main"><header className="topbar"><div><h1>Revenue Command Center</h1><span className="top-context" role="status">Loading validated evidence…</span></div></header>
       <div className="skeleton-body" aria-hidden="true">
         <div className="sk sk-hero" />
@@ -690,7 +703,7 @@ function AttributionSensitivityPanel({ data }: { data: DashboardData }) {
 
 function PriorityGrid({ data, onOpen }: { data: DashboardData; onOpen: (id: SectionId) => void }) {
   return <aside className="action-queue" aria-label="Recommended action queue">
-    <div className="action-queue-head"><div><h3>The next three decisions</h3><span>Owners and measures in the ask</span></div><a className="text-button" href="#s-conclusion" onClick={(event) => { event.preventDefault(); onOpen("s-conclusion"); }}>Go to the ask <ArrowRight size={13} aria-hidden="true" /></a></div>
+    <div className="action-queue-head"><h3>The next three decisions</h3><a className="text-button" href="#s-conclusion" onClick={(event) => { event.preventDefault(); onOpen("s-conclusion"); }}>Go to the ask <ArrowRight size={13} aria-hidden="true" /></a></div>
     <article className="action-row"><span className="action-sequence">01</span><div><span className="priority-tag red">Protect the base</span><h4>Diagnose conversion quality</h4><p>Among cohorts at least 80% resolved, closed-deal win rate moved from {metric(data, "cohort_start_win_rate")} to {metric(data, "cohort_end_win_rate")}. Review ICP, qualification, and loss reasons before increasing broad spend.</p></div></article>
     <article className="action-row"><span className="action-sequence">02</span><div><span className="priority-tag muted">Create the test</span><h4>Build an eligible coverage cohort</h4><p>{metric(data, "unreached_accounts")} CRM account domains, or {metric(data, "unreached_pct")}, have no tracked email or 6sense touch. Prioritize strong-fit accounts and retain a holdout.</p></div></article>
     <article className="action-row"><span className="action-sequence">03</span><div><span className="priority-tag muted">Earn the scale</span><h4>Fund measurement before expansion</h4><p>Use the tracked budget to run a controlled test. Scale only if treatment creates incremental qualified pipeline.</p></div></article>
@@ -700,7 +713,7 @@ function PriorityGrid({ data, onOpen }: { data: DashboardData; onOpen: (id: Sect
 function QualityTape({ data }: { data: DashboardData }) {
   const metrics = data.context.metrics;
   return <section className="quality-tape" aria-label="Evidence quality status">
-    <div className="quality-tape-head"><span>Evidence quality</span><strong>Decision constraints</strong></div>
+    <div className="quality-tape-head"><h3>Evidence quality</h3></div>
     <div className="quality-tape-grid">
       <div><span>Domain match</span><strong>{metrics.domain_match_rate}</strong><Progress label="Domain match" value={parseFloat(metrics.domain_match_rate) || 0} tone="teal" /></div>
       <div><span>Missing create dates</span><strong>{metrics.missing_create_dates}</strong><span className="quality-count">records with no create date</span></div>
@@ -761,25 +774,29 @@ function EvidenceTable({ title, columns, rows, note }: { title: string; columns:
 
 function AttributionTable({ data }: { data: DashboardData }) {
   const table = data.tables.attribution_models;
-  return <EvidenceTable title="Full Attribution Table - All Models Side by Side" note="Every channel across every model in one place. The last column identifies the largest-credit model descriptively; it is not a model recommendation." columns={table.columns} rows={contractRows(table)} />;
+  return <EvidenceTable title="Attribution credit by channel, all models" note="Every channel across every model in one place. The last column identifies the largest-credit model descriptively; it is not a model recommendation." columns={table.columns} rows={contractRows(table)} />;
 }
 
 function EssentialSection({ data, metadata, presenting, totalPipeline, coverageMix, resetToken, story, onOpen }: SectionProps) {
   const chartProps = { data, presenting, totalPipeline, coverageMix };
   const plan = data.tables.essential_action_plan;
   return <section id="s-essential" className="dashboard-section essential-section"><SectionIntro id="s-essential" data={data} story={story} />
+    {/* Two balanced columns, so neither leaves a void under a short card: the
+        tension (conversion trend) leads the wide column with the audience below
+        it; the narrow column carries what marketing contributes, the next
+        decisions and the evidence limits. */}
     <div className="command-canvas">
       <div className="command-evidence">
-        <div className="command-chart-pair">
-          {/* Tension first: the conversion trend, then what marketing contributes. */}
-          <ChartCard key={`c-essential-cohort-${resetToken}`} id="c-essential-cohort" metadata={metadata.get("c-essential-cohort")} {...chartProps} />
-          <ChartCard key={`c-essential-contribution-${resetToken}`} id="c-essential-contribution" metadata={metadata.get("c-essential-contribution")} {...chartProps} />
-        </div>
+        <ChartCard key={`c-essential-cohort-${resetToken}`} id="c-essential-cohort" metadata={metadata.get("c-essential-cohort")} {...chartProps} />
         <ChartCard key={`c-essential-coverage-${resetToken}`} id="c-essential-coverage" metadata={metadata.get("c-essential-coverage")} {...chartProps} />
       </div>
-      <div className="command-rail"><PriorityGrid data={data} onOpen={onOpen} /><QualityTape data={data} /></div>
+      <div className="command-rail">
+        <ChartCard key={`c-essential-contribution-${resetToken}`} id="c-essential-contribution" metadata={metadata.get("c-essential-contribution")} {...chartProps} />
+        <PriorityGrid data={data} onOpen={onOpen} />
+        <QualityTape data={data} />
+      </div>
     </div>
-    <EvidenceDetails title="Essential action plan: why and next step" count={plan.rows.length}><EvidenceTable title="Essential Action Plan" columns={plan.columns} rows={contractRows(plan)} /></EvidenceDetails>
+    <EvidenceDetails title="Essential action plan: why and next step" count={plan.rows.length}><EvidenceTable title="Essential action plan" columns={plan.columns} rows={contractRows(plan)} /></EvidenceDetails>
   </section>;
 }
 
@@ -841,7 +858,7 @@ function ChannelSection({ data, metadata, presenting, totalPipeline, coverageMix
     {brief && <SourceScorecard brief={brief} />}
     <ChartGrid ids={["c-spend-pipeline", "c-funnel"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} />
     <EvidenceGrid items={[{ label: "Recorded outcome", title: "Relationship-led revenue is the strongest base", body: <>Existing-client and referral sources lead recorded won outcomes, so the current revenue story is broader than paid media.</>, tone: "high" }, { label: "Acquisition role", title: "Marketing channels build net-new pipeline", body: <>Judge acquisition channels through pipeline creation, later conversion and time-to-close together.</>, tone: "medium" }, { label: "Decision gate", title: "Separate quality from volume", body: <>Increase spend only when added reach creates incremental qualified opportunities, not simply more activity.</>, tone: "directional" }]} />
-    <EvidenceTable title="Channel ROI Summary Table" note="Multiples = same-period recorded sourced pipeline or won amount / tracked spend. Channels without measured media spend remain unavailable rather than being assigned a zero-cost return." columns={table.columns} rows={rows} />
+    <EvidenceTable title="Channel ROI summary" note="Multiples = same-period recorded sourced pipeline or won amount / tracked spend. Channels without measured media spend remain unavailable rather than being assigned a zero-cost return." columns={table.columns} rows={rows} />
     <EvidenceDetails title="Period-matched efficiency inputs and observation windows" count={efficiencyRows.length}><DataTable id="period-matched-efficiency" provenance={{ snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: "channel_pipeline", scope: data.meta.period, methodology: data.meta.methodology }} label="Period-matched efficiency inputs and observation windows" rows={efficiencyRows} hideKeys={ratioDefinition ? ["ratio_definition"] : []} note={ratioDefinition ? <>Ratio definition: {ratioDefinition}.</> : undefined} isEmptyRow={(row) => Object.entries(row).every(([key, value]) => efficiencyLabelKeys.includes(key) || isMissing(value))} emptyRowNoun="channels" /></EvidenceDetails>
     <ReadingNote><strong>Decision use:</strong> multiples compare same-period recorded CRM-sourced pipeline or won amount with tracked ad spend. {(() => { const tracked = trackedSpendChannels(data).length; return tracked ? `Only ${countWord(tracked).toLowerCase()} paid channel${tracked === 1 ? " has" : "s have"} tracked spend, so treat` : "No paid channel has tracked spend, so treat"; })()} these as diagnostic efficiency ratios, not an incremental ROI ranking. <strong>Avg Deal</strong> uses opportunities with a populated amount.</ReadingNote>
   </section>;
@@ -980,13 +997,13 @@ function AdvancedSection({ data, metadata, presenting, totalPipeline, coverageMi
 
 function AppendixSection({ data, story, onOpen }: SectionProps) {
   const cards: Array<{ id: SectionId; label: string; title: string; body: string }> = [
-    { id: "s-exec", label: "Context", title: "Executive Summary", body: "Top-line pipeline, won revenue and monthly trend views." },
+    { id: "s-exec", label: "Context", title: "Executive summary", body: "Top-line pipeline, won revenue and monthly trend views." },
     { id: "s-segment", label: "Targeting", title: "Segment & ICP", body: "Segment, industry and ICP evidence for account prioritization." },
-    { id: "s-creative", label: "Engagement", title: "Creative & Email", body: "Creative CTR and email engagement detail for messaging decisions." },
-    { id: "s-budget", label: "Planning", title: "Budget Scenarios", body: "Test sizing and budget-neutral holdout scenarios." },
-    { id: "s-advanced", label: "Diagnostics", title: "Advanced Analytics", body: "Account coverage, deal velocity, journey and targeting matrix detail." },
+    { id: "s-creative", label: "Engagement", title: "Creative & email", body: "Creative CTR and email engagement detail for messaging decisions." },
+    { id: "s-budget", label: "Planning", title: "Budget scenarios", body: "Test sizing and budget-neutral holdout scenarios." },
+    { id: "s-advanced", label: "Diagnostics", title: "Advanced analytics", body: "Account coverage, deal velocity, journey and targeting matrix detail." },
   ];
-  return <section id="s-appendix" className="dashboard-section"><SectionIntro id="s-appendix" data={data} story={story} /><div className="appendix-grid">{cards.map((card) => <article className="appendix-card" key={card.id}><span className="priority-tag muted">{card.label}</span><h3>{card.title}</h3><p>{card.body}</p><button type="button" className="button button-small" onClick={() => onOpen(card.id)}>Open evidence <ArrowRight size={14} /></button></article>)}</div><EvidenceTable title="Case Deliverable Coverage" columns={data.tables.case_deliverable_coverage.columns} rows={contractRows(data.tables.case_deliverable_coverage)} /></section>;
+  return <section id="s-appendix" className="dashboard-section"><SectionIntro id="s-appendix" data={data} story={story} /><div className="appendix-grid">{cards.map((card) => <article className="appendix-card" key={card.id}><span className="appendix-label">{card.label}</span><h3>{card.title}</h3><p>{card.body}</p><button type="button" className="text-button appendix-open" onClick={() => onOpen(card.id)}>Open<span className="sr-only"> {card.title}</span> <ArrowRight size={14} aria-hidden="true" /></button></article>)}</div><EvidenceTable title="Case deliverable coverage" columns={data.tables.case_deliverable_coverage.columns} rows={contractRows(data.tables.case_deliverable_coverage)} /></section>;
 }
 
 /** The three decisions the big idea needs: fix conversion, prove reach, record value. */
@@ -1035,9 +1052,9 @@ function ConclusionSection({ data, brief, story }: SectionProps) {
     <div className="ask-links"><a className="button button-primary" href="#present/main-16"><Presentation size={15} aria-hidden="true" /> Present the decisions</a><a className="button" href="#present/main-14">Experiment design slide <ArrowRight size={14} aria-hidden="true" /></a></div>
     <EvidenceDetails title="Supporting tables: decision confidence and full action plan" count={confidenceTable.rows.length + actionsTable.rows.length}>
       <div className="details-stack">
-        <EvidenceTable title="Decision Confidence" note="This separates what the data directly supports from what remains an association or testable hypothesis." columns={confidenceTable.columns} rows={contractRows(confidenceTable)} />
+        <EvidenceTable title="Decision confidence" note="This separates what the data directly supports from what remains an association or testable hypothesis." columns={confidenceTable.columns} rows={contractRows(confidenceTable)} />
         <EvidenceGrid items={[{ label: "Observed", body: <>Recorded pipeline, won amount, account coverage and mature-cohort win-rate movement are directly measurable.</>, tone: "high" }, { label: "Associated", body: <>Marketing touches and reached-account outcomes move together in the observed data, but selection and sales activity may explain part of the pattern.</>, tone: "medium" }, { label: "Requires a test", body: <>Incremental channel lift, creative causality and budget scaling require holdouts or phased experiments.</>, tone: "directional" }]} />
-        <EvidenceTable title="CMO Action Plan" note="Each row connects the evidence to an action and the metric that decides whether it continues." columns={actionsTable.columns} rows={actionRows} />
+        <EvidenceTable title="CMO action plan" note="Each row connects the evidence to an action and the metric that decides whether it continues." columns={actionsTable.columns} rows={actionRows} />
       </div>
     </EvidenceDetails>
   </section>;
@@ -1420,17 +1437,17 @@ function LegacyDashboard() {
 
   return <div ref={root} className="app-shell">
     {/* A div, not <aside>: ARIA forbids role="dialog" on <aside>. Closed it is the complementary landmark; open (mobile) it is a modal dialog. */}
-    <div id="dashboard-navigation" className={`sidebar ${menuOpen ? "is-open" : ""}`} role={menuOpen ? "dialog" : "complementary"} aria-label="Dashboard sections" aria-modal={menuOpen ? "true" : undefined}><div className="brand"><span>RC</span><div><strong>Revenue Command</strong><small>Decision analytics · {data.meta.period}</small></div></div><button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button><div className="nav-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a section" aria-label="Search dashboard sections" />{search && <button type="button" aria-label="Clear section search" onClick={() => setSearch("")}><X size={14} /></button>}</div><div className={`section-nav-scroll${navMore ? " has-more" : ""}`}><nav ref={sectionNav} className="section-nav" aria-label="Section navigation">{filteredGroups.map((group) => <div className="nav-group" key={group.id}><div className="nav-group-label">{group.icon}<span>{group.label}</span></div>{group.children.map((item) => <a key={item.id} href={`#${item.id}`} className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={(event) => { event.preventDefault(); openSection(item.id); }}><span>{item.label}</span>{active === item.id && <AnimatedNavIndicator />}</a>)}</div>)}</nav><span className="nav-more-cue" aria-hidden="true"><ChevronDown size={13} />More sections</span></div>{search.trim() && !hasSearchResults && <p className="nav-empty" role="status">No sections match “{search}”.</p>}<a className="legacy-link" href={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}full-analysis/`}><ExternalLink size={15} /><span><strong>Full analysis archive</strong><small>Original Plotly reference</small></span></a><div className="sidebar-note"><ShieldCheck size={16} /><span>Validated Parquet evidence<br />Schema v{data.schema_version}</span></div></div>{menuOpen && <button type="button" className="nav-backdrop" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation" />}
+    <div id="dashboard-navigation" className={`sidebar ${menuOpen ? "is-open" : ""}`} role={menuOpen ? "dialog" : "complementary"} aria-label="Dashboard sections" aria-modal={menuOpen ? "true" : undefined}><div className="brand"><strong>Revenue Command</strong></div><button ref={closeButton} className="sidebar-close" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation"><X /></button><div className="nav-search"><Search size={14} /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Find a section" aria-label="Search dashboard sections" />{search && <button type="button" aria-label="Clear section search" onClick={() => setSearch("")}><X size={14} /></button>}</div><div className={`section-nav-scroll${navMore ? " has-more" : ""}`}><nav ref={sectionNav} className="section-nav" aria-label="Section navigation">{filteredGroups.map((group) => <div className="nav-group" key={group.id}><div className="nav-group-label">{group.icon}<span>{group.label}</span></div>{group.children.map((item) => <a key={item.id} href={`#${item.id}`} className={active === item.id ? "is-active" : ""} aria-current={active === item.id ? "page" : undefined} onClick={(event) => { event.preventDefault(); openSection(item.id); }}><span>{item.label}</span>{active === item.id && <AnimatedNavIndicator />}</a>)}</div>)}</nav><span className="nav-more-cue" aria-hidden="true"><ChevronDown size={13} />More sections</span></div>{search.trim() && !hasSearchResults && <p className="nav-empty" role="status">No sections match “{search}”.</p>}<a className="legacy-link" href={`${(import.meta as unknown as { env: { BASE_URL: string } }).env.BASE_URL}full-analysis/`}><ExternalLink size={14} /><span>Full analysis archive</span></a></div>{menuOpen && <button type="button" className="nav-backdrop" onClick={() => { setMenuOpen(false); menuButton.current?.focus(); }} aria-label="Close navigation" />}
       <main id="main-content" tabIndex={-1}><header className="topbar"><div className="topbar-left"><button ref={menuButton} className="mobile-menu" onClick={() => setMenuOpen(true)} aria-label="Open navigation" aria-expanded={menuOpen} aria-controls="dashboard-navigation"><Menu size={18} /></button><div><h1>Revenue Command<span className="wide-title"> Center</span></h1><span className="top-context">{activeGroup && activeSection && activeSection.label !== activeGroup.label ? `${activeGroup.label} / ${activeSection.label}` : activeSection?.label ?? activeGroup?.label ?? "Dashboard"} · {data.meta.period}<span className="context-refresh"> · {refreshed} · {metrics.total_opportunities} opportunities</span></span></div></div><div className="top-actions"><span className="validated"><span className="status-dot motion-breathe" aria-hidden="true" /> Validated snapshot</span><button ref={caveatsTrigger} className="action-button" type="button" title="View data caveats" onClick={() => setCaveatsOpen(true)} aria-haspopup="dialog" aria-expanded={caveatsOpen}><Info size={15} /> Caveats</button><button className="action-button utility-export" type="button" title="Export all evidence" onClick={() => downloadEvidence(data)}><Download size={15} /> Export</button><button className="action-button utility-print" type="button" title="Print all dashboard sections" onClick={() => { printAllSections(); }}><Printer size={15} /> Print</button><a className="action-button browser-deck-link" href="#present/main-01" title="Open the browser findings deck"><Presentation size={15} /> Findings deck</a><button className={`mode-button ${presenting ? "active" : ""}`} type="button" title={presenting ? "Switch to analyst mode" : "Switch to presentation mode"} onClick={togglePresentation} aria-pressed={presenting}><Presentation size={15} /> {presenting ? "Analyst mode" : "Presentation mode"}</button><button className="icon-button utility-reset" type="button" onClick={() => { setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }} title="Reset dashboard" aria-label="Reset dashboard"><RotateCcw size={16} /></button><div ref={utilityMenu} className="utility-menu-wrap"><button ref={utilityTrigger} className="icon-button utility-more" type="button" aria-label="More dashboard actions" aria-haspopup={undefined} aria-expanded={utilityOpen} aria-controls="utility-menu" onClick={() => setUtilityOpen((value) => !value)}><MoreHorizontal size={18} /></button>{utilityOpen && <div id="utility-menu" className="utility-menu-popover" role="group" aria-label="Dashboard actions"><button type="button"  onClick={() => { downloadEvidence(data); setUtilityOpen(false); }}><Download size={16} /><span><strong>Export evidence</strong><small>Download the full validated dataset</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); printAllSections(); }}><Printer size={16} /><span><strong>Print dashboard</strong><small>Prepare every section for print</small></span></button><button type="button"  aria-pressed={presenting} onClick={() => { togglePresentation(); setUtilityOpen(false); }}><Presentation size={16} /><span><strong>{presenting ? "Analyst mode" : "Presentation mode"}</strong><small>{presenting ? "Restore the working layout" : "Expand the executive canvas"}</small></span></button><button type="button"  onClick={() => { setUtilityOpen(false); setPresenting(false); setSearch(""); setMenuOpen(false); setCaveatsOpen(false); setPrintAll(false); setResetToken((value) => value + 1); openSection("s-essential"); }}><RotateCcw size={16} /><span><strong>Reset dashboard</strong><small>Return to the essential view</small></span></button></div>}</div></div></header>
       {/* The conclusion restates the big idea in its own hero, so the compact strip would only repeat it. */}
-      {active === "s-conclusion" && !printAll ? null : active !== "s-essential" && !printAll ? <section className="command-strip is-compact" aria-label="The big idea"><div className="command-decision"><h2>{BIG_IDEA}</h2></div><dl className="command-inline-kpis"><div><dt>Pipeline</dt><dd>{metrics.total_pipeline}</dd></div><div><dt>Won</dt><dd>{metrics.won_revenue}</dd></div><div><dt>Win rate</dt><dd>{metrics.closed_deal_win_rate}</dd></div></dl></section> : <section className="command-strip" aria-label="The big idea"><div className="command-decision"><span>The big idea</span><h2>{BIG_IDEA}</h2><p>{bigIdeaSupport(data, story)}</p></div><dl className="command-kpis"><div><dt>Recorded pipeline</dt><dd className="kpi-value">{metrics.total_pipeline}</dd><dd className="kpi-context">{metrics.total_opportunities} opportunities, {metrics.data_year_range}</dd></div>{story.openPipeline ? <div><dt>Still open</dt><dd className="kpi-value">{story.openPipeline}</dd><dd className="kpi-context">The rest is already resolved</dd></div> : null}<div><dt>Recorded won</dt><dd className="kpi-value">{metrics.won_revenue}</dd><dd className="kpi-context">{metrics.closed_deal_win_rate} resolved win rate</dd></div><div><dt>Marketing-sourced</dt><dd className="kpi-value">{metrics.marketing_sourced_pipeline}</dd><dd className="kpi-context">{metrics.marketing_sourced_share} of recorded pipeline</dd></div>{story.openPipeline ? null : <div><dt>Marketing-linked</dt><dd className="kpi-value">{metrics.marketing_influenced_pipeline}</dd><dd className="kpi-context">{metrics.attribution_linked_won_share} of wins linked</dd></div>}</dl></section>}
+      {active === "s-conclusion" && !printAll ? null : active !== "s-essential" && !printAll ? <section className="command-strip is-compact" aria-label="The big idea"><div className="command-decision"><h2>{BIG_IDEA}</h2></div><dl className="command-inline-kpis"><div><dt>Pipeline</dt><dd>{metrics.total_pipeline}</dd></div><div><dt>Won</dt><dd>{metrics.won_revenue}</dd></div><div><dt>Win rate</dt><dd>{metrics.closed_deal_win_rate}</dd></div></dl></section> : <section className="command-strip" aria-label="The big idea"><div className="command-decision"><span>The big idea</span><h2>{BIG_IDEA}</h2><p>{bigIdeaSupport(data, story)}</p></div><HeroStageSlot /><dl className="command-kpis"><div><dt>Recorded pipeline</dt><dd className="kpi-value">{metrics.total_pipeline}</dd><dd className="kpi-context">{metrics.total_opportunities} opportunities, {metrics.data_year_range}</dd></div>{story.openPipeline ? <div><dt>Still open</dt><dd className="kpi-value">{story.openPipeline}</dd><dd className="kpi-context">The rest is already resolved</dd></div> : null}<div><dt>Recorded won</dt><dd className="kpi-value">{metrics.won_revenue}</dd><dd className="kpi-context">{metrics.closed_deal_win_rate} resolved win rate</dd></div><div><dt>Marketing-sourced</dt><dd className="kpi-value">{metrics.marketing_sourced_pipeline}</dd><dd className="kpi-context">{metrics.marketing_sourced_share} of recorded pipeline</dd></div>{story.openPipeline ? null : <div><dt>Marketing-linked</dt><dd className="kpi-value">{metrics.marketing_influenced_pipeline}</dd><dd className="kpi-context">{metrics.attribution_linked_won_share} of wins linked</dd></div>}</dl></section>}
       {(active === "s-essential" || printAll) && <ArcStrip data={data} story={story} onOpen={openSection} />}
       {(active === "s-essential" || printAll) && brief && <LatestFindings brief={brief} data={data} />}
       <div className="progress-rail" role="progressbar" aria-label="Story progress" aria-valuemin={1} aria-valuemax={sectionOrder.length} aria-valuenow={sectionOrder.indexOf(active) + 1} aria-valuetext={`Section ${sectionOrder.indexOf(active) + 1} of ${sectionOrder.length}`}><span style={{ width: "100%", transform: `scaleX(${(sectionOrder.indexOf(active) + 1) / sectionOrder.length})`, transformOrigin: "left center" }} /></div>
       <div className={`section-viewport ${printAll ? "print-all" : ""}`}>{printAll ? sectionOrder.map((id) => <div className="print-section" key={id}>{renderSection(id)}</div>) : <>{renderSection(active)}<SectionPager active={active} onOpen={openSection} /></>}</div>
-      <footer><div className="footer-id"><strong>Marketing Analytics Decision System</strong><span>{refreshed}{data.meta.snapshot_id ? ` · Snapshot ${data.meta.snapshot_id}` : ""} · Schema v{data.schema_version}</span></div><p><span className="footer-label">Source</span> {data.meta.generated_from} · {data.meta.methodology}</p><button type="button" className={`text-button back-to-top${scrolled ? " is-visible" : ""}`} onClick={() => { window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); document.querySelector<HTMLElement>("#main-content")?.focus({ preventScroll: true }); }}><ArrowUp size={14} aria-hidden="true" /> Back to top</button></footer>
+      <footer><div className="footer-id"><strong>Marketing Analytics Decision System</strong><span>{refreshed}{data.meta.snapshot_id ? ` · Snapshot ${data.meta.snapshot_id}` : ""} · Schema v{data.schema_version}{brief?.methodVersion ? ` · Method ${brief.methodVersion}` : ""}</span></div><p><span className="footer-label">Source</span> {data.meta.generated_from} · {data.meta.methodology}</p><button type="button" className={`text-button back-to-top${scrolled ? " is-visible" : ""}`} onClick={() => { window.scrollTo({ top: 0, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" }); document.querySelector<HTMLElement>("#main-content")?.focus({ preventScroll: true }); }}><ArrowUp size={14} aria-hidden="true" /> Back to top</button></footer>
     </main>
-    {caveatsOpen && <><button type="button" tabIndex={-1} className="drawer-backdrop" aria-hidden="true" aria-label="Close caveats" onClick={() => setCaveatsOpen(false)} /><aside className="caveats-drawer" role="dialog" aria-modal="true" aria-labelledby="caveats-title"><div className="drawer-head"><h2 id="caveats-title">Data Caveats</h2><button ref={caveatsClose} type="button" className="icon-button" onClick={() => setCaveatsOpen(false)} aria-label="Close caveats"><X size={17} /></button></div><p>These constraints stay visible because they change what the dashboard can safely claim.</p><ul>{data.context.caveats.map((caveat) => <li key={caveat}>{caveat}</li>)}</ul><div className="drawer-source"><strong>Methodology</strong><span>{data.meta.methodology}</span></div></aside></>}
+    {caveatsOpen && <><button type="button" tabIndex={-1} className="drawer-backdrop" aria-hidden="true" aria-label="Close caveats" onClick={() => setCaveatsOpen(false)} /><aside className="caveats-drawer" role="dialog" aria-modal="true" aria-labelledby="caveats-title"><div className="drawer-head"><h2 id="caveats-title">Data caveats</h2><button ref={caveatsClose} type="button" className="icon-button" onClick={() => setCaveatsOpen(false)} aria-label="Close caveats"><X size={17} /></button></div><p>These constraints stay visible because they change what the dashboard can safely claim.</p><ul>{data.context.caveats.map((caveat) => <li key={caveat}>{caveat}</li>)}</ul><div className="drawer-source"><strong>Methodology</strong><span>{data.meta.methodology}</span></div></aside></>}
   </div>;
 }
 
