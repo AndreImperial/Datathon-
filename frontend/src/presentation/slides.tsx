@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 
-import { TableProperties, X } from "lucide-react";
+import { TableProperties, X } from "../icons";
 
 import type { CaseSlide, CaseStudyData } from "../types";
 import { columnLabel, formatDollarsCompact, formatField, formatMonthYear } from "../evidence";

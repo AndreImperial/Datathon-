@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 103 checks — 103 pass (22 of them after fixes), 0 fail.**
+**Result: 108 checks — 108 pass (25 of them after fixes), 0 fail.**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -183,6 +183,16 @@ Verified on the merged build (restyle, hero and v1.1.0 motion together).
 | M4 | Hashed build assets are cached; pages revalidate | PASS | Flask sends `public, max-age=31536000, immutable` for `/assets/*` and `no-cache` elsewhere, plus `nosniff` and a referrer policy; covered by `tests/test_app.py` |
 | M5 | No regressions | PASS | axe-core 0 (dashboard 20 views, deck 24 pages); CLS 0; 0 console errors; entrance settles in 1.27 s; reduced-motion first frame equals final; every slide fits both cuts at both sizes; 63 frontend + 44 Python tests pass |
 
+## N. Lighter load and screen-reader pass (v1.2.2)
+
+| ID | Check | Status | Evidence |
+|---|---|---|---|
+| N1 | First load carries no unused animation library | PASS (fixed) | The Motion library (about 125 kB) was loaded only for the sidebar's sliding highlight; it is now a 30-line FLIP on the Web Animations API. The animation chunk is 140 kB (54 kB compressed), down from 265 kB (95 kB); the highlight still slides (31 distinct positions, 0.38 s) |
+| N2 | Decorative icons are silent to screen readers | PASS (fixed) | lucide-react 0.468 exposed 53 icons as unnamed images; every icon now comes through `frontend/src/icons.tsx`, which hides it unless it has its own label. Accessibility tree on the home, executive and budget views: 0 unnamed images or controls |
+| N3 | The story steps read in order | PASS (fixed) | The step number was a CSS counter, which is left out of the accessible name ("· Context …"); it is now text, so each link reads "1 · Context …" through "4 · Ask …" |
+| N4 | The page reads well through its accessibility tree | PASS | One h1, then h2 per section and h3 per chart or panel; landmarks for the sidebar, section navigation, main and pagination; each chart is a named image with a "View data" table; the pilot calculator announces its result in a polite live region |
+| N5 | No regressions | PASS | axe-core 0 (dashboard 20 views, deck 24 pages); CLS 0; 0 console errors; reduced-motion first frame equals final; print 10/10 sections; every slide fits both cuts at both sizes; 63 frontend + 44 Python tests pass; npm audit 0 |
+
 ## Not verified anywhere
 
-- A real screen-reader session (automated axe-core audits pass, but no assistive-technology user test was possible here).
+- A real screen-reader session. Automated axe-core audits pass and the accessibility tree was reviewed by hand (N4), but no one has listened to the page with NVDA, JAWS or VoiceOver.

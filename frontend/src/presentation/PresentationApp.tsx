@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { flushSync } from "react-dom";
 
-import { ChevronLeft, ChevronRight, Clock3, ExternalLink, Expand, Grid2X2, Play, RotateCcw, Square, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Clock3, ExternalLink, Expand, Grid2X2, Play, RotateCcw, Square, X } from "../icons";
 
 import type { CaseStudyData } from "../types";
 import "./deck.css";

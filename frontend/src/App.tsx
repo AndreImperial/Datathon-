@@ -5,7 +5,7 @@ import { flushSync } from "react-dom";
 import {
   Archive, ArrowLeft, ArrowRight, ArrowUp, ArrowUpDown, Check, ChevronDown, CircleAlert, Download, ExternalLink,
   FileText, GitBranch, Info, Menu, MoreHorizontal, Presentation, Printer, RotateCcw, LayoutDashboard, Search, TrendingUp, X,
-} from "lucide-react";
+} from "./icons";
 import { gsap } from "gsap";
 import { Flip } from "gsap/Flip";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -780,7 +780,7 @@ function ArcStrip({ data, story, onOpen }: { data: DashboardData; story: StoryNu
     return () => ctx.revert();
   }, []);
   return <nav ref={strip} className="arc-strip" aria-label="The story in four steps">
-    <ol>{steps.map((step) => <li key={step.stage} className={step.stage === "Tension" ? "is-tension" : undefined}><a href={`#${step.target}`} onClick={(event) => { event.preventDefault(); onOpen(step.target); }}><span className="arc-step-stage">{step.stage}</span><strong>{step.line}</strong><span className="arc-step-detail">{step.detail}</span></a><span className="arc-fill" aria-hidden="true" /></li>)}</ol>
+    <ol>{steps.map((step, index) => <li key={step.stage} className={step.stage === "Tension" ? "is-tension" : undefined}><a href={`#${step.target}`} onClick={(event) => { event.preventDefault(); onOpen(step.target); }}><span className="arc-step-stage">{index + 1} · {step.stage}</span><strong>{step.line}</strong><span className="arc-step-detail">{step.detail}</span></a><span className="arc-fill" aria-hidden="true" /></li>)}</ol>
   </nav>;
 }
 
