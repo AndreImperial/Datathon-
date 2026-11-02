@@ -52,7 +52,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-D0jTkFBr.js",
+    "file": "assets/index-Bwbh3WAi.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -65,7 +65,7 @@
       "src/components/Charts.tsx"
     ],
     "css": [
-      "assets/index-DkFDEg9O.css"
+      "assets/index-DGUYL8qK.css"
     ],
     "assets": [
       "assets/manrope-cyrillic-wght-normal-Dvxsihut.woff2",
@@ -79,7 +79,7 @@
     ]
   },
   "src/components/Charts.tsx": {
-    "file": "assets/Charts-DinkVqo1.js",
+    "file": "assets/Charts-CcUElwVt.js",
     "name": "Charts",
     "src": "src/components/Charts.tsx",
     "isDynamicEntry": true,
@@ -92,7 +92,7 @@
     ]
   },
   "src/hero/ProductHero.tsx": {
-    "file": "assets/ProductHero-70ioYrsX.js",
+    "file": "assets/ProductHero-C5M5WjPX.js",
     "name": "ProductHero",
     "src": "src/hero/ProductHero.tsx",
     "isDynamicEntry": true,

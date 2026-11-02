@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 112 checks — 112 pass (25 of them after fixes), 0 fail.**
+**Result: 113 checks — 113 pass (26 of them after fixes), 0 fail.**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -201,6 +201,7 @@ Verified on the merged build (restyle, hero and v1.1.0 motion together).
 | O2 | Nothing is deleted | PASS | Every folded passage is in the page; a folded chart summary remains the chart's accessible description |
 | O3 | Print shows every folded passage | PASS | Print path: 10/10 sections, 25/25 folds open, 22/22 chart summaries printed; toggle labels hidden on paper; covered by `frontend/tests/dashboardMotion.test.mjs` |
 | O4 | Folds are accessible and animate safely | PASS | Each fold is a native disclosure named by its title; summaries at least 24 px tall; the unroll animation is off for reduced motion and print; axe-core 0 (dashboard 20 views, deck 24 pages); CLS 0; 0 console errors; 64 frontend + 44 Python tests pass |
+| O5 | The Essential first screen is a summary, not a read | PASS (fixed) | The headline's reasoning folds under "Why this is the call"; each story step shows its stage and line, and its figure (also the headline of the section it opens) stays in the link for screen readers and print. Essential view: 598 → 395 visible words; findings now start on the first screen at 1440×900; axe-core 0, CLS 0, 0 console errors; print opens 26/26 folds |
 
 ## Not verified anywhere
 
