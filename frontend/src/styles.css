@@ -192,7 +192,16 @@ a { color: inherit; }
 .utility-menu-popover strong { font-size: 12px; font-weight: 720; }
 .utility-menu-popover small { margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.35; }
 
-.command-strip, .arc-strip, .progress-rail, .section-viewport, footer { width: calc(100% - 56px); max-width: var(--content-max); margin-inline: auto; }
+.case-question, .command-strip, .arc-strip, .progress-rail, .section-viewport, footer { width: calc(100% - 56px); max-width: var(--content-max); margin-inline: auto; }
+/* The case question and its direct answer, read before the big idea that acts on it. */
+.case-question { display: grid; grid-template-columns: auto 1fr; gap: 4px 18px; margin-top: 24px; padding: 14px 20px; border: 1px solid var(--line-strong); border-left: 3px solid var(--blue); border-radius: 10px; background: var(--surface); }
+.case-question > span { grid-row: span 2; padding-top: 3px; color: var(--muted); font-size: 11px; font-weight: 740; letter-spacing: .045em; text-transform: uppercase; }
+.case-question p { margin: 0; }
+.case-question-text { color: var(--ink); font-size: 15px; font-weight: 680; letter-spacing: -.01em; line-height: 1.35; }
+.case-answer { max-width: 120ch; color: var(--body); font-size: 13px; line-height: 1.5; }
+.case-answer b { margin-right: 4px; color: var(--ink); font-weight: 700; }
+.case-question + .command-strip { margin-top: 12px; }
+@media (max-width: 640px) { .case-question { grid-template-columns: 1fr; } .case-question > span { grid-row: auto; } }
 .command-strip { display: grid; grid-template-columns: minmax(350px, 1.08fr) minmax(620px, 2.1fr); margin-top: 24px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 13px; background: var(--surface); box-shadow: var(--shadow); }
 .command-decision { position: relative; min-height: 144px; padding: 22px 24px 20px; color: #fff; background: var(--nav); }
 .command-decision::after { content: ""; position: absolute; right: 0; bottom: 0; width: 42%; height: 2px; background: var(--blue); }
@@ -433,7 +442,7 @@ footer p { margin: 0; max-width: 110ch; }
   :root { --sidebar: 224px; }
   .topbar { padding-inline: 22px; }
   .data-meta { display: none; }
-  .command-strip, .arc-strip, .progress-rail, .section-viewport, footer { width: calc(100% - 44px); }
+  .case-question, .command-strip, .arc-strip, .progress-rail, .section-viewport, footer { width: calc(100% - 44px); }
   .command-strip { grid-template-columns: minmax(300px, .95fr) minmax(520px, 2.05fr); }
   .command-kpis > div { padding-inline: 13px; }
   .command-canvas { grid-template-columns: minmax(0, 1.8fr) minmax(274px, .8fr); }
@@ -462,7 +471,7 @@ footer p { margin: 0; max-width: 110ch; }
   .topbar { min-height: 64px; padding-inline: 18px; }
   .topbar h1 { font-size: 16px; }
   .validated { display: none; }
-  .command-strip, .arc-strip, .progress-rail, .section-viewport, footer { width: calc(100% - 32px); }
+  .case-question, .command-strip, .arc-strip, .progress-rail, .section-viewport, footer { width: calc(100% - 32px); }
   .command-strip { margin-top: 16px; }
   .command-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .command-kpis > div:nth-child(3), .command-kpis > div:nth-child(4) { border-top: 1px solid var(--line); }
@@ -502,7 +511,7 @@ footer p { margin: 0; max-width: 110ch; }
   .top-actions > .utility-export, .top-actions > .utility-print, .top-actions > .mode-button, .top-actions > .utility-reset { display: none; }
   .utility-menu-wrap { display: block; }
   .action-button, .mode-button, .icon-button, .mobile-menu, .sidebar-close { width: 44px; height: 44px; min-height: 44px; }
-  .command-strip, .arc-strip, .progress-rail, .section-viewport, footer { width: calc(100% - 24px); }
+  .case-question, .command-strip, .arc-strip, .progress-rail, .section-viewport, footer { width: calc(100% - 24px); }
   .command-decision { padding: 19px 18px; }
   .command-decision h2 { font-size: 21px; }
   .command-strip.is-compact { padding: 12px 16px; }

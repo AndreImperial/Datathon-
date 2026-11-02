@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 113 checks — 113 pass (26 of them after fixes), 0 fail.**
+**Result: 115 checks — 115 pass (28 of them after fixes), 0 fail.**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -202,6 +202,13 @@ Verified on the merged build (restyle, hero and v1.1.0 motion together).
 | O3 | Print shows every folded passage | PASS | Print path: 10/10 sections, 25/25 folds open, 22/22 chart summaries printed; toggle labels hidden on paper; covered by `frontend/tests/dashboardMotion.test.mjs` |
 | O4 | Folds are accessible and animate safely | PASS | Each fold is a native disclosure named by its title; summaries at least 24 px tall; the unroll animation is off for reduced motion and print; axe-core 0 (dashboard 20 views, deck 24 pages); CLS 0; 0 console errors; 64 frontend + 44 Python tests pass |
 | O5 | The Essential first screen is a summary, not a read | PASS (fixed) | The headline's reasoning folds under "Why this is the call"; each story step shows its stage and line, and its figure (also the headline of the section it opens) stays in the link for screen readers and print. Essential view: 598 → 395 visible words; findings now start on the first screen at 1440×900; axe-core 0, CLS 0, 0 console errors; print opens 26/26 folds |
+
+## P. The case question, answered first (v1.3.2)
+
+| ID | Check | Status | Evidence |
+|---|---|---|---|
+| P1 | The dashboard states the case question and answers it before the big idea | PASS (fixed) | A band above the big idea asks "Which channels and content formats support acquisition, recorded revenue and engagement?" (the deck's main-01 wording) and answers it from the snapshot: Referral strongest, three relationship-led sources hold 83.3% of pipeline, marketing sources 16.7% but converts worst, 11.9% of wins link to a tracked touch, content formats too thinly labelled to rank. Unit test locks its order and data source. Fits at 1440 and 390 px with no horizontal scroll |
+| P2 | The Essential headline matches the story strip | PASS (fixed) | Title now leads with the conversion gap (marketing-sourced new logos 10.2% against 26.8% for Referral), the same tension as story step 2; the cohort decline remains the fallback when the brief is missing. axe-core 0, CLS 0, 0 console errors; print opens 26/26 folds; 65 frontend and 44 Python tests pass |
 
 ## Not verified anywhere
 

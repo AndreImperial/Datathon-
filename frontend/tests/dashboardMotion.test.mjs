@@ -64,6 +64,13 @@ test("motion can never hide evidence or leak into print or reduced motion", () =
   assert.match(reduced, /\.caveats-drawer/);
 });
 
+test("the case question and its answer come before the big idea", () => {
+  const question = app.indexOf('className="case-question"');
+  assert.ok(question > 0, "the Essential view states the case question");
+  assert.ok(question < app.indexOf('aria-label="The big idea"'), "the question is read before the big idea");
+  assert.match(app, /<p className="case-answer"><b>The answer<\/b> \{caseAnswer\(data, story\)\}<\/p>/, "the answer is built from the snapshot, not hard-coded");
+});
+
 test("folded text stays in the page and always prints", () => {
   assert.match(app, /querySelectorAll<HTMLDetailsElement>\("details\.evidence-details, details\.text-fold"\)\.forEach\(\(node\) => \{ node\.open = true; \}\)/, "print opens every text fold");
   assert.match(app, /className=\{`chart-takeaway\$\{details \? "" : " is-folded"\}`\}/, "a folded chart summary stays in the DOM as the chart's description");
