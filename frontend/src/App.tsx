@@ -572,6 +572,15 @@ function EvidenceDetails({ title, count, children }: { title: string; count: num
   return <details className="evidence-details"><summary><span>{title}</span><small>{count} rows</small><ChevronDown size={14} aria-hidden="true" /></summary>{children}</details>;
 }
 
+/**
+ * Supporting text kept one click away: the page shows the claim, the reasoning
+ * opens in place. Print opens every fold (see renderAllForPrint), so nothing is
+ * lost on paper.
+ */
+function Fold({ summary, className = "", children }: { summary: ReactNode; className?: string; children: ReactNode }) {
+  return <details className={`text-fold ${className}`.trim()}><summary>{summary}<ChevronDown className="text-fold-chevron" size={13} aria-hidden="true" /></summary><div className="text-fold-body">{children}</div></details>;
+}
+
 /** A block that fades and rises in when it mounts (user-opened content only). */
 function FadeIn({ className, id, children }: { className?: string; id?: string; children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -587,18 +596,20 @@ function ChartCard({ id, metadata, data, totalPipeline, coverageMix, presenting 
   const subtitle = metadata?.subtitle ?? "Source-backed evidence";
   const source = metadata?.source_dataset as keyof DashboardData["datasets"] | undefined;
   const chartRows = data.chart_data?.[id] ?? (source ? data.datasets[source] : []);
+  // The one-sentence summary folds into "What this shows"; it stays in the DOM as the
+  // chart's accessible description and always prints.
   const summaryId = `${id}-summary`;
   const tableId = `${id}-data`;
   const explanationId = `${id}-explanation`;
   // The generic placeholder adds no information; substantive caveats stay visible.
   const caveat = metadata?.caveat && metadata.caveat.trim() !== GENERIC_CAVEAT ? metadata.caveat : "";
   return <article className="chart-card" data-chart-id={id} aria-labelledby={`${id}-title`}>
-    <div className="chart-heading"><div><h3 id={`${id}-title`}>{title}</h3><p id={summaryId} className="chart-takeaway">{metadata?.accessible_summary}{source === "attribution" && " Linked opportunity counts describe the whole selected window, repeated for reference; do not sum across channels or models."}</p><span id={`${id}-subtitle`} className="chart-unit">{subtitle}</span></div><div className="chart-actions"><button type="button" className={`icon-button chart-view-toggle${table ? " is-active" : ""}`} title={table ? "Return to chart" : "View chart data"} aria-label={table ? `View chart for ${title}` : `View data for ${title}`} aria-pressed={table} aria-expanded={table} aria-controls={tableId} onClick={() => setTable((value) => !value)}><FileText size={15} /><span>{table ? "Hide data" : "Show data"}</span></button><button type="button" className="icon-button" title="Download chart data" aria-label={`Download data for ${title}`} onClick={() => downloadRows(`${id}.csv`, chartRows, { snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: metadata?.source_dataset ?? "Unavailable", scope: metadata?.subtitle ?? data.meta.period, methodology: data.meta.methodology, caveat: metadata?.caveat ?? "" })}><Download size={15} /></button></div></div>
+    <div className="chart-heading"><div><h3 id={`${id}-title`}>{title}</h3><p id={summaryId} className={`chart-takeaway${details ? "" : " is-folded"}`}>{metadata?.accessible_summary}{source === "attribution" && " Linked opportunity counts describe the whole selected window, repeated for reference; do not sum across channels or models."}</p><span id={`${id}-subtitle`} className="chart-unit">{subtitle}</span></div><div className="chart-actions"><button type="button" className={`icon-button chart-view-toggle${table ? " is-active" : ""}`} title={table ? "Return to chart" : "View chart data"} aria-label={table ? `View chart for ${title}` : `View data for ${title}`} aria-pressed={table} aria-expanded={table} aria-controls={tableId} onClick={() => setTable((value) => !value)}><FileText size={15} /><span>{table ? "Hide data" : "Show data"}</span></button><button type="button" className="icon-button" title="Download chart data" aria-label={`Download data for ${title}`} onClick={() => downloadRows(`${id}.csv`, chartRows, { snapshot_id: data.meta.snapshot_id ?? "Unavailable", snapshot_generated_at: data.meta.generated_at ?? "Unavailable", source: metadata?.source_dataset ?? "Unavailable", scope: metadata?.subtitle ?? data.meta.period, methodology: data.meta.methodology, caveat: metadata?.caveat ?? "" })}><Download size={15} /></button></div></div>
     <div className="chart-visual" role="img" aria-labelledby={`${id}-title ${id}-subtitle`} aria-describedby={summaryId}><Suspense fallback={<div className="chart-empty" role="status">Loading visual…</div>}>{!chartRows.length ? <div className="chart-empty" role="status">Chart unavailable: {source ? data.dataset_status?.[source]?.reason ?? "No observations in this scope." : "No observations in this scope."}</div> : <ChartRenderer id={id} data={data.datasets} totalPipeline={totalPipeline} coverageMix={coverageMix} />}</Suspense></div>
-    {(caveat || info) && <div className="chart-explanation">
+    {(caveat || info || metadata?.accessible_summary) && <div className="chart-explanation">
       <div className="explanation-row">
         {caveat ? <p className="chart-caveat"><CircleAlert size={13} aria-hidden="true" /><span><span className="sr-only">Caveat: </span>{caveat}</span></p> : <span />}
-        {info && <button type="button" className="text-button" aria-expanded={details} aria-controls={explanationId} onClick={() => setDetails((value) => !value)}>{details ? "Hide explanation" : "What this shows"}<span className="sr-only">: {title}</span><ChevronDown className={details ? "rotate" : ""} size={14} aria-hidden="true" /></button>}
+        {(info || metadata?.accessible_summary) && <button type="button" className="text-button" aria-expanded={details} aria-controls={info ? `${summaryId} ${explanationId}` : summaryId} onClick={() => setDetails((value) => !value)}>{details ? "Hide explanation" : "What this shows"}<span className="sr-only">: {title}</span><ChevronDown className={details ? "rotate" : ""} size={14} aria-hidden="true" /></button>}
       </div>
       {info && details && <FadeIn className="explanation-body" id={explanationId}><p>{resolveCopy(info.body, data)}</p><div className="insight">{interpolate(resolveCopy(info.insight, data), data)}</div></FadeIn>}
     </div>}
@@ -618,7 +629,7 @@ function SectionIntro({ id, data, story }: { id: SectionId; data: DashboardData;
   const position = sectionOrder.indexOf(id) + 1;
   const stage = arcStage[id];
   // The topbar already names the group and section; the eyebrow only places the section in the story.
-  return <><div className="section-heading"><div className="section-title-block"><span className="section-eyebrow"><span className="section-index"><span className="sr-only">Section </span>{String(position).padStart(2, "0")}<span className="sr-only"> of {sectionOrder.length}</span><span aria-hidden="true"> / {String(sectionOrder.length).padStart(2, "0")}</span></span><span className={`arc-stage arc-${stage.toLowerCase().replace(" ", "-")}`}>{stage}</span></span><h2>{item.title}</h2></div><p>{item.description}</p></div><div className="section-takeaway"><div className="takeaway-copy"><strong>{label}:</strong><span>{rest.join(":")}</span></div></div></>;
+  return <><div className="section-heading"><div className="section-title-block"><span className="section-eyebrow"><span className="section-index"><span className="sr-only">Section </span>{String(position).padStart(2, "0")}<span className="sr-only"> of {sectionOrder.length}</span><span aria-hidden="true"> / {String(sectionOrder.length).padStart(2, "0")}</span></span><span className={`arc-stage arc-${stage.toLowerCase().replace(" ", "-")}`}>{stage}</span></span><h2>{item.title}</h2></div><Fold className="section-about" summary="About this section"><p>{item.description}</p></Fold></div><div className="section-takeaway"><div className="takeaway-copy"><strong>{label}:</strong><span>{rest.join(":")}</span></div></div></>;
 }
 
 /** Method notes stay one click away instead of standing between a title and its evidence. */
@@ -715,7 +726,7 @@ function DashboardSkeleton() {
 }
 
 function EvidenceGrid({ items }: { items: Array<{ label: string; title?: string; body: ReactNode; tone: "high" | "medium" | "directional" }> }) {
-  return <div className="evidence-grid">{items.map((item) => <article className="evidence-card" key={`${item.label}-${item.title ?? "label-only"}`}>{item.title ? <><span className={`confidence ${item.tone}`}>{item.label}</span><h3>{item.title}</h3></> : <h3 className="evidence-label-only"><span className={`confidence ${item.tone}`}>{item.label}</span></h3>}<p>{item.body}</p></article>)}</div>;
+  return <div className="evidence-grid">{items.map((item) => <article className="evidence-card" key={`${item.label}-${item.title ?? "label-only"}`}>{item.title ? <Fold summary={<span className="evidence-card-head"><span className={`confidence ${item.tone}`}>{item.label}</span><h3>{item.title}</h3></span>}><p>{item.body}</p></Fold> : <><h3 className="evidence-label-only"><span className={`confidence ${item.tone}`}>{item.label}</span></h3><p>{item.body}</p></>}</article>)}</div>;
 }
 
 function AttributionSensitivityPanel({ data }: { data: DashboardData }) {
@@ -731,9 +742,9 @@ function AttributionSensitivityPanel({ data }: { data: DashboardData }) {
 function PriorityGrid({ data, onOpen }: { data: DashboardData; onOpen: (id: SectionId) => void }) {
   return <aside className="action-queue" aria-label="Recommended action queue">
     <div className="action-queue-head"><h3>The next three decisions</h3><a className="text-button" href="#s-conclusion" onClick={(event) => { event.preventDefault(); onOpen("s-conclusion"); }}>Go to the ask <ArrowRight size={13} aria-hidden="true" /></a></div>
-    <article className="action-row"><span className="action-sequence">01</span><div><span className="priority-tag red">Protect the base</span><h4>Diagnose conversion quality</h4><p>Among cohorts at least 80% resolved, closed-deal win rate moved from {metric(data, "cohort_start_win_rate")} to {metric(data, "cohort_end_win_rate")}. Review ICP, qualification, and loss reasons before increasing broad spend.</p></div></article>
-    <article className="action-row"><span className="action-sequence">02</span><div><span className="priority-tag muted">Create the test</span><h4>Build an eligible coverage cohort</h4><p>{metric(data, "unreached_accounts")} CRM account domains, or {metric(data, "unreached_pct")}, have no tracked email or 6sense touch. Prioritize strong-fit accounts and retain a holdout.</p></div></article>
-    <article className="action-row"><span className="action-sequence">03</span><div><span className="priority-tag muted">Earn the scale</span><h4>Fund measurement before expansion</h4><p>Use the tracked budget to run a controlled test. Scale only if treatment creates incremental qualified pipeline.</p></div></article>
+    <article className="action-row"><span className="action-sequence">01</span><div><span className="priority-tag red">Protect the base</span><Fold summary={<h4>Diagnose conversion quality</h4>}><p>Among cohorts at least 80% resolved, closed-deal win rate moved from {metric(data, "cohort_start_win_rate")} to {metric(data, "cohort_end_win_rate")}. Review ICP, qualification, and loss reasons before increasing broad spend.</p></Fold></div></article>
+    <article className="action-row"><span className="action-sequence">02</span><div><span className="priority-tag muted">Create the test</span><Fold summary={<h4>Build an eligible coverage cohort</h4>}><p>{metric(data, "unreached_accounts")} CRM account domains, or {metric(data, "unreached_pct")}, have no tracked email or 6sense touch. Prioritize strong-fit accounts and retain a holdout.</p></Fold></div></article>
+    <article className="action-row"><span className="action-sequence">03</span><div><span className="priority-tag muted">Earn the scale</span><Fold summary={<h4>Fund measurement before expansion</h4>}><p>Use the tracked budget to run a controlled test. Scale only if treatment creates incremental qualified pipeline.</p></Fold></div></article>
   </aside>;
 }
 
@@ -1049,9 +1060,11 @@ function DecisionCards({ brief }: { brief: LatestBrief }) {
       <dl>
         <div><dt>Owner</dt><dd>{item.owner_role}</dd></div>
         <div><dt>First step</dt><dd>{item.immediate_next_step}</dd></div>
+      </dl>
+      <Fold className="decision-more" summary="Measure and stop rule"><dl>
         <div><dt>Measure</dt><dd>{item.primary_success_measure}</dd></div>
         <div><dt>Stop rule</dt><dd>{item.scale_stop_rule}</dd></div>
-      </dl>
+      </dl></Fold>
     </li>)}</ol>
     {queued.length > 0 && <div className="decision-queued"><span>Also queued</span><ul>{queued.map((item) => <li key={item.id}><strong>{decisionText(item)}</strong> · {item.owner_role}</li>)}</ul></div>}
   </>;
@@ -1092,7 +1105,7 @@ function Progress({ value, tone, label }: { value: number; tone: string; label: 
 /**
  * Puts every section in the DOM synchronously (flushSync), so a print snapshot
  * taken straight after this returns already holds all of them, then opens the
- * collapsed evidence tables. While React commits, `print-prep` moves the
+ * collapsed evidence tables and text folds. While React commits, `print-prep` moves the
  * section stack below the viewport: charts mounting off-screen skip their
  * entrance animation, which would otherwise print as empty bars.
  */
@@ -1106,7 +1119,7 @@ function renderAllForPrint(setPrintAll: (value: boolean) => void) {
   } finally {
     root.classList.remove("print-prep");
   }
-  document.querySelectorAll<HTMLDetailsElement>("details.evidence-details").forEach((node) => { node.open = true; });
+  document.querySelectorAll<HTMLDetailsElement>("details.evidence-details, details.text-fold").forEach((node) => { node.open = true; });
 }
 
 /**

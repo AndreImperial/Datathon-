@@ -1041,12 +1041,12 @@ footer p { margin: 0; max-width: 110ch; }
 :root[data-section-direction="back"]::view-transition-new(section-view) { animation-name: motion-section-in-down; }
 
 @media (prefers-reduced-motion: reduce) {
-  .evidence-details[open] > :not(summary), .caveats-drawer, .drawer-backdrop, .nav-backdrop, .utility-menu-popover { animation: none !important; }
+  .evidence-details[open] > :not(summary), .text-fold[open] > .text-fold-body, .caveats-drawer, .drawer-backdrop, .nav-backdrop, .utility-menu-popover { animation: none !important; }
   .chart-card:hover, .chart-card:focus-within, .rank-card:hover, .rank-card:focus-within, .decision-card:hover, .decision-card:focus-within { transform: none; }
   ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
 }
 @media print {
-  .evidence-details[open] > :not(summary), .caveats-drawer, .utility-menu-popover { animation: none !important; }
+  .evidence-details[open] > :not(summary), .text-fold[open] > .text-fold-body, .caveats-drawer, .utility-menu-popover { animation: none !important; }
   .chart-card, .rank-card, .decision-card { transform: none !important; }
   .arc-fill { transform: none !important; }
   .back-to-top { opacity: 1; transform: none; }
@@ -1435,4 +1435,32 @@ footer p { margin: 0; max-width: 110ch; }
 
 @media print {
   .hero-stage-slot, .appendix-open { display: none !important; }
+}
+
+/* Text folds: the page shows the claim; the reasoning opens in place and always prints. */
+.text-fold > summary { display: flex; min-height: 24px; align-items: center; gap: 8px; list-style: none; cursor: pointer; }
+.text-fold > summary::-webkit-details-marker { display: none; }
+.text-fold-chevron { flex: none; margin-left: auto; color: var(--muted); transition: transform 180ms var(--ease); }
+.text-fold[open] > summary .text-fold-chevron { transform: rotate(180deg); }
+.text-fold > summary:hover .text-fold-chevron { color: var(--ink); }
+.text-fold-body { padding-top: 6px; }
+.text-fold[open] > .text-fold-body { animation: motion-unroll var(--motion-base, 380ms) var(--motion-ease, cubic-bezier(0.22, 1, 0.36, 1)); }
+.evidence-card-head { display: block; min-width: 0; }
+.evidence-card .text-fold > summary { align-items: flex-start; }
+.evidence-card .text-fold-chevron { margin-top: 2px; }
+.action-row .text-fold > summary h4 { margin: 7px 0 0; }
+.action-row .text-fold-chevron { margin-top: 7px; }
+.section-about { align-self: end; justify-self: end; }
+.section-about > summary, .decision-more > summary { color: var(--body); font-size: 12px; font-weight: 600; }
+.section-about > summary:hover, .decision-more > summary:hover { color: var(--ink); }
+.section-about .text-fold-chevron, .decision-more .text-fold-chevron { margin-left: 0; }
+.section-about .text-fold-body p { max-width: 60ch; }
+.decision-more { margin-top: auto; padding: 0 16px 14px; }
+.decision-more dl { padding: 0; }
+.chart-heading p.chart-takeaway.is-folded { display: none; }
+@media screen and (max-width: 1120px) { .section-about { justify-self: start; } }
+@media print {
+  .chart-heading p.chart-takeaway.is-folded { display: block; }
+  .text-fold-chevron, .section-about > summary, .decision-more > summary { display: none !important; }
+  .text-fold-body { padding-top: 0; }
 }

@@ -63,3 +63,9 @@ test("motion can never hide evidence or leak into print or reduced motion", () =
   assert.match(reduced, /::view-transition-old\(\*\)/);
   assert.match(reduced, /\.caveats-drawer/);
 });
+
+test("folded text stays in the page and always prints", () => {
+  assert.match(app, /querySelectorAll<HTMLDetailsElement>\("details\.evidence-details, details\.text-fold"\)\.forEach\(\(node\) => \{ node\.open = true; \}\)/, "print opens every text fold");
+  assert.match(app, /className=\{`chart-takeaway\$\{details \? "" : " is-folded"\}`\}/, "a folded chart summary stays in the DOM as the chart's description");
+  assert.match(css, /@media print \{\s*\.chart-heading p\.chart-takeaway\.is-folded \{ display: block; \}/, "a folded chart summary prints");
+});

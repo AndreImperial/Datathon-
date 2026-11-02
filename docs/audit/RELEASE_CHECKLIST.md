@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 108 checks — 108 pass (25 of them after fixes), 0 fail.**
+**Result: 112 checks — 112 pass (25 of them after fixes), 0 fail.**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -192,6 +192,15 @@ Verified on the merged build (restyle, hero and v1.1.0 motion together).
 | N3 | The story steps read in order | PASS (fixed) | The step number was a CSS counter, which is left out of the accessible name ("· Context …"); it is now text, so each link reads "1 · Context …" through "4 · Ask …" |
 | N4 | The page reads well through its accessibility tree | PASS | One h1, then h2 per section and h3 per chart or panel; landmarks for the sidebar, section navigation, main and pagination; each chart is a named image with a "View data" table; the pilot calculator announces its result in a polite live region |
 | N5 | No regressions | PASS | axe-core 0 (dashboard 20 views, deck 24 pages); CLS 0; 0 console errors; reduced-motion first frame equals final; print 10/10 sections; every slide fits both cuts at both sizes; 63 frontend + 44 Python tests pass; npm audit 0 |
+
+## O. Less text on screen, none removed (v1.3.0)
+
+| ID | Check | Status | Evidence |
+|---|---|---|---|
+| O1 | Explanatory text folds; claims, numbers and charts stay visible | PASS | Chart summaries fold into "What this shows"; evidence-card reasoning, action-queue reasons, section descriptions ("About this section") and each decision's measure and stop rule open in place. Caveats stay visible. Visible words: Essential 598 → 460, Executive 305 → 237, Attribution 525 → 347, Channel 476 → 382, Advanced 591 → 424, Conclusion 431 → 353 |
+| O2 | Nothing is deleted | PASS | Every folded passage is in the page; a folded chart summary remains the chart's accessible description |
+| O3 | Print shows every folded passage | PASS | Print path: 10/10 sections, 25/25 folds open, 22/22 chart summaries printed; toggle labels hidden on paper; covered by `frontend/tests/dashboardMotion.test.mjs` |
+| O4 | Folds are accessible and animate safely | PASS | Each fold is a native disclosure named by its title; summaries at least 24 px tall; the unroll animation is off for reduced motion and print; axe-core 0 (dashboard 20 views, deck 24 pages); CLS 0; 0 console errors; 64 frontend + 44 Python tests pass |
 
 ## Not verified anywhere
 
