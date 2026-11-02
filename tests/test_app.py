@@ -176,6 +176,24 @@ class HealthEndpointTests(unittest.TestCase):
         finally:
             favicon.close()
 
+    def test_hashed_assets_are_cached_and_pages_revalidate(self):
+        static_folder = app_module.app.static_folder
+        app_module.app.static_folder = str(self.public_dir)
+        self.addCleanup(setattr, app_module.app, "static_folder", static_folder)
+        asset = self.client.get("/assets/index-test.js")
+        try:
+            self.assertEqual(asset.headers["Cache-Control"], "public, max-age=31536000, immutable")
+            self.assertEqual(asset.headers["X-Content-Type-Options"], "nosniff")
+        finally:
+            asset.close()
+
+        for path in ("/", "/dashboard-data-v3.json", "/assets/missing.js"):
+            response = self.client.get(path)
+            try:
+                self.assertEqual(response.headers["Cache-Control"], "no-cache", path)
+            finally:
+                response.close()
+
 
 if __name__ == "__main__":
     unittest.main()

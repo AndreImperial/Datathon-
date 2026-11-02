@@ -12,7 +12,7 @@ import { ProductHero } from "./hero/ProductHero";
 
 - Design size 720 x 340 (a hero beside copy). It scales down to fit its
   container and switches to a separate `compact` design (358 x 320) when the
-  container is narrower than 600px. Give the slot a width; height follows.
+  container is narrower than 560px. Give the slot a width; height follows.
 - Made for the dashboard's dark page (`#070708`): the stage is transparent,
   with no plate. On a light page it would need a dark ground behind it.
 - Props (all optional): `numbers` overrides the recorded figures,

@@ -110,7 +110,7 @@ export function ProductHero({ numbers, exampleCost = EXAMPLE_COST, className }: 
     <Stage<S>
       width={720}
       height={340}
-      compact={{ below: 600, width: 358, height: 320 }}
+      compact={{ below: 560, width: 358, height: 320 }}
       theme="dark"
       initial={initial}
       poster={poster}

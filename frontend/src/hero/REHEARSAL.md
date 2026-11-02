@@ -78,7 +78,7 @@ blank at the seam -> blank time cut to about 0.4 s and the figures rise in. 7
 phone cursor parked on the payoff -> the compact pointer now steps up beside
 the field label. 8 typed digit jump -> intentional (typing).
 
-Assumptions: the slot is at least 600 px wide for the wide design and the page
+Assumptions: the slot is at least 560 px wide for the wide design and the page
 is dark; Manrope is loaded by the host (`main.tsx` does). The nav labels and
 heading are the app's ("Essential View", "Budget Measurement"); the tile label
 is the brief's shorter "Marketing-sourced win rate" (the app says

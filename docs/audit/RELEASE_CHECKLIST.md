@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 98 checks — 98 pass (20 of them after fixes), 0 fail.**
+**Result: 103 checks — 103 pass (22 of them after fixes), 0 fail.**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -172,6 +172,16 @@ Verified on the merged build (restyle, hero and v1.1.0 motion together).
 | L4 | Reduced motion and print | PASS | Reduced motion holds the final pilot frame with no change over 10 s; print sets the slot to `display: none`; printed dashboard still has 10/10 sections and 22/22 charts |
 | L5 | Hero failure cannot break the dashboard | PASS | With the hero chunk deleted from the build, the dashboard renders fully and the slot shows its static placeholder (`HeroBoundary` error boundary) |
 | L6 | No regressions elsewhere | PASS | CLS 0 (load, interactions, reduced); 0 console errors; deck: every slide fits both cuts at 1440×900 and 1280×720, 24 pages with 0 axe violations; 63 frontend + 43 Python tests pass; npm audit 0 |
+
+## M. Polish pass (v1.2.1)
+
+| ID | Check | Status | Evidence |
+|---|---|---|---|
+| M1 | Hero slot matches the stage at every width | PASS (fixed) | Wide design now applies from a 560 px slot (was 600, which showed the phone design in desktop slots at 1120–1240 px); phone-shape slot capped at 358 px; slot and stage boxes identical at 320, 375, 430, 560, 599, 600, 640, 1024, 1200, 1240 and 1440 px |
+| M2 | Every control meets the 24 px target size (WCAG 2.5.8) | PASS (fixed) | Table sort buttons were 16 px tall on desktop; now 24 px minimum (44 px on touch screens, unchanged); 0 undersized controls at 1440 and 375 |
+| M3 | Shared links show a preview card | PASS | Open Graph and Twitter tags with a 1200×630 `og-image.png` captured from the dashboard at rest |
+| M4 | Hashed build assets are cached; pages revalidate | PASS | Flask sends `public, max-age=31536000, immutable` for `/assets/*` and `no-cache` elsewhere, plus `nosniff` and a referrer policy; covered by `tests/test_app.py` |
+| M5 | No regressions | PASS | axe-core 0 (dashboard 20 views, deck 24 pages); CLS 0; 0 console errors; entrance settles in 1.27 s; reduced-motion first frame equals final; every slide fits both cuts at both sizes; 63 frontend + 44 Python tests pass |
 
 ## Not verified anywhere
 

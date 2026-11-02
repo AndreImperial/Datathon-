@@ -3,7 +3,7 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory
 from artifact_safety import load_contract, manifest_assets_exist
 
 
@@ -67,6 +67,18 @@ def _contract_ready(path, version=None):
         return True
     except (OSError, ValueError, TypeError, KeyError):
         return False
+
+
+@app.after_request
+def cache_and_security_headers(response):
+    """Cache content-hashed build assets for a year; everything else revalidates."""
+    if request.path.startswith("/assets/") and response.status_code == 200:
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+    else:
+        response.headers["Cache-Control"] = "no-cache"
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
 
 
 @app.get("/")

@@ -4,6 +4,8 @@ An end-to-end B2B marketing analytics case study. Eight CRM and marketing export
 
 **The big idea:** Fix conversion before buying volume. Prove reach before scaling spend.
 
+![The Revenue Command Center dashboard: the big idea, the pilot you can run now and the four headline figures](docs/images/dashboard.png)
+
 - [Live dashboard](https://marketing-analytics-dashboard-saoj.onrender.com/)
 - [Live presentation, first slide](https://marketing-analytics-dashboard-saoj.onrender.com/#present/main-01) — full 18-minute deck, or switch to the 10-minute executive cut in the deck header
 - [GitHub Pages mirror](https://andreimperial.github.io/Datathon-/)

@@ -340,7 +340,7 @@ a { color: inherit; }
 .data-table th.numeric button, .evidence-table th.numeric button { justify-content: flex-end; }
 .data-table tbody tr:nth-child(even), .evidence-table tbody tr:nth-child(even) { background: #141213; }
 .data-table tbody tr:hover, .evidence-table tbody tr:hover { background: var(--surface-tint); }
-.data-table th button, .sort-button { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; color: inherit; background: transparent; font: inherit; font-weight: inherit; }
+.data-table th button, .sort-button { display: inline-flex; align-items: center; gap: 5px; min-height: 24px; padding: 0; border: 0; color: inherit; background: transparent; font: inherit; font-weight: inherit; }
 .evidence-table-card { margin-top: 14px; overflow: hidden; border: 1px solid var(--line-strong); border-radius: 11px; background: var(--surface); box-shadow: 0 4px 14px rgba(10,10,12,.04); }
 .table-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 13px 15px; border-bottom: 1px solid var(--line); background: var(--surface-soft); }
 .table-heading h3 { margin: 0; color: var(--ink); font-size: 13.5px; font-weight: 720; letter-spacing: -.015em; }
@@ -1416,9 +1416,9 @@ footer p { margin: 0; max-width: 110ch; }
   .rank-table th:first-child, .rank-table td:first-child { padding-left: var(--pad); }
   .pilot-calc-result { margin: 0 var(--pad-outer) var(--pad-outer); }
 }
-@media screen and (max-width: 560px) {
+@media screen and (max-width: 599.98px) {
   /* Phone column: the stage's compact design, 358 x 320 */
-  .hero-stage-slot { aspect-ratio: 358 / 320; }
+  .hero-stage-slot { max-width: 358px; aspect-ratio: 358 / 320; justify-self: center; }
 }
 @media screen and (max-width: 520px) {
   :root { --gutter: 16px; --gap: 12px; --pad: 16px; --pad-outer: 6px; --pad-inner: 10px; }
