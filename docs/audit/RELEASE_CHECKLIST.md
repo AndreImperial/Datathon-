@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 121 checks — 121 pass (34 of them after fixes), 0 fail.**
+**Result: 127 checks — 127 pass (40 of them after fixes), 0 fail.**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -222,6 +222,17 @@ Source: [FULL_AUDIT_2026-11.md](FULL_AUDIT_2026-11.md).
 | Q4 | Deck arrow keys work after a button click | PASS (fixed) | Buttons and links keep only Space and Enter; arrows and paging move the deck. JSDOM test clicks Previous then presses ArrowRight |
 | Q5 | The win-rate fall is not framed as falling quality | PASS (fixed) | Story step 2 carries the marketing-vs-Referral figure; the Essential takeaway names the handoff and the never-winning lead sources, matching slide 7's mix-shift finding |
 | Q6 | Back to the first page shows the first section | PASS (fixed) | An empty hash opens Essential and unknown `s-` ids are rewritten; `#present` routes are untouched. Checked in Chromium: Attribution → Back shows Essential. axe-core 0 on 10 sections and 24 deck pages; CLS 0; 0 console errors; print opens 26/26 folds; every slide fits both cuts at 1440×900 and 1280×720; 69 frontend and 45 Python tests pass |
+
+## R. Audit fixes 7–16 (v1.5.0)
+
+| ID | Check | Status | Evidence |
+|---|---|---|---|
+| R1 | No concentration claim led by a catch-all bucket | PASS (fixed) | Executive title and story step 1 now read "Existing customers produce 71.6% of wins; on new logos, Referral leads won amount (2018–24)" from the v3 summary |
+| R2 | "Referral" means the same thing in both contracts | PASS (fixed) | Cleaning maps every "Referral: …" lead source to referral; v1 unknown/other share 34.0% → 28.8%; "Channel Referral: 6sense" stays marketing in both |
+| R3 | Sourced and influenced pipeline are not divided across different years | PASS (fixed) | `attribution_reconciliation` states the populations instead of a 1.5× ratio; chart insights give each figure its years |
+| R4 | The pilot's detectable lift is shown as relative too | PASS (fixed) | `relative_lift` in `pilot_design`; Budget title, power card and slide 14 say "+3.1 pp (+62% relative)" |
+| R5 | No high-confidence label on reverse-causal evidence | PASS (fixed) | "Expand coverage to unreached CRM account domains" is a Hypothesis in the v1 confidence table and the legacy archive |
+| R6 | Docs, README and hosting guidance are current | PASS (fixed) | Malformed schema-3 files are rejected with the missing fields named (unit test); route error boundaries replace blank pages. README opens with question, answer and the Pages link, notes the Render cold start; slide guide headlines regenerated from `actionTitle`; stale RUBRIC, PRODUCT, METHODOLOGY and BACKLOG lines corrected; process PDFs archived. axe-core 0 on 10 sections and 24 deck pages; CLS 0; print 26/26 folds; every slide fits both cuts at both sizes; 70 frontend and 45 Python tests pass |
 
 ## Not verified anywhere
 

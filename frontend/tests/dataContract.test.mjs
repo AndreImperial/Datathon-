@@ -36,3 +36,10 @@ test('wrong schema versions are rejected', async () => {
   assert.throws(() => validateDashboardPayload({schema_version:3}), /not version 2/);
   assert.throws(() => validateCaseStudyPayload({schema_version:2}), /not schema version 3/);
 });
+test('a schema-3 file missing what the deck reads is rejected with the missing fields named', async () => {
+  assert.throws(() => validateCaseStudyPayload({schema_version:3}), /missing presentation\.slides, presentation\.target_duration_seconds, meta\.snapshot_id, recommendations, findings, datasets/);
+  const v3 = JSON.parse(await readFile('public/dashboard-data-v3.json', 'utf8'));
+  const noDuration = structuredClone(v3); delete noDuration.presentation.target_duration_seconds;
+  assert.throws(() => validateCaseStudyPayload(noDuration), /missing presentation\.target_duration_seconds/);
+  assert.doesNotThrow(() => validateCaseStudyPayload(v3));
+});

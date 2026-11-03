@@ -669,7 +669,8 @@ export function actionTitle(data: CaseStudyData, slide: CaseSlide): string {
           const usual = defaultScenario(scenarios);
           const needed = numeric(usual?.required_total);
           const lead = usual && usual.feasible !== true && needed !== null ? `A +2 pp test needs ${count(needed)} domains, but all` : "All";
-          return `${lead} ${count(pilot.total)} ${lead === "All" ? "domains " : ""}split 50/50 can detect ${pp(pilot.at5)} in ${pilot.horizon} days`;
+          // pilot.at5 is in percentage points on a 5% baseline; the relative lift says how large an effect that is.
+          return `${lead} ${count(pilot.total)} ${lead === "All" ? "domains " : ""}split 50/50 can detect ${pp(pilot.at5)} (+${Math.round(pilot.at5 / 5 * 100)}% relative) in ${pilot.horizon} days`;
         }
         const feasible = scenarios.filter(row => row.feasible === true);
         const audience = numeric(scenarios[0]?.eligible_audience);

@@ -33,8 +33,8 @@ A deal is acquisition when its account had no earlier win. Two 100% bars: share 
 New-logo won amount by lead-source group, 2018–2024.
 
 ### main-06 — Recent conversion by source (60 s)
-**Marketing-sourced deals convert at 10.2%, under half Referral's 26.8% and lowest of 5 sources.**
-2023–24 resolved win rate by source with 95% intervals; marketing-sourced is the accent.
+**Marketing-sourced deals convert at 10.2%, under half Referral’s 26.8%; Website Inbound wins 20.9%, 6sense and MQA leads never won.**
+2023–24 resolved win rate by source with 95% intervals; marketing-sourced is the accent. Beside it, marketing-sourced split by CRM lead source (30+ resolved): Website Inbound 14 of 67, Channel Referral: 6sense 9 of 74, 6sense 0 of 82, MQA 0 of 35. Say: marketing is clearly below Referral but within the uncertainty of Sales proactive, so the fix is specific lead sources, not marketing as a whole.
 
 ### main-07 — Conversion drivers (90 s)
 **Overall win rate fell 15.3 pp since 2022 H1; Existing client accounts for 13.0 pp, mostly mix shift.**
@@ -67,11 +67,11 @@ A step-down from all assessed domains to the eligible audience, and the stronges
 Each gap with its evidence and the action that answers it.
 
 ### main-14 — Controlled experiment (75 s)
-**A +2 pp test needs 4,426 domains, but all 2,034 split 50/50 can detect +3.1 pp in 90 days.**
+**A +2 pp test needs 4,426 domains, but all 2,034 split 50/50 can detect +3.1 pp (+62% relative) in 90 days.**
 The 3×3 grid of required accounts (two-sided α .05, 80% power) beside the recommended pilot: 1,017 per arm, 90 days, outcome = new CRM opportunity; detectable lift +2.1 / +3.1 / +4.0 pp at 2 / 5 / 10% baselines.
 
 ### main-15 — Budget implications (45 s)
-**The pilot budget needs one missing input: cost per account for 1,017 treatment accounts.**
+**Pilot budget = 1,017 treatment accounts × cost per account + fixed cost; neither cost is supplied.**
 Budget = 1,017 treatment accounts × cost per account + fixed cost. No dollar figure is shown until the unit cost is supplied; the dashboard's Budget section has a calculator for it.
 
 ## Ask

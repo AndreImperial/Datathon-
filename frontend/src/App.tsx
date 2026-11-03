@@ -220,7 +220,11 @@ interface StoryNumbers {
   feasibleLabel?: string; feasibleNeed?: string; zeroWins?: string; zeroMrr?: string;
   /** Pilot (all eligible, 50/50): its detectable lift on the default design's 5% baseline, e.g. "+3.1 pp". */
   pilotLift?: string; pilotTotal?: string;
+  /** The pilot's detectable lift relative to the 5% baseline, e.g. "+62%". */
+  pilotRelative?: string;
   /** Marketing's interval overlaps the next-lowest source: "lowest" is not a clear claim. */
+  /** Share of all wins from existing customers, and the source leading new-logo won amount (2018–24). */
+  existingWinShare?: string; topNewLogoSource?: string;
   nextLowest?: string; nextLowestRate?: string; lowestUnclear?: boolean;
   /** Best marketing lead source (30+ resolved) and the lead sources with no wins. */
   bestLead?: string; bestLeadRate?: string; zeroLeads?: string; zeroLeadResolved?: string;
@@ -234,6 +238,8 @@ function storyNumbers(brief: LatestBrief | null): StoryNumbers {
   if (Number.isFinite(num("marketing_recent_win_rate"))) out.marketingRate = pct(num("marketing_recent_win_rate"));
   if (Number.isFinite(num("recent_best_win_rate"))) { out.bestRate = pct(num("recent_best_win_rate")); out.bestSource = textValue(s, "recent_best_rate_source") || "the best source"; }
   if (brief.sourceGroups.length) out.rankedSources = brief.sourceGroups.length;
+  if (Number.isFinite(num("existing_customer_win_share"))) out.existingWinShare = pct(num("existing_customer_win_share"));
+  if (textValue(s, "top_channel")) out.topNewLogoSource = textValue(s, "top_channel");
   if (Number.isFinite(num("marketing_next_lowest_win_rate"))) { out.nextLowest = textValue(s, "marketing_next_lowest_source"); out.nextLowestRate = pct(num("marketing_next_lowest_win_rate")); out.lowestUnclear = s.marketing_vs_next_clear === false; }
   if (Number.isFinite(num("marketing_best_lead_win_rate"))) { out.bestLead = textValue(s, "marketing_best_lead_source"); out.bestLeadRate = pct(num("marketing_best_lead_win_rate")); }
   if (textValue(s, "marketing_zero_win_sources") && num("marketing_zero_win_resolved") > 0) { out.zeroLeads = textValue(s, "marketing_zero_win_sources"); out.zeroLeadResolved = formatCount(num("marketing_zero_win_resolved")); }
@@ -251,7 +257,7 @@ function storyNumbers(brief: LatestBrief | null): StoryNumbers {
   if (feasible) { out.feasibleLabel = label(feasible); out.feasibleNeed = formatCount(numberValue(feasible, "required_total")); }
   if (brief.pilot) {
     const atFive = finiteOr(num("pilot_detectable_lift_pp_at_5pct"), brief.pilot.rows.find((row) => Math.abs(row.baseline - 0.05) < 1e-9)?.liftPp ?? NaN);
-    if (Number.isFinite(atFive)) { out.pilotLift = `+${atFive.toFixed(1)} pp`; out.pilotTotal = formatCount(brief.pilot.totalAccounts); }
+    if (Number.isFinite(atFive)) { out.pilotLift = `+${atFive.toFixed(1)} pp`; out.pilotRelative = `+${Math.round((atFive / 5) * 100)}%`; out.pilotTotal = formatCount(brief.pilot.totalAccounts); }
   }
   return out;
 }
@@ -285,7 +291,8 @@ function sectionCopy(id: SectionId, data: DashboardData, n: StoryNumbers): Secti
       takeaway: "Decision: fix the marketing-to-sales handoff and cut the lead sources that never win, then test reach on unreached strong-fit accounts with a holdout.",
     };
     case "s-exec": return {
-      title: `Three sources hold ${m("top3_pipeline_share")} of ${m("total_pipeline")} recorded pipeline`,
+      // Concentration across "sources" is avoided: the largest CRM bucket is a catch-all.
+      title: n.existingWinShare ? `Existing customers produce ${n.existingWinShare} of wins; on new logos, ${n.topNewLogoSource ?? "Referral"} leads won amount (2018–24)` : `Relationship-led sources anchor ${m("won_revenue")} of recorded wins`,
       description: n.openPipeline ? `Relationship-led sources anchor recorded wins. Only ${n.openPipeline} of the ${m("total_pipeline")} is still open, so read these as history, not as a forecast.` : "Relationship-led sources anchor recorded wins; marketing sources show where net-new pipeline enters.",
       takeaway: "Context: today's revenue base is relationship-led; marketing's job is net-new pipeline that converts.",
     };
@@ -316,7 +323,7 @@ function sectionCopy(id: SectionId, data: DashboardData, n: StoryNumbers): Secti
       takeaway: "So what: carry the strongest ads into a matched test; fix creative metadata before any tone or format claim.",
     };
     case "s-budget": return n.pilotLift && n.pilotTotal ? {
-      title: `Keep spend flat: a 50/50 pilot on all ${n.pilotTotal} eligible domains can detect ${n.pilotLift} on a 5% baseline`,
+      title: `Keep spend flat: a 50/50 pilot on all ${n.pilotTotal} eligible domains can detect ${n.pilotLift} (${n.pilotRelative} relative) on a 5% baseline`,
       description: n.defaultNeed ? `The default test (${n.defaultLabel}) needs ${n.defaultNeed} domains; only ${n.eligible ?? n.pilotTotal} are eligible. Run the pilot the audience supports, with a pre-registered 90-day outcome.` : "Run the pilot the audience supports, with a pre-registered 90-day outcome.",
       takeaway: "So what: keep the budget envelope, run the pilot with its holdout, and release more only on incremental qualified pipeline.",
     } : {
@@ -366,7 +373,7 @@ const explain: Record<string, { title: string; body: Copy<ReactNode>; insight: C
   "c-essential-contribution": {
     title: "What this shows - Marketing Contribution vs Total Pipeline",
     body: <>Sourced credit is the CRM origin field. Influenced credit captures classified email or 6sense presence in an eligible pre-opportunity journey. The two totals use different definitions and populations.<br /><br /><strong>Read the bars against total pipeline:</strong> sourced credit is conservative CRM origin; influenced credit is the linked subset of classified journeys. The influenced total is not a full-population or causal lift estimate.</>,
-    insight: "Report both definitions with their populations: sourced is {marketing_sourced_pipeline}, while linked influenced pipeline is {marketing_influenced_pipeline}.",
+    insight: "Report both definitions with their populations: sourced is {marketing_sourced_pipeline} across 2018–24, while linked influenced pipeline is {marketing_influenced_pipeline} on 2024-created opportunities only, so the two are not a ratio.",
   },
   "c-essential-coverage": {
     title: "What this shows - Account Coverage",
@@ -409,7 +416,7 @@ const explain: Record<string, { title: string; body: Copy<ReactNode>; insight: C
   "c-sourced-influenced": {
     title: "What this shows - Sourced vs. Influenced Pipeline",
     body: <>Two horizontal bars, two definitions of marketing contribution.<br /><br /><strong>Sourced:</strong> the CRM “Lead Source” field explicitly says the deal came from marketing — hard, conservative attribution.<br /><br /><strong>Influenced:</strong> a classified email or 6sense touch occurred within 365 days before opportunity creation, even if CRM source credit belongs elsewhere. The gap is a definition difference, not proof of hidden causal value. Sourced covers CRM origin; influenced covers the linked subset of classified journeys.</>,
-    insight: "Report both definitions with their populations. Sourced is {marketing_sourced_pipeline}; linked influenced pipeline is {marketing_influenced_pipeline}. Neither is a causal lift estimate.",
+    insight: "Report both definitions with their populations. Sourced is {marketing_sourced_pipeline} (2018–24); linked influenced pipeline is {marketing_influenced_pipeline} (2024-created opportunities only). Neither is a causal lift estimate.",
   },
   "c-attrib-waterfall": {
     title: "What this shows - First-Touch vs. Last-Touch Credit Shift",
@@ -797,7 +804,7 @@ function ArcStrip({ data, story, onOpen }: { data: DashboardData; story: StoryNu
   const steps: Array<{ stage: ArcStage; target: SectionId; line: string; detail: string }> = [
     // Words carry the arc on screen. Each detail figure is also the headline of the section the
     // step opens, so on screen it is left to that section; screen readers and print still get it.
-    { stage: "Context", target: "s-exec", line: "Revenue is relationship-led", detail: `Three sources hold ${metric(data, "top3_pipeline_share")} of recorded pipeline` },
+    { stage: "Context", target: "s-exec", line: "Revenue is relationship-led", detail: story.existingWinShare ? `Existing customers produce ${story.existingWinShare} of wins` : `${metric(data, "won_revenue")} recorded won` },
     // The win-rate fall is mostly mix (slide 7), so the tension's figure is the source comparison, not the cohort decline.
     { stage: "Tension", target: "s-channel", line: story.marketingRate ? "Marketing-sourced deals convert worst" : "Win quality is falling", detail: story.marketingRate && story.bestRate ? `Marketing-sourced new logos win ${story.marketingRate}; ${story.bestSource} ${story.bestRate}` : `Mature-cohort win rate ${metric(data, "cohort_start_win_rate")} → ${metric(data, "cohort_end_win_rate")}` },
     { stage: "Resolution", target: "s-budget", line: "Fix the handoff; size the test to the audience", detail: story.eligible && story.defaultNeed ? `${story.eligible} eligible domains; default test needs ${story.defaultNeed}` : `${metric(data, "unreached_accounts")} account domains unreached` },
@@ -960,7 +967,7 @@ function ExperimentPower({ story }: { story: StoryNumbers }) {
   return <dl className="power-tiles" aria-label="Experiment sizing">
     <div><dt>Eligible test audience</dt><dd className="power-value">{story.eligible}</dd><dd className="power-context">ICP target domains after excluding customers and open pipeline</dd></div>
     <div className="is-focus"><dt>Default test needs</dt><dd className="power-value">{story.defaultNeed}</dd><dd className="power-context">{story.defaultLabel} · two arms, 80% power</dd></div>
-    {story.pilotLift ? <div><dt>The pilot can detect</dt><dd className="power-value">{story.pilotLift}</dd><dd className="power-context">On a 5% baseline · all {story.pilotTotal} domains, 50/50</dd></div> : story.feasibleLabel && <div><dt>Smallest detectable lift</dt><dd className="power-value">{story.feasibleLabel.split(", ")[1]?.replace(" lift", "")}</dd><dd className="power-context">On a {story.feasibleLabel.split(", ")[0]} · needs {story.feasibleNeed} domains</dd></div>}
+    {story.pilotLift ? <div><dt>The pilot can detect</dt><dd className="power-value">{story.pilotLift}</dd><dd className="power-context">On a 5% baseline ({story.pilotRelative} relative, so only a large effect shows) · all {story.pilotTotal} domains, 50/50</dd></div> : story.feasibleLabel && <div><dt>Smallest detectable lift</dt><dd className="power-value">{story.feasibleLabel.split(", ")[1]?.replace(" lift", "")}</dd><dd className="power-context">On a {story.feasibleLabel.split(", ")[0]} · needs {story.feasibleNeed} domains</dd></div>}
   </dl>;
 }
 
@@ -1531,6 +1538,17 @@ function LegacyDashboard() {
   </div>;
 }
 
+/** Last line of defence: a render error shows a way back instead of unmounting to a blank page. */
+class RouteBoundary extends Component<{ label: string; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() { return { failed: true }; }
+  componentDidCatch(error: unknown) { console.error(error); }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return <main className="load-state" role="alert"><CircleAlert size={24} /><h1>The {this.props.label} could not be shown.</h1><p>Reload the page, or return to the dashboard.</p><a className="button" href="#s-essential" onClick={() => this.setState({ failed: false })}>Return to dashboard</a></main>;
+  }
+}
+
 function CaseStudyPresentation({ presenter = false }: { presenter?: boolean }) {
   const [data, setData] = useState<CaseStudyData | null>(null);
   const [error, setError] = useState("");
@@ -1548,9 +1566,9 @@ function CaseStudyPresentation({ presenter = false }: { presenter?: boolean }) {
 function App() {
   const [route, setRoute] = useState(() => window.location.hash);
   useEffect(() => { const sync = () => setRoute(window.location.hash); window.addEventListener("hashchange", sync); return () => window.removeEventListener("hashchange", sync); }, []);
-  if (route.startsWith("#presenter/")) return <CaseStudyPresentation presenter />;
-  if (route.startsWith("#present/")) return <CaseStudyPresentation />;
-  return <LegacyDashboard />;
+  if (route.startsWith("#presenter/")) return <RouteBoundary key="presenter" label="presenter console"><CaseStudyPresentation presenter /></RouteBoundary>;
+  if (route.startsWith("#present/")) return <RouteBoundary key="deck" label="presentation"><CaseStudyPresentation /></RouteBoundary>;
+  return <RouteBoundary key="dashboard" label="dashboard"><LegacyDashboard /></RouteBoundary>;
 }
 
 export default App;

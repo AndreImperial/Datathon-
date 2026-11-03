@@ -445,7 +445,7 @@ def pilot_design(eligible: int) -> pd.DataFrame:
     rows = []
     for baseline in PILOT_BASELINES:
         lift = detectable_lift(baseline, arm_size)
-        rows.append({"design": "Full eligible audience, 50/50", "baseline_rate": baseline, "arm_size": arm_size, "total_accounts": eligible, "detectable_lift": lift, "detectable_lift_pp": round(lift * 100, 1), "treatment_rate": baseline + lift, "horizon_days": 90, "outcome": "New CRM opportunity within 90 days", "alpha": 0.05, "power": 0.8})
+        rows.append({"design": "Full eligible audience, 50/50", "baseline_rate": baseline, "arm_size": arm_size, "total_accounts": eligible, "detectable_lift": lift, "detectable_lift_pp": round(lift * 100, 1), "relative_lift": lift / baseline, "treatment_rate": baseline + lift, "horizon_days": 90, "outcome": "New CRM opportunity within 90 days", "alpha": 0.05, "power": 0.8})
     return pd.DataFrame(rows)
 
 

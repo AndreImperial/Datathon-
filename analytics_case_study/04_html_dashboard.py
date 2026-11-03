@@ -312,10 +312,9 @@ def dashboard_quality_vals():
     if not attribution.empty and {"attribution_model", "attributed_pipeline"}.issubset(attribution.columns):
         sourced = attribution.loc[attribution["attribution_model"] == "Marketing Sourced", "attributed_pipeline"].sum()
         influenced = attribution.loc[attribution["attribution_model"] == "Marketing Influenced", "attributed_pipeline"].sum()
-        if sourced > 0:
-            defaults["attribution_reconciliation"] = f"{influenced / sourced:.1f}x"
-        elif influenced > 0:
-            defaults["attribution_reconciliation"] = "Influenced only"
+        # No ratio: sourced covers every CRM year, influenced only 2024-created opportunities.
+        if sourced > 0 or influenced > 0:
+            defaults["attribution_reconciliation"] = "Not comparable: sourced covers 2018–2024, influenced 2024 only"
 
     if won_col and "_amount" in opps.columns:
         won_rows = opps[opps[won_col].eq(True)]
@@ -2402,8 +2401,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
           <tbody>
             <tr>
               <td><strong>Expand coverage to unreached CRM account domains.</strong></td>
-              <td><span class="confidence-pill high">High</span></td>
-              <td>{unreached_accounts} CRM account domains are unreached, and 2024 reached groups show higher all-history opportunity prevalence; time ordering and selection prevent a conversion or lift claim.</td>
+              <td><span class="confidence-pill">Hypothesis</span></td>
+              <td>{unreached_accounts} CRM account domains are unreached. Reached groups show higher opportunity prevalence, but most of those opportunities predate the 2024 reach, so this is a hypothesis for the controlled test, not evidence that reach creates pipeline.</td>
               <td>Exclude existing customers and active pipeline; define exposure before future opportunity outcomes, then compare eligible strong-fit domains with a randomized holdout.</td>
             </tr>
             <tr>

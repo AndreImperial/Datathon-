@@ -49,5 +49,15 @@ export function validateDashboardPayload(value: unknown): DashboardData {
 export function validateCaseStudyPayload(value: unknown): CaseStudyData {
   const payload = value as CaseStudyData;
   if (!payload || payload.schema_version !== 3) throw new Error("Presentation evidence is not schema version 3.");
+  // The deck reads these without guards; a file missing one would otherwise crash to a blank page.
+  const missing = [
+    !Array.isArray(payload.presentation?.slides) || !payload.presentation.slides.length ? "presentation.slides" : "",
+    !Number.isFinite(payload.presentation?.target_duration_seconds) || payload.presentation.target_duration_seconds <= 0 ? "presentation.target_duration_seconds" : "",
+    typeof payload.meta?.snapshot_id !== "string" ? "meta.snapshot_id" : "",
+    !Array.isArray(payload.recommendations) ? "recommendations" : "",
+    !Array.isArray(payload.findings) ? "findings" : "",
+    !payload.datasets || typeof payload.datasets !== "object" ? "datasets" : "",
+  ].filter(Boolean);
+  if (missing.length) throw new Error(`Presentation evidence is missing ${missing.join(", ")}.`);
   return payload;
 }

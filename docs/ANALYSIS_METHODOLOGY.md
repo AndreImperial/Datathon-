@@ -30,9 +30,9 @@ Only five ads have complete format, message, and tone labels. Creative format, m
 
 ## Current browser evidence contract
 
-The preserved dashboard shell continues to use the legacy schema-v2 dashboard payload. The browser findings presentation reads the additive schema-v3 contract at `frontend/public/dashboard-data-v3.json`; both are bundled into the generated `public/` deployment output. The v3 contract includes population reconciliation, source coverage, channel results, attribution overlap and sensitivity, audience exclusions, experiment scenarios, and the acquisition source-group scorecard. This separation keeps the incumbent dashboard data contract stable while making the current decision brief explicit about population and evidence limits.
+The dashboard reads both the schema-v2 payload (charts and tables) and the schema-v3 contract (the brief, the case question's answer and the source scorecards). The browser findings presentation reads the additive schema-v3 contract at `frontend/public/dashboard-data-v3.json`; both are bundled into the generated `public/` deployment output. The v3 contract includes population reconciliation, source coverage, channel results, attribution overlap and sensitivity, audience exclusions, experiment scenarios, and the acquisition source-group scorecard. This separation keeps the incumbent dashboard data contract stable while making the current decision brief explicit about population and evidence limits.
 
-The browser presentation has 16 main slides totaling 1,080 seconds (18 minutes) and six appendix slides. The first main slide is addressable at `#present/main-01`. The former 12-slide PPTX is a historical archive with retired analytical definitions and is not part of the default pipeline.
+The browser presentation has 16 main slides totaling 1,080 seconds (18 minutes) and six appendix slides. The first main slide is addressable at `#present/main-01`. An earlier 12-slide PowerPoint export was retired and is not in the repository.
 
 ## Pipeline
 

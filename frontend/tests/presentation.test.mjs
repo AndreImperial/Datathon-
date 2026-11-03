@@ -203,7 +203,7 @@ const withoutPilot=structuredClone(data);
 delete withoutPilot.datasets.pilot_design; delete withoutPilot.datasets.mrr_amount_relationship;
 for(const key of ['pilot_arm_size','pilot_detectable_lift_pp_at_5pct','pilot_treatment_accounts','mrr_both_positive_wins','mrr_equals_amount_share']) delete withoutPilot.datasets.summary[0][key];
 test('main-14 turns the scenario grid into an actionable pilot when pilot_design exists',async()=>mounted('#present/main-14',async()=>{
-  assert.equal(document.querySelector('h1').textContent,'A +2 pp test needs 4,426 domains, but all 2,034 split 50/50 can detect +3.1 pp in 90 days');
+  assert.equal(document.querySelector('h1').textContent,'A +2 pp test needs 4,426 domains, but all 2,034 split 50/50 can detect +3.1 pp (+62% relative) in 90 days');
   assert.equal(document.querySelectorAll('.deck-scenarios tbody td').length,9,'the 3×3 grid stays');
   const pilot=document.querySelector('.deck-pilot');
   assert.match(pilot.textContent,/2,034/); assert.match(pilot.textContent,/1,017 per arm · 90 days/); assert.match(pilot.textContent,/New CRM opportunity within 90 days/);

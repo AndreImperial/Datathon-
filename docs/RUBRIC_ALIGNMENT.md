@@ -27,7 +27,7 @@ Evaluator takeaway: limitations shape interpretation and appear alongside the de
 
 ## 3. Data Storytelling
 
-The answer-first narrative is to maintain observed channel performance, test creative bundles, and run randomized account coverage before expanding spend. Each main-deck claim connects to a decision or test and carries an evidence boundary.
+The answer-first narrative is the big idea: fix conversion before buying volume, prove reach before scaling spend. The dashboard opens with the case question and a direct answer (Referral is the benchmark; within marketing, Website Inbound works while 6sense and MQA leads have never won), then a 90-day controlled pilot before any spend increase. Each main-deck claim connects to a decision or test and carries an evidence boundary.
 
 Evaluator takeaway: findings lead to bounded, executable recommendations.
 
@@ -56,7 +56,7 @@ Evaluator takeaway: methods match the questions and avoid unsupported precision.
 
 Recommended pivot:
 
-- Maintain observed channel performance while conversion quality and recorded-value completeness remain decision constraints.
+- Fix conversion before buying volume: protect Referral, keep Website Inbound, and review the 6sense and MQA lead sources that won none of 117 resolved deals.
 - Fix marketing-sourced conversion before adding volume: in 2023–24 it wins 10.2% of resolved new-logo deals against 26.8% for referral.
 - Test account coverage among 2,034 eligible ICP domains and compare matched creative bundles.
 - Report source credit, linked influence, and linkage coverage together; use attribution to form hypotheses rather than claim causality.
@@ -66,7 +66,7 @@ Evaluator takeaway: recommendations are executable, budget-aware, and include me
 
 ## 7. Presentation Skills
 
-The current browser deck has a configured, unverified published address at [marketing-analytics-dashboard-saoj.onrender.com/#present/main-01](https://marketing-analytics-dashboard-saoj.onrender.com/#present/main-01) and delivers 16 timed main slides in 18 minutes, followed by six on-demand appendix slides. The talk track is documented in `SLIDE_BY_SLIDE_EXPLAINED.md`. The PowerPoint file is a historical archive with retired analytical definitions, not the current presentation contract.
+The current browser deck is live at [marketing-analytics-dashboard-saoj.onrender.com/#present/main-01](https://marketing-analytics-dashboard-saoj.onrender.com/#present/main-01) and delivers 16 timed main slides in 18 minutes, followed by six on-demand appendix slides. The talk track is documented in `SLIDE_BY_SLIDE_EXPLAINED.md`. The earlier PowerPoint export was retired and is not in the repository.
 
 Evaluator takeaway: the presenter can deliver a concise executive story while keeping methods and diagnostics available for questions.
 
@@ -76,7 +76,7 @@ Evidence:
 
 - The dedicated browser findings deck is linked from the dashboard and deep-links by slide ID.
 - The ten-section interactive dashboard remains the canonical analysis surface; its analyst presentation-mode toggle is an additional focused layout.
-- The historical PowerPoint export may be retained as an optional artifact; it does not define the current slide sequence.
+- The earlier PowerPoint export was retired; the browser deck is the only presentation.
 
 Evaluator takeaway: the work provides both a guided presentation and an inspectable analytical dashboard.
 
@@ -84,7 +84,7 @@ Evaluator takeaway: the work provides both a guided presentation and an inspecta
 
 | Case claim | Current evidence / boundary | Dashboard section | Browser deck slide |
 |---|---|---|---|
-| Recorded value is meaningful but incomplete | 3,245 canonical opportunities; $24.9M pipeline; $5.4M won amount. Amount coverage and outcome definitions constrain revenue interpretation. | Executive Summary; Channel Performance; Appendix | `main-05` Channel effectiveness; `main-04` Business motion; `appendix-01` Population and source coverage; `appendix-02` Metric definitions |
+| Recorded value is meaningful but incomplete | 3,245 canonical opportunities; $24.9M recorded amount across all deals ($7.0M open pipeline); $5.4M won amount. Amount coverage and outcome definitions constrain revenue interpretation. | Executive Summary; Channel Performance; Appendix | `main-05` Channel effectiveness; `main-04` Business motion; `appendix-01` Population and source coverage; `appendix-02` Metric definitions |
 | Channel and content observations guide tests, not causal claims | 684 opportunities are linked to eligible touches; attribution ranks vary by model/window. Only five ads have complete creative metadata. | Attribution Analysis; Channel Performance; Creative & Email; Appendix | `main-08` Advertising content; `main-10` Source and touch overlap; `main-11` Attribution and journeys; `appendix-03` Attribution methods |
 | Eligible accounts support a coverage experiment | 2,034 eligible ICP domains remain; reached-group comparisons are observational. | Segment & ICP; Advanced Analytics; Budget Measurement | `main-12` Target audience; `main-14` Controlled experiment; `appendix-05` Targeting and sample uncertainty |
 | The default experiment target is infeasible at the current audience size | A 5% baseline and +2pp lift require 4,426 domains versus 2,034 eligible. Delivered power scenarios support alternate planning. | Budget Measurement; Segment & ICP; Appendix | `main-14` Controlled experiment; `main-15` Budget implications; `appendix-05` Targeting and sample uncertainty |

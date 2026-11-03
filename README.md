@@ -2,21 +2,25 @@
 
 An end-to-end B2B marketing analytics case study. Eight CRM and marketing exports become validated data marts, an interactive dashboard and an 18-minute browser presentation for a CMO.
 
+**The question:** Which channels and content formats support acquisition, recorded revenue and engagement?
+
+**The answer:** Relationships carry revenue: Referral wins 26.8% of new-logo deals and leads new-logo won amount across 2018–24. Within marketing, Website Inbound works (20.9%), while 6sense and MQA leads won none of 117 resolved deals, so marketing overall wins 10.2%. Tracked touches precede 57% of 2024 wins, the only year logged, and too few ads are fully labelled to rank content formats.
+
 **The big idea:** Fix conversion before buying volume. Prove reach before scaling spend.
 
-![The Revenue Command Center dashboard: the big idea, the pilot you can run now and the four headline figures](docs/images/dashboard.png)
+- [Live dashboard](https://andreimperial.github.io/Datathon-/) (GitHub Pages, always on)
+- [Live presentation, first slide](https://andreimperial.github.io/Datathon-/#present/main-01) — full 18-minute deck, or switch to the 10-minute executive cut in the deck header
+- [Render deployment](https://marketing-analytics-dashboard-saoj.onrender.com/) — same build behind Flask; on the free plan it sleeps when idle, so the first visit can take 15–30 seconds
 
-- [Live dashboard](https://marketing-analytics-dashboard-saoj.onrender.com/)
-- [Live presentation, first slide](https://marketing-analytics-dashboard-saoj.onrender.com/#present/main-01) — full 18-minute deck, or switch to the 10-minute executive cut in the deck header
-- [GitHub Pages mirror](https://andreimperial.github.io/Datathon-/)
+![The Revenue Command Center dashboard: the case question and its answer, the big idea and the pilot you can run now](docs/images/dashboard.png)
 
 ## Executive answer
 
 The snapshot contains 3,245 canonical, non-deleted opportunities: 2,834 are resolved (won, lost or discontinued) and 1,070 are won. Recorded amount across all deals is $24,876,699.31, including closed-lost deals; open pipeline is $7,026,136.93. Recorded won amount is $5,419,871.93, but 699 of the 1,070 wins have a zero amount, and those wins carry $3,447,433.79 of monthly recurring revenue (MRR) in a separate field, 94% of it on existing-customer deals. MRR is reported beside amount, never added to it. On the 112 wins that record both, amount equals MRR on 93%, so recorded amount is a monthly value, not a contract total.
 
-A deal counts as acquisition when its account had no earlier won deal; this classifies every year, including 2023–24, where the CRM type field is blank. Referral leads recorded new-logo won amount across 2018–2024. In 2023–24 new-logo deals, marketing-sourced opportunities convert lowest: 10.2% of resolved deals won, against 26.8% for referral, while marketing supplied 382 of 1,192 new-logo opportunities. Channel rankings are descriptive and do not establish incremental channel value.
+A deal counts as acquisition when its account had no earlier won deal; this classifies every year, including 2023–24, where the CRM type field is blank. Referral leads recorded new-logo won amount across 2018–2024. In 2023–24 new-logo deals, marketing-sourced opportunities have the lowest point estimate: 10.2% of resolved deals won, clearly below 26.8% for referral and within the uncertainty of sales proactive (12.4%), while marketing supplied 382 of 1,192 new-logo opportunities. Website Inbound converts at 20.9%; 6sense and MQA leads have no wins. Channel rankings are descriptive and do not establish incremental channel value.
 
-The recommendation: fix marketing-sourced conversion before adding volume, protect referral, record contract value on every win, and run a controlled account-coverage test before expanding spend. Eligible 365-day marketing touches link to 684 opportunities (127 wins); email, web and 6sense logs cover 2024 only, so those links are read against the 1,191 opportunities created in 2024 (57% linked), and about 79% of usable touches are 6sense ad impressions aimed at in-market accounts. The ICP audience has 2,034 eligible domains, while the default 5% baseline / +2 percentage-point test needs 4,426 accounts. The runnable alternative is a 90-day pilot on all 2,034 domains split 50/50 (1,017 per arm), which can detect +3.1 points from a 5% baseline (+2.1 at 2%, +4.0 at 10%); its budget is 1,017 treatment accounts × cost per account, entered in the dashboard's calculator. Only five ads have complete creative labels. A calendar-only win-probability model was withdrawn because its holdout was near chance and predicted no wins.
+The recommendation: fix marketing-sourced conversion before adding volume, protect referral, record contract value on every win, and run a controlled account-coverage test before expanding spend. Eligible 365-day marketing touches link to 684 opportunities (127 wins); email, web and 6sense logs cover 2024 only, so those links are read against the 1,191 opportunities created in 2024 (57% linked), and about 79% of usable touches are 6sense ad impressions aimed at in-market accounts. The ICP audience has 2,034 eligible domains, while the default 5% baseline / +2 percentage-point test needs 4,426 accounts. The runnable alternative is a 90-day pilot on all 2,034 domains split 50/50 (1,017 per arm), which can detect +3.1 points from a 5% baseline (+2.1 at 2%, +4.0 at 10%); its budget is 1,017 treatment accounts × cost per account plus any fixed cost; neither cost is supplied, so the dashboard's calculator takes them as inputs. The +3.1-point lift is a 62% relative lift on a 5% baseline, so the pilot can only detect a large effect. Only five ads have complete creative labels. A calendar-only win-probability model was withdrawn because its holdout was near chance and predicted no wins.
 
 ## Repository layout
 
@@ -34,7 +38,7 @@ outputs/analysis/         Excel workbooks (generated)
 outputs/dashboard/        Legacy Plotly archive and contract copies (generated)
 docs/                     Methodology, plain-language guide, rubric map, slide talk track
 docs/audit/               Audit report, fix backlog, verification receipt, release checklist
-docs/reference/           Supporting project-process PDFs
+docs/reference-archive/   Superseded project-process PDFs (history only)
 design-system/, .impeccable/   Design references used by the UI tooling
 app.py                    Flask server with a /health readiness check
 run_pipeline.py           One-command pipeline runner

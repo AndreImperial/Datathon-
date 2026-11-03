@@ -5,9 +5,9 @@
     "period": "2018–2024",
     "generated_from": "validated Parquet outputs",
     "methodology": "365-day primary attribution with 30/90/180/365-day sensitivity; resolved-outcome win rates; cohort maturity controls",
-    "generated_at": "2026-11-03T04:55:22.459814+00:00",
+    "generated_at": "2026-11-03T14:11:47.556896+00:00",
     "source_freshness": "Source dates are historical; generated_at is build time, not evidence of source freshness. No production refresh policy is approved.",
-    "snapshot_id": "9c524ee116f41b8a",
+    "snapshot_id": "9adae27adbee24e1",
     "run_metadata": {
       "python": "3.11.9",
       "dependencies": {
@@ -18,7 +18,7 @@
         "plotly": "6.7.0",
         "openpyxl": "3.1.5"
       },
-      "started_at": "2026-11-03T04:53:15.361528+00:00",
+      "started_at": "2026-11-03T14:09:43.246367+00:00",
       "source_files": [
         {
           "source_id": "Datathon_db_6sense_campaign_accounts.xlsx",
@@ -108,9 +108,9 @@
       "latest_mature_marketing_sourced_share": "23%",
       "domain_match_rate": "96.5%",
       "missing_create_dates": "0",
-      "unknown_channel_pct": "34.0%",
+      "unknown_channel_pct": "28.8%",
       "top3_pipeline_share": "83.3%",
-      "attribution_reconciliation": "1.5x",
+      "attribution_reconciliation": "Not comparable: sourced covers 2018–2024, influenced 2024 only",
       "zero_amount_won_share": "65.3%",
       "attribution_linked_won_share": "57.0%",
       "linked_opportunities": "684",
@@ -335,16 +335,16 @@
       },
       {
         "channel_category": "other",
-        "deal_count": 1104,
-        "resolved_count": 870,
-        "total_pipeline": 14753748.66,
-        "avg_deal_size": 13363.902771739131,
-        "zero_amount_deals": 371,
-        "won_count": 195,
-        "won_pipeline": 2456816.16,
-        "win_rate": 0.2241,
-        "resolved_share": 0.788,
-        "pipeline_pct": 0.5931,
+        "deal_count": 936,
+        "resolved_count": 736,
+        "total_pipeline": 12781607.0,
+        "avg_deal_size": 13655.563034188035,
+        "zero_amount_deals": 306,
+        "won_count": 167,
+        "won_pipeline": 2061261.0,
+        "win_rate": 0.2269,
+        "resolved_share": 0.7863,
+        "pipeline_pct": 0.5138,
         "channel_spend": null,
         "spend_measurement_status": "unmeasured",
         "spend_period_start": null,
@@ -387,16 +387,16 @@
       },
       {
         "channel_category": "referral",
-        "deal_count": 291,
-        "resolved_count": 258,
-        "total_pipeline": 2806070.0,
-        "avg_deal_size": 9642.852233676977,
-        "zero_amount_deals": 132,
-        "won_count": 84,
-        "won_pipeline": 1164232.0,
-        "win_rate": 0.3256,
-        "resolved_share": 0.8866,
-        "pipeline_pct": 0.1128,
+        "deal_count": 459,
+        "resolved_count": 392,
+        "total_pipeline": 4778211.66,
+        "avg_deal_size": 10410.047189542483,
+        "zero_amount_deals": 197,
+        "won_count": 112,
+        "won_pipeline": 1559787.16,
+        "win_rate": 0.2857,
+        "resolved_share": 0.854,
+        "pipeline_pct": 0.1921,
         "channel_spend": null,
         "spend_measurement_status": "unmeasured",
         "spend_period_start": null,
@@ -1699,7 +1699,12 @@
       {
         "month": "2020-02",
         "channel": "other",
-        "pipeline": 56178.0
+        "pipeline": 36178.0
+      },
+      {
+        "month": "2020-02",
+        "channel": "referral",
+        "pipeline": 20000.0
       },
       {
         "month": "2020-02",
@@ -1959,12 +1964,12 @@
       {
         "month": "2021-06",
         "channel": "other",
-        "pipeline": 74515.0
+        "pipeline": 57085.0
       },
       {
         "month": "2021-06",
         "channel": "referral",
-        "pipeline": 20000.0
+        "pipeline": 37430.0
       },
       {
         "month": "2021-06",
@@ -2124,12 +2129,12 @@
       {
         "month": "2022-01",
         "channel": "other",
-        "pipeline": 20000.0
+        "pipeline": 0.0
       },
       {
         "month": "2022-01",
         "channel": "referral",
-        "pipeline": 51678.0
+        "pipeline": 71678.0
       },
       {
         "month": "2022-02",
@@ -2164,12 +2169,12 @@
       {
         "month": "2022-03",
         "channel": "other",
-        "pipeline": 106766.0
+        "pipeline": 50000.0
       },
       {
         "month": "2022-03",
         "channel": "referral",
-        "pipeline": 129180.0
+        "pipeline": 185946.0
       },
       {
         "month": "2022-04",
@@ -2214,12 +2219,12 @@
       {
         "month": "2022-05",
         "channel": "other",
-        "pipeline": 119274.0
+        "pipeline": 79569.0
       },
       {
         "month": "2022-05",
         "channel": "referral",
-        "pipeline": 97765.0
+        "pipeline": 137470.0
       },
       {
         "month": "2022-06",
@@ -2234,12 +2239,12 @@
       {
         "month": "2022-06",
         "channel": "other",
-        "pipeline": 40000.0
+        "pipeline": 20000.0
       },
       {
         "month": "2022-06",
         "channel": "referral",
-        "pipeline": 106809.0
+        "pipeline": 126809.0
       },
       {
         "month": "2022-06",
@@ -2284,12 +2289,12 @@
       {
         "month": "2022-08",
         "channel": "other",
-        "pipeline": 191970.0
+        "pipeline": 101928.0
       },
       {
         "month": "2022-08",
         "channel": "referral",
-        "pipeline": 3235.0
+        "pipeline": 93277.0
       },
       {
         "month": "2022-08",
@@ -2339,12 +2344,12 @@
       {
         "month": "2022-10",
         "channel": "other",
-        "pipeline": 172846.0
+        "pipeline": 152846.0
       },
       {
         "month": "2022-10",
         "channel": "referral",
-        "pipeline": 78549.0
+        "pipeline": 98549.0
       },
       {
         "month": "2022-10",
@@ -2364,12 +2369,12 @@
       {
         "month": "2022-11",
         "channel": "other",
-        "pipeline": 38555.0
+        "pipeline": 28555.0
       },
       {
         "month": "2022-11",
         "channel": "referral",
-        "pipeline": 61317.0
+        "pipeline": 71317.0
       },
       {
         "month": "2022-11",
@@ -2389,12 +2394,12 @@
       {
         "month": "2022-12",
         "channel": "other",
-        "pipeline": 40930.0
+        "pipeline": 20930.0
       },
       {
         "month": "2022-12",
         "channel": "referral",
-        "pipeline": 197454.0
+        "pipeline": 217454.0
       },
       {
         "month": "2022-12",
@@ -2419,12 +2424,12 @@
       {
         "month": "2023-01",
         "channel": "other",
-        "pipeline": 214579.0
+        "pipeline": 162203.0
       },
       {
         "month": "2023-01",
         "channel": "referral",
-        "pipeline": 66440.0
+        "pipeline": 118816.0
       },
       {
         "month": "2023-01",
@@ -2449,12 +2454,12 @@
       {
         "month": "2023-02",
         "channel": "other",
-        "pipeline": 73756.0
+        "pipeline": 0.0
       },
       {
         "month": "2023-02",
         "channel": "referral",
-        "pipeline": 82270.0
+        "pipeline": 156026.0
       },
       {
         "month": "2023-02",
@@ -2479,12 +2484,12 @@
       {
         "month": "2023-03",
         "channel": "other",
-        "pipeline": 181979.0
+        "pipeline": 122597.0
       },
       {
         "month": "2023-03",
         "channel": "referral",
-        "pipeline": 52539.0
+        "pipeline": 111921.0
       },
       {
         "month": "2023-04",
@@ -2504,12 +2509,12 @@
       {
         "month": "2023-04",
         "channel": "other",
-        "pipeline": 337518.0
+        "pipeline": 329662.0
       },
       {
         "month": "2023-04",
         "channel": "referral",
-        "pipeline": 4000.0
+        "pipeline": 11856.0
       },
       {
         "month": "2023-04",
@@ -2529,12 +2534,12 @@
       {
         "month": "2023-05",
         "channel": "other",
-        "pipeline": 314585.0
+        "pipeline": 294585.0
       },
       {
         "month": "2023-05",
         "channel": "referral",
-        "pipeline": 53174.0
+        "pipeline": 73174.0
       },
       {
         "month": "2023-06",
@@ -2554,12 +2559,12 @@
       {
         "month": "2023-06",
         "channel": "other",
-        "pipeline": 140000.0
+        "pipeline": 40000.0
       },
       {
         "month": "2023-06",
         "channel": "referral",
-        "pipeline": 40500.0
+        "pipeline": 140500.0
       },
       {
         "month": "2023-06",
@@ -2584,12 +2589,12 @@
       {
         "month": "2023-07",
         "channel": "other",
-        "pipeline": 112408.0
+        "pipeline": 76319.0
       },
       {
         "month": "2023-07",
         "channel": "referral",
-        "pipeline": 88642.0
+        "pipeline": 124731.0
       },
       {
         "month": "2023-07",
@@ -2614,12 +2619,12 @@
       {
         "month": "2023-08",
         "channel": "other",
-        "pipeline": 111800.0
+        "pipeline": 75000.0
       },
       {
         "month": "2023-08",
         "channel": "referral",
-        "pipeline": 84471.0
+        "pipeline": 121271.0
       },
       {
         "month": "2023-08",
@@ -2644,12 +2649,12 @@
       {
         "month": "2023-09",
         "channel": "other",
-        "pipeline": 207453.0
+        "pipeline": 173755.0
       },
       {
         "month": "2023-09",
         "channel": "referral",
-        "pipeline": 32000.0
+        "pipeline": 65698.0
       },
       {
         "month": "2023-09",
@@ -2674,12 +2679,12 @@
       {
         "month": "2023-10",
         "channel": "other",
-        "pipeline": 119850.0
+        "pipeline": 99850.0
       },
       {
         "month": "2023-10",
         "channel": "referral",
-        "pipeline": 18000.0
+        "pipeline": 38000.0
       },
       {
         "month": "2023-10",
@@ -2704,7 +2709,12 @@
       {
         "month": "2023-11",
         "channel": "other",
-        "pipeline": 209370.0
+        "pipeline": 165370.0
+      },
+      {
+        "month": "2023-11",
+        "channel": "referral",
+        "pipeline": 44000.0
       },
       {
         "month": "2023-11",
@@ -2729,12 +2739,12 @@
       {
         "month": "2023-12",
         "channel": "other",
-        "pipeline": 502698.0
+        "pipeline": 457698.0
       },
       {
         "month": "2023-12",
         "channel": "referral",
-        "pipeline": 0.0
+        "pipeline": 45000.0
       },
       {
         "month": "2023-12",
@@ -2759,12 +2769,12 @@
       {
         "month": "2024-01",
         "channel": "other",
-        "pipeline": 448040.0
+        "pipeline": 398040.0
       },
       {
         "month": "2024-01",
         "channel": "referral",
-        "pipeline": 12000.0
+        "pipeline": 62000.0
       },
       {
         "month": "2024-01",
@@ -2789,7 +2799,12 @@
       {
         "month": "2024-02",
         "channel": "other",
-        "pipeline": 336933.0
+        "pipeline": 285733.0
+      },
+      {
+        "month": "2024-02",
+        "channel": "referral",
+        "pipeline": 51200.0
       },
       {
         "month": "2024-02",
@@ -2814,12 +2829,12 @@
       {
         "month": "2024-03",
         "channel": "other",
-        "pipeline": 478704.0
+        "pipeline": 410731.0
       },
       {
         "month": "2024-03",
         "channel": "referral",
-        "pipeline": 20000.0
+        "pipeline": 87973.0
       },
       {
         "month": "2024-03",
@@ -2844,12 +2859,12 @@
       {
         "month": "2024-04",
         "channel": "other",
-        "pipeline": 514769.0
+        "pipeline": 467873.0
       },
       {
         "month": "2024-04",
         "channel": "referral",
-        "pipeline": 5000.0
+        "pipeline": 51896.0
       },
       {
         "month": "2024-04",
@@ -2874,12 +2889,12 @@
       {
         "month": "2024-05",
         "channel": "other",
-        "pipeline": 713944.83
+        "pipeline": 580455.0
       },
       {
         "month": "2024-05",
         "channel": "referral",
-        "pipeline": 24800.0
+        "pipeline": 158289.83000000002
       },
       {
         "month": "2024-05",
@@ -2904,12 +2919,12 @@
       {
         "month": "2024-06",
         "channel": "other",
-        "pipeline": 1194105.0
+        "pipeline": 1179105.0
       },
       {
         "month": "2024-06",
         "channel": "referral",
-        "pipeline": 23570.0
+        "pipeline": 38570.0
       },
       {
         "month": "2024-06",
@@ -2934,12 +2949,12 @@
       {
         "month": "2024-07",
         "channel": "other",
-        "pipeline": 953881.33
+        "pipeline": 909167.0
       },
       {
         "month": "2024-07",
         "channel": "referral",
-        "pipeline": 24500.0
+        "pipeline": 69214.33
       },
       {
         "month": "2024-07",
@@ -2964,12 +2979,12 @@
       {
         "month": "2024-08",
         "channel": "other",
-        "pipeline": 752835.0
+        "pipeline": 652724.0
       },
       {
         "month": "2024-08",
         "channel": "referral",
-        "pipeline": 39150.0
+        "pipeline": 139261.0
       },
       {
         "month": "2024-08",
@@ -2994,12 +3009,12 @@
       {
         "month": "2024-09",
         "channel": "other",
-        "pipeline": 1125863.0
+        "pipeline": 950863.0
       },
       {
         "month": "2024-09",
         "channel": "referral",
-        "pipeline": 73699.0
+        "pipeline": 248699.0
       },
       {
         "month": "2024-09",
@@ -3024,12 +3039,12 @@
       {
         "month": "2024-10",
         "channel": "other",
-        "pipeline": 2600613.0
+        "pipeline": 2452955.0
       },
       {
         "month": "2024-10",
         "channel": "referral",
-        "pipeline": 60400.0
+        "pipeline": 208058.0
       },
       {
         "month": "2024-10",
@@ -3049,12 +3064,12 @@
       {
         "month": "2024-11",
         "channel": "other",
-        "pipeline": 978532.0
+        "pipeline": 797350.0
       },
       {
         "month": "2024-11",
         "channel": "referral",
-        "pipeline": 20938.0
+        "pipeline": 202120.0
       },
       {
         "month": "2024-11",
@@ -3074,12 +3089,12 @@
       {
         "month": "2024-12",
         "channel": "other",
-        "pipeline": 445685.5
+        "pipeline": 329668.0
       },
       {
         "month": "2024-12",
         "channel": "referral",
-        "pipeline": 10000.0
+        "pipeline": 126017.5
       },
       {
         "month": "2024-12",
@@ -3682,25 +3697,25 @@
         "eligibility_note": "Includes same-day wins; excludes negative, missing and >730-day intervals. See exclusions by channel/motion."
       },
       {
-        "channel_category": "referral",
-        "mean_days": 83.41975308641975,
-        "median_days": 51.0,
-        "deal_count": 81,
-        "p25": 26.0,
-        "p75": 91.0,
-        "canonical_wins": 84,
-        "included_share": 0.9642857142857143,
+        "channel_category": "other",
+        "mean_days": 81.2258064516129,
+        "median_days": 55.0,
+        "deal_count": 155,
+        "p25": 20.5,
+        "p75": 97.0,
+        "canonical_wins": 167,
+        "included_share": 0.9281437125748503,
         "eligibility_note": "Includes same-day wins; excludes negative, missing and >730-day intervals. See exclusions by channel/motion."
       },
       {
-        "channel_category": "other",
-        "mean_days": 83.7032967032967,
-        "median_days": 57.5,
-        "deal_count": 182,
-        "p25": 23.5,
-        "p75": 100.5,
-        "canonical_wins": 195,
-        "included_share": 0.9333333333333333,
+        "channel_category": "referral",
+        "mean_days": 87.04629629629629,
+        "median_days": 55.5,
+        "deal_count": 108,
+        "p25": 28.0,
+        "p75": 106.0,
+        "canonical_wins": 112,
+        "included_share": 0.9642857142857143,
         "eligibility_note": "Includes same-day wins; excludes negative, missing and >730-day intervals. See exclusions by channel/motion."
       },
       {
@@ -3869,14 +3884,14 @@
         "channel_category": "other",
         "business_motion": "Acquisition",
         "duration_status": "eligible positive",
-        "wins": 72,
+        "wins": 66,
         "interval_definition": "Source close_date minus createdate in whole days; 0..730 included; negative source chronology unresolved"
       },
       {
         "channel_category": "other",
         "business_motion": "Acquisition",
         "duration_status": "eligible same-day",
-        "wins": 4,
+        "wins": 3,
         "interval_definition": "Source close_date minus createdate in whole days; 0..730 included; negative source chronology unresolved"
       },
       {
@@ -3897,20 +3912,13 @@
         "channel_category": "other",
         "business_motion": "Unknown",
         "duration_status": "eligible positive",
-        "wins": 105,
+        "wins": 85,
         "interval_definition": "Source close_date minus createdate in whole days; 0..730 included; negative source chronology unresolved"
       },
       {
         "channel_category": "other",
         "business_motion": "Unknown",
         "duration_status": "eligible same-day",
-        "wins": 1,
-        "interval_definition": "Source close_date minus createdate in whole days; 0..730 included; negative source chronology unresolved"
-      },
-      {
-        "channel_category": "other",
-        "business_motion": "Unknown",
-        "duration_status": "negative interval",
         "wins": 1,
         "interval_definition": "Source close_date minus createdate in whole days; 0..730 included; negative source chronology unresolved"
       },
@@ -3925,14 +3933,14 @@
         "channel_category": "referral",
         "business_motion": "Acquisition",
         "duration_status": "eligible positive",
-        "wins": 55,
+        "wins": 61,
         "interval_definition": "Source close_date minus createdate in whole days; 0..730 included; negative source chronology unresolved"
       },
       {
         "channel_category": "referral",
         "business_motion": "Acquisition",
         "duration_status": "eligible same-day",
-        "wins": 8,
+        "wins": 9,
         "interval_definition": "Source close_date minus createdate in whole days; 0..730 included; negative source chronology unresolved"
       },
       {
@@ -3946,13 +3954,20 @@
         "channel_category": "referral",
         "business_motion": "Unknown",
         "duration_status": "eligible positive",
-        "wins": 17,
+        "wins": 37,
         "interval_definition": "Source close_date minus createdate in whole days; 0..730 included; negative source chronology unresolved"
       },
       {
         "channel_category": "referral",
         "business_motion": "Unknown",
         "duration_status": "eligible same-day",
+        "wins": 1,
+        "interval_definition": "Source close_date minus createdate in whole days; 0..730 included; negative source chronology unresolved"
+      },
+      {
+        "channel_category": "referral",
+        "business_motion": "Unknown",
+        "duration_status": "negative interval",
         "wins": 1,
         "interval_definition": "Source close_date minus createdate in whole days; 0..730 included; negative source chronology unresolved"
       },
@@ -4124,12 +4139,12 @@
       {
         "metric": "Marketing sourced",
         "amount": 4158722.0,
-        "share": 0.1671733837426039
+        "share": 0.16717338374260393
       },
       {
         "metric": "Marketing influenced",
         "amount": 6356061.36,
-        "share": 0.2555026002764351
+        "share": 0.2555026002764352
       }
     ],
     "c-essential-coverage": [
@@ -4616,32 +4631,6 @@
         "ratio_definition": "Recorded same-period sourced pipeline / tracked platform spend; descriptive, not incremental ROI"
       },
       {
-        "channel_category": "referral",
-        "deal_count": 291,
-        "resolved_count": 258,
-        "total_pipeline": 2806070.0,
-        "avg_deal_size": 9642.852233676977,
-        "zero_amount_deals": 132,
-        "won_count": 84,
-        "won_pipeline": 1164232.0,
-        "win_rate": 0.3256,
-        "resolved_share": 0.8866,
-        "pipeline_pct": 0.1128,
-        "channel_spend": null,
-        "spend_measurement_status": "unmeasured",
-        "spend_period_start": null,
-        "pipeline_period_start": null,
-        "spend_period_end": null,
-        "pipeline_period_end": null,
-        "period_matched_pipeline": null,
-        "period_matched_won_amount": null,
-        "period_matched_opportunities": null,
-        "pipeline_roi": null,
-        "revenue_roi": null,
-        "cost_per_opp": null,
-        "ratio_definition": "Recorded same-period sourced pipeline / tracked platform spend; descriptive, not incremental ROI"
-      },
-      {
         "channel_category": "existing_client",
         "deal_count": 1358,
         "resolved_count": 1297,
@@ -4668,17 +4657,43 @@
         "ratio_definition": "Recorded same-period sourced pipeline / tracked platform spend; descriptive, not incremental ROI"
       },
       {
+        "channel_category": "referral",
+        "deal_count": 459,
+        "resolved_count": 392,
+        "total_pipeline": 4778211.66,
+        "avg_deal_size": 10410.047189542483,
+        "zero_amount_deals": 197,
+        "won_count": 112,
+        "won_pipeline": 1559787.16,
+        "win_rate": 0.2857,
+        "resolved_share": 0.854,
+        "pipeline_pct": 0.1921,
+        "channel_spend": null,
+        "spend_measurement_status": "unmeasured",
+        "spend_period_start": null,
+        "pipeline_period_start": null,
+        "spend_period_end": null,
+        "pipeline_period_end": null,
+        "period_matched_pipeline": null,
+        "period_matched_won_amount": null,
+        "period_matched_opportunities": null,
+        "pipeline_roi": null,
+        "revenue_roi": null,
+        "cost_per_opp": null,
+        "ratio_definition": "Recorded same-period sourced pipeline / tracked platform spend; descriptive, not incremental ROI"
+      },
+      {
         "channel_category": "other",
-        "deal_count": 1104,
-        "resolved_count": 870,
-        "total_pipeline": 14753748.66,
-        "avg_deal_size": 13363.902771739131,
-        "zero_amount_deals": 371,
-        "won_count": 195,
-        "won_pipeline": 2456816.16,
-        "win_rate": 0.2241,
-        "resolved_share": 0.788,
-        "pipeline_pct": 0.5931,
+        "deal_count": 936,
+        "resolved_count": 736,
+        "total_pipeline": 12781607.0,
+        "avg_deal_size": 13655.563034188035,
+        "zero_amount_deals": 306,
+        "won_count": 167,
+        "won_pipeline": 2061261.0,
+        "win_rate": 0.2269,
+        "resolved_share": 0.7863,
+        "pipeline_pct": 0.5138,
         "channel_spend": null,
         "spend_measurement_status": "unmeasured",
         "spend_period_start": null,
@@ -4879,16 +4894,16 @@
       },
       {
         "channel_category": "referral",
-        "deal_count": 291,
-        "resolved_count": 258,
-        "total_pipeline": 2806070.0,
-        "avg_deal_size": 9642.852233676977,
-        "zero_amount_deals": 132,
-        "won_count": 84,
-        "won_pipeline": 1164232.0,
-        "win_rate": 0.3256,
-        "resolved_share": 0.8866,
-        "pipeline_pct": 0.1128,
+        "deal_count": 459,
+        "resolved_count": 392,
+        "total_pipeline": 4778211.66,
+        "avg_deal_size": 10410.047189542483,
+        "zero_amount_deals": 197,
+        "won_count": 112,
+        "won_pipeline": 1559787.16,
+        "win_rate": 0.2857,
+        "resolved_share": 0.854,
+        "pipeline_pct": 0.1921,
         "channel_spend": null,
         "spend_measurement_status": "unmeasured",
         "spend_period_start": null,
@@ -4905,16 +4920,16 @@
       },
       {
         "channel_category": "other",
-        "deal_count": 1104,
-        "resolved_count": 870,
-        "total_pipeline": 14753748.66,
-        "avg_deal_size": 13363.902771739131,
-        "zero_amount_deals": 371,
-        "won_count": 195,
-        "won_pipeline": 2456816.16,
-        "win_rate": 0.2241,
-        "resolved_share": 0.788,
-        "pipeline_pct": 0.5931,
+        "deal_count": 936,
+        "resolved_count": 736,
+        "total_pipeline": 12781607.0,
+        "avg_deal_size": 13655.563034188035,
+        "zero_amount_deals": 306,
+        "won_count": 167,
+        "won_pipeline": 2061261.0,
+        "win_rate": 0.2269,
+        "resolved_share": 0.7863,
+        "pipeline_pct": 0.5138,
         "channel_spend": null,
         "spend_measurement_status": "unmeasured",
         "spend_period_start": null,
@@ -5189,7 +5204,12 @@
       {
         "month": "2020-02",
         "channel": "other",
-        "pipeline": 56178.0
+        "pipeline": 36178.0
+      },
+      {
+        "month": "2020-02",
+        "channel": "referral",
+        "pipeline": 20000.0
       },
       {
         "month": "2020-02",
@@ -5449,12 +5469,12 @@
       {
         "month": "2021-06",
         "channel": "other",
-        "pipeline": 74515.0
+        "pipeline": 57085.0
       },
       {
         "month": "2021-06",
         "channel": "referral",
-        "pipeline": 20000.0
+        "pipeline": 37430.0
       },
       {
         "month": "2021-06",
@@ -5614,12 +5634,12 @@
       {
         "month": "2022-01",
         "channel": "other",
-        "pipeline": 20000.0
+        "pipeline": 0.0
       },
       {
         "month": "2022-01",
         "channel": "referral",
-        "pipeline": 51678.0
+        "pipeline": 71678.0
       },
       {
         "month": "2022-02",
@@ -5654,12 +5674,12 @@
       {
         "month": "2022-03",
         "channel": "other",
-        "pipeline": 106766.0
+        "pipeline": 50000.0
       },
       {
         "month": "2022-03",
         "channel": "referral",
-        "pipeline": 129180.0
+        "pipeline": 185946.0
       },
       {
         "month": "2022-04",
@@ -5704,12 +5724,12 @@
       {
         "month": "2022-05",
         "channel": "other",
-        "pipeline": 119274.0
+        "pipeline": 79569.0
       },
       {
         "month": "2022-05",
         "channel": "referral",
-        "pipeline": 97765.0
+        "pipeline": 137470.0
       },
       {
         "month": "2022-06",
@@ -5724,12 +5744,12 @@
       {
         "month": "2022-06",
         "channel": "other",
-        "pipeline": 40000.0
+        "pipeline": 20000.0
       },
       {
         "month": "2022-06",
         "channel": "referral",
-        "pipeline": 106809.0
+        "pipeline": 126809.0
       },
       {
         "month": "2022-06",
@@ -5774,12 +5794,12 @@
       {
         "month": "2022-08",
         "channel": "other",
-        "pipeline": 191970.0
+        "pipeline": 101928.0
       },
       {
         "month": "2022-08",
         "channel": "referral",
-        "pipeline": 3235.0
+        "pipeline": 93277.0
       },
       {
         "month": "2022-08",
@@ -5829,12 +5849,12 @@
       {
         "month": "2022-10",
         "channel": "other",
-        "pipeline": 172846.0
+        "pipeline": 152846.0
       },
       {
         "month": "2022-10",
         "channel": "referral",
-        "pipeline": 78549.0
+        "pipeline": 98549.0
       },
       {
         "month": "2022-10",
@@ -5854,12 +5874,12 @@
       {
         "month": "2022-11",
         "channel": "other",
-        "pipeline": 38555.0
+        "pipeline": 28555.0
       },
       {
         "month": "2022-11",
         "channel": "referral",
-        "pipeline": 61317.0
+        "pipeline": 71317.0
       },
       {
         "month": "2022-11",
@@ -5879,12 +5899,12 @@
       {
         "month": "2022-12",
         "channel": "other",
-        "pipeline": 40930.0
+        "pipeline": 20930.0
       },
       {
         "month": "2022-12",
         "channel": "referral",
-        "pipeline": 197454.0
+        "pipeline": 217454.0
       },
       {
         "month": "2022-12",
@@ -5909,12 +5929,12 @@
       {
         "month": "2023-01",
         "channel": "other",
-        "pipeline": 214579.0
+        "pipeline": 162203.0
       },
       {
         "month": "2023-01",
         "channel": "referral",
-        "pipeline": 66440.0
+        "pipeline": 118816.0
       },
       {
         "month": "2023-01",
@@ -5939,12 +5959,12 @@
       {
         "month": "2023-02",
         "channel": "other",
-        "pipeline": 73756.0
+        "pipeline": 0.0
       },
       {
         "month": "2023-02",
         "channel": "referral",
-        "pipeline": 82270.0
+        "pipeline": 156026.0
       },
       {
         "month": "2023-02",
@@ -5969,12 +5989,12 @@
       {
         "month": "2023-03",
         "channel": "other",
-        "pipeline": 181979.0
+        "pipeline": 122597.0
       },
       {
         "month": "2023-03",
         "channel": "referral",
-        "pipeline": 52539.0
+        "pipeline": 111921.0
       },
       {
         "month": "2023-04",
@@ -5994,12 +6014,12 @@
       {
         "month": "2023-04",
         "channel": "other",
-        "pipeline": 337518.0
+        "pipeline": 329662.0
       },
       {
         "month": "2023-04",
         "channel": "referral",
-        "pipeline": 4000.0
+        "pipeline": 11856.0
       },
       {
         "month": "2023-04",
@@ -6019,12 +6039,12 @@
       {
         "month": "2023-05",
         "channel": "other",
-        "pipeline": 314585.0
+        "pipeline": 294585.0
       },
       {
         "month": "2023-05",
         "channel": "referral",
-        "pipeline": 53174.0
+        "pipeline": 73174.0
       },
       {
         "month": "2023-06",
@@ -6044,12 +6064,12 @@
       {
         "month": "2023-06",
         "channel": "other",
-        "pipeline": 140000.0
+        "pipeline": 40000.0
       },
       {
         "month": "2023-06",
         "channel": "referral",
-        "pipeline": 40500.0
+        "pipeline": 140500.0
       },
       {
         "month": "2023-06",
@@ -6074,12 +6094,12 @@
       {
         "month": "2023-07",
         "channel": "other",
-        "pipeline": 112408.0
+        "pipeline": 76319.0
       },
       {
         "month": "2023-07",
         "channel": "referral",
-        "pipeline": 88642.0
+        "pipeline": 124731.0
       },
       {
         "month": "2023-07",
@@ -6104,12 +6124,12 @@
       {
         "month": "2023-08",
         "channel": "other",
-        "pipeline": 111800.0
+        "pipeline": 75000.0
       },
       {
         "month": "2023-08",
         "channel": "referral",
-        "pipeline": 84471.0
+        "pipeline": 121271.0
       },
       {
         "month": "2023-08",
@@ -6134,12 +6154,12 @@
       {
         "month": "2023-09",
         "channel": "other",
-        "pipeline": 207453.0
+        "pipeline": 173755.0
       },
       {
         "month": "2023-09",
         "channel": "referral",
-        "pipeline": 32000.0
+        "pipeline": 65698.0
       },
       {
         "month": "2023-09",
@@ -6164,12 +6184,12 @@
       {
         "month": "2023-10",
         "channel": "other",
-        "pipeline": 119850.0
+        "pipeline": 99850.0
       },
       {
         "month": "2023-10",
         "channel": "referral",
-        "pipeline": 18000.0
+        "pipeline": 38000.0
       },
       {
         "month": "2023-10",
@@ -6194,7 +6214,12 @@
       {
         "month": "2023-11",
         "channel": "other",
-        "pipeline": 209370.0
+        "pipeline": 165370.0
+      },
+      {
+        "month": "2023-11",
+        "channel": "referral",
+        "pipeline": 44000.0
       },
       {
         "month": "2023-11",
@@ -6219,12 +6244,12 @@
       {
         "month": "2023-12",
         "channel": "other",
-        "pipeline": 502698.0
+        "pipeline": 457698.0
       },
       {
         "month": "2023-12",
         "channel": "referral",
-        "pipeline": 0.0
+        "pipeline": 45000.0
       },
       {
         "month": "2023-12",
@@ -6249,12 +6274,12 @@
       {
         "month": "2024-01",
         "channel": "other",
-        "pipeline": 448040.0
+        "pipeline": 398040.0
       },
       {
         "month": "2024-01",
         "channel": "referral",
-        "pipeline": 12000.0
+        "pipeline": 62000.0
       },
       {
         "month": "2024-01",
@@ -6279,7 +6304,12 @@
       {
         "month": "2024-02",
         "channel": "other",
-        "pipeline": 336933.0
+        "pipeline": 285733.0
+      },
+      {
+        "month": "2024-02",
+        "channel": "referral",
+        "pipeline": 51200.0
       },
       {
         "month": "2024-02",
@@ -6304,12 +6334,12 @@
       {
         "month": "2024-03",
         "channel": "other",
-        "pipeline": 478704.0
+        "pipeline": 410731.0
       },
       {
         "month": "2024-03",
         "channel": "referral",
-        "pipeline": 20000.0
+        "pipeline": 87973.0
       },
       {
         "month": "2024-03",
@@ -6334,12 +6364,12 @@
       {
         "month": "2024-04",
         "channel": "other",
-        "pipeline": 514769.0
+        "pipeline": 467873.0
       },
       {
         "month": "2024-04",
         "channel": "referral",
-        "pipeline": 5000.0
+        "pipeline": 51896.0
       },
       {
         "month": "2024-04",
@@ -6364,12 +6394,12 @@
       {
         "month": "2024-05",
         "channel": "other",
-        "pipeline": 713944.83
+        "pipeline": 580455.0
       },
       {
         "month": "2024-05",
         "channel": "referral",
-        "pipeline": 24800.0
+        "pipeline": 158289.83000000002
       },
       {
         "month": "2024-05",
@@ -6394,12 +6424,12 @@
       {
         "month": "2024-06",
         "channel": "other",
-        "pipeline": 1194105.0
+        "pipeline": 1179105.0
       },
       {
         "month": "2024-06",
         "channel": "referral",
-        "pipeline": 23570.0
+        "pipeline": 38570.0
       },
       {
         "month": "2024-06",
@@ -6424,12 +6454,12 @@
       {
         "month": "2024-07",
         "channel": "other",
-        "pipeline": 953881.33
+        "pipeline": 909167.0
       },
       {
         "month": "2024-07",
         "channel": "referral",
-        "pipeline": 24500.0
+        "pipeline": 69214.33
       },
       {
         "month": "2024-07",
@@ -6454,12 +6484,12 @@
       {
         "month": "2024-08",
         "channel": "other",
-        "pipeline": 752835.0
+        "pipeline": 652724.0
       },
       {
         "month": "2024-08",
         "channel": "referral",
-        "pipeline": 39150.0
+        "pipeline": 139261.0
       },
       {
         "month": "2024-08",
@@ -6484,12 +6514,12 @@
       {
         "month": "2024-09",
         "channel": "other",
-        "pipeline": 1125863.0
+        "pipeline": 950863.0
       },
       {
         "month": "2024-09",
         "channel": "referral",
-        "pipeline": 73699.0
+        "pipeline": 248699.0
       },
       {
         "month": "2024-09",
@@ -6514,12 +6544,12 @@
       {
         "month": "2024-10",
         "channel": "other",
-        "pipeline": 2600613.0
+        "pipeline": 2452955.0
       },
       {
         "month": "2024-10",
         "channel": "referral",
-        "pipeline": 60400.0
+        "pipeline": 208058.0
       },
       {
         "month": "2024-10",
@@ -6539,12 +6569,12 @@
       {
         "month": "2024-11",
         "channel": "other",
-        "pipeline": 978532.0
+        "pipeline": 797350.0
       },
       {
         "month": "2024-11",
         "channel": "referral",
-        "pipeline": 20938.0
+        "pipeline": 202120.0
       },
       {
         "month": "2024-11",
@@ -6564,12 +6594,12 @@
       {
         "month": "2024-12",
         "channel": "other",
-        "pipeline": 445685.5
+        "pipeline": 329668.0
       },
       {
         "month": "2024-12",
         "channel": "referral",
-        "pipeline": 10000.0
+        "pipeline": 126017.5
       },
       {
         "month": "2024-12",
@@ -6646,12 +6676,12 @@
       {
         "metric": "Marketing sourced",
         "amount": 4158722.0,
-        "share": 0.1671733837426039
+        "share": 0.16717338374260393
       },
       {
         "metric": "Marketing influenced",
         "amount": 6356061.36,
-        "share": 0.2555026002764351
+        "share": 0.2555026002764352
       }
     ],
     "c-attrib-waterfall": [
@@ -7428,25 +7458,25 @@
         "eligibility_note": "Includes same-day wins; excludes negative, missing and >730-day intervals. See exclusions by channel/motion."
       },
       {
-        "channel_category": "referral",
-        "mean_days": 83.41975308641975,
-        "median_days": 51.0,
-        "deal_count": 81,
-        "p25": 26.0,
-        "p75": 91.0,
-        "canonical_wins": 84,
-        "included_share": 0.9642857142857143,
+        "channel_category": "other",
+        "mean_days": 81.2258064516129,
+        "median_days": 55.0,
+        "deal_count": 155,
+        "p25": 20.5,
+        "p75": 97.0,
+        "canonical_wins": 167,
+        "included_share": 0.9281437125748503,
         "eligibility_note": "Includes same-day wins; excludes negative, missing and >730-day intervals. See exclusions by channel/motion."
       },
       {
-        "channel_category": "other",
-        "mean_days": 83.7032967032967,
-        "median_days": 57.5,
-        "deal_count": 182,
-        "p25": 23.5,
-        "p75": 100.5,
-        "canonical_wins": 195,
-        "included_share": 0.9333333333333333,
+        "channel_category": "referral",
+        "mean_days": 87.04629629629629,
+        "median_days": 55.5,
+        "deal_count": 108,
+        "p25": 28.0,
+        "p75": 106.0,
+        "canonical_wins": 112,
+        "included_share": 0.9642857142857143,
         "eligibility_note": "Includes same-day wins; excludes negative, missing and >730-day intervals. See exclusions by channel/motion."
       },
       {
@@ -8501,12 +8531,12 @@
         },
         {
           "Channel": "other",
-          "Deals": 1104,
-          "Resolved": 870,
-          "Pipeline ($)": 14753748.66,
-          "Won ($)": 2456816.16,
-          "Closed Win Rate": 0.2241,
-          "Avg Deal": 13363.902771739131,
+          "Deals": 936,
+          "Resolved": 736,
+          "Pipeline ($)": 12781607.0,
+          "Won ($)": 2061261.0,
+          "Closed Win Rate": 0.2269,
+          "Avg Deal": 13655.563034188035,
           "Spend ($)": null,
           "Pipeline ROI": null,
           "Revenue ROI": null
@@ -8525,12 +8555,12 @@
         },
         {
           "Channel": "referral",
-          "Deals": 291,
-          "Resolved": 258,
-          "Pipeline ($)": 2806070.0,
-          "Won ($)": 1164232.0,
-          "Closed Win Rate": 0.3256,
-          "Avg Deal": 9642.852233676977,
+          "Deals": 459,
+          "Resolved": 392,
+          "Pipeline ($)": 4778211.66,
+          "Won ($)": 1559787.16,
+          "Closed Win Rate": 0.2857,
+          "Avg Deal": 10410.047189542483,
           "Spend ($)": null,
           "Pipeline ROI": null,
           "Revenue ROI": null
@@ -8575,8 +8605,8 @@
       "rows": [
         {
           "Recommendation": "Expand coverage to unreached CRM account domains.",
-          "Confidence": "High",
-          "Why We Believe It": "3,232 CRM account domains are unreached, and 2024 reached groups show higher all-history opportunity prevalence; time ordering and selection prevent a conversion or lift claim.",
+          "Confidence": "Hypothesis",
+          "Why We Believe It": "3,232 CRM account domains are unreached. Reached groups show higher opportunity prevalence, but most of those opportunities predate the 2024 reach, so this is a hypothesis for the controlled test, not evidence that reach creates pipeline.",
           "What To Test Next": "Exclude existing customers and active pipeline; define exposure before future opportunity outcomes, then compare eligible strong-fit domains with a randomized holdout."
         },
         {

@@ -58,4 +58,4 @@ A calendar-only win-probability baseline reached AUC 0.516 on 430 held-out cases
 3. Keep recorded sourced outcomes and touch-linked journey measures separate, with the coverage and time window visible.
 4. Choose a feasible experiment design based on the audience actually available and a pre-registered outcome such as new opportunity creation within 90 days.
 5. Randomize eligible domains within segment and fit groups; analyze the result as an incremental comparison.
-5. Run matched creative variants that isolate one dimension at a time, and scale only after an experiment supports the decision.
+6. Run matched creative variants that isolate one dimension at a time, and scale only after an experiment supports the decision.

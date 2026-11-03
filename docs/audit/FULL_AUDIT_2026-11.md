@@ -2,7 +2,9 @@
 
 2026-11-03 · commit `f170729` · live on Render and GitHub Pages · **Report only: nothing in the app, data or docs was changed by this audit.**
 
-> **Update, v1.4.0:** findings 1–6 are fixed (linked wins read against 2024; marketing split by lead source on the dashboard, deck slide 6 and the answer band; "lowest" claimed only where intervals separate and "strongest" scoped to 2018–24; deck arrow keys after a click; the win-rate fall framed as mix; Back to the first section). Findings 7–16 and the lower-priority list remain open.
+> **Update, v1.4.0:** findings 1–6 are fixed (linked wins read against 2024; marketing split by lead source on the dashboard, deck slide 6 and the answer band; "lowest" claimed only where intervals separate and "strongest" scoped to 2018–24; deck arrow keys after a click; the win-rate fall framed as mix; Back to the first section). 
+
+> **Update, v1.5.0:** findings 7–16 are fixed. The catch-all "top 3 sources" claim is replaced by the existing-customer share of wins; every "Referral: …" lead source counts as referral in both contracts; the influenced/sourced ratio is gone; the pilot shows its +62% relative lift; the reverse-causal coverage recommendation is a hypothesis; the deck validates its data and every route has an error boundary; the README opens with the question, the answer and the always-on Pages link; stale doc statements are corrected; the process PDFs moved to `docs/reference-archive/` as superseded. Still open: `target_accounts` keeps its key name (it is labelled "CRM account domains"), the archived PDF still contains a local Python path, and the lower-priority list below.
 
 Scope: analytics correctness (headline figures recomputed from the Parquet marts), the story against the case question, the live site (speed, layout, accessibility), the browser deck, frontend and server code, and documentation and repository hygiene. Every finding below was checked against code or data; unverified points are marked.
 

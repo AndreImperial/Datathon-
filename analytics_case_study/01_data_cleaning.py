@@ -89,7 +89,10 @@ def clean_opportunity_log() -> pd.DataFrame:
 
     # Channel category from lead source
     if "_leadsource" in df.columns:
-        df["channel_category"] = df["_leadsource"].map(CHANNEL_LEADSOURCE_MAP).fillna("other")
+        # Every "Referral: ..." source (client, partner, PE channel, employee) is referral, matching the
+        # brief's source groups; "Channel Referral: 6sense" stays a mapped marketing channel.
+        is_referral = df["_leadsource"].fillna("").astype(str).str.strip().str.lower().str.startswith("referral")
+        df["channel_category"] = df["_leadsource"].map(CHANNEL_LEADSOURCE_MAP).where(lambda mapped: mapped.notna() | ~is_referral, "referral").fillna("other")
         df["is_marketing_sourced"] = df["channel_category"].isin(MARKETING_CHANNELS)
 
     # Normalise segment

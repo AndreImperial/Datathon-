@@ -1,6 +1,6 @@
 # Audit Backlog
 
-The current consolidated work list is [Master fix backlog](audit/MASTER_FIX_BACKLOG.md), with 59 prioritized work items, acceptance criteria and evidence references. Use that file to track remaining repairs, risks, polish and missing external inputs.
+Current status is in the [release checklist](audit/RELEASE_CHECKLIST.md) and the latest [full audit](audit/FULL_AUDIT_2026-11.md). The [master fix backlog](audit/MASTER_FIX_BACKLOG.md) is a historical snapshot.
 
 The material below is a historical record of the earlier decision-readiness pass. It is not a current readiness declaration: subsequent audits found additional defects, and local artifact generation does not verify the live deployment. Its five enhancement ideas are included in the master list.
 
@@ -16,15 +16,15 @@ The material below is a historical record of the earlier decision-readiness pass
 - Email reporting uses engagement-event composition and documents the missing delivered denominator.
 - Paid-channel budget output is budget-neutral measurement design, without a revenue forecast. Experiment power scenarios show feasibility across detectable effects; the default 5% baseline / +2pp target requires 4,426 domains and is infeasible with 2,034 eligible domains.
 - Targeting cells include empirical-Bayes adjustment, confidence intervals, and evidence tiers.
-- The model uses an as-of cutoff, complete 180-day horizons, train-only preprocessing and creation-calendar features. Near-chance results and resolved-only selection limit the active scores to exploratory diagnostics.
+- The calendar-only win-probability model was withdrawn: its time-based holdout reached AUC 0.52 and predicted no wins, so no scores are shown.
 
 ### Presentation and UX
 
 - The canonical browser findings deck is available from `public/index.html#present/main-01` and the live Render deployment: 16 timed main slides and six appendix slides generated from the validated v3 contract.
 - The ten-section dashboard remains the interactive analysis surface, with a separate analyst presentation-mode layout and a direct Findings deck entry point.
-- Dashboard copy, charts, captions, and conclusion use corrected definitions; dashboard bundles Plotly locally and has no CDN runtime dependency.
+- Dashboard copy, charts, captions, and conclusion use corrected definitions; the production dashboard uses Recharts with no CDN runtime dependency; Plotly is used only in the legacy full-analysis archive.
 - Desktop and mobile chart behavior use responsive margins and label handling. Creative comparisons are separated by platform and minimum impression volume.
-- The production React dashboard consumes generated evidence contracts; the Plotly dashboard and PowerPoint export are retained only as historical optional artifacts.
+- The production React dashboard consumes generated evidence contracts; the Plotly dashboard is kept as a legacy archive and the PowerPoint export was retired.
 
 ### Engineering and delivery
 
