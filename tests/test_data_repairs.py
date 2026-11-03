@@ -27,6 +27,15 @@ class DataRepairTests(unittest.TestCase):
         self.assertEqual(len(actual),3245)
         self.assertAlmostEqual(actual['_amount'].sum(),24876699.31,places=2)
         self.assertAlmostEqual(actual.loc[actual['iswon'].eq(True),'_amount'].sum(),5419871.93,places=2)
+    def test_linked_win_share_counts_only_wins_created_once_touch_logs_begin(self):
+        # Two wins before the logs start can never link; the share is 1 of the 2 wins in the window.
+        opps = pd.DataFrame({'_opportunity_id':['a','b','c','d'], 'opp_domain':['a.test','b.test','c.test','d.test'], '_amount':[1.0]*4, 'iswon':[True]*4,
+                             '_opp_create_date':pd.to_datetime(['2022-05-01','2023-05-01','2024-03-01','2024-06-01'],utc=True)})
+        linked = pd.DataFrame({'_opportunity_id':['c']})
+        actual = attribution.build_attribution_coverage(linked, opps, persist=False, logs_start=pd.Timestamp('2024-01-01',tz='UTC')).iloc[0]
+        self.assertEqual(actual['observed_window_won_opportunities'], 2)
+        self.assertAlmostEqual(actual['linked_share_of_won_opportunities'], 0.5)
+        self.assertAlmostEqual(actual['linked_share_of_all_history_won'], 0.25)
     def test_raw_same_week_touches_survive_build_until_linking(self):
         campaign = pd.DataFrame({'_6sensedomain':['x.test']*2, '_date':pd.to_datetime(['2024-01-01','2024-01-05'],utc=True)})
         with patch.object(pd,'read_parquet',side_effect=[campaign,pd.DataFrame(),pd.DataFrame()]), patch.object(pd.DataFrame,'to_parquet'):

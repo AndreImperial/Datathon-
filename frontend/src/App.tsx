@@ -156,6 +156,8 @@ interface LatestBrief {
   recommendations: CaseStudyData["recommendations"];
   /** 2023–24 new-logo source groups that are ranked, best win rate first. */
   sourceGroups: DataRow[];
+  /** 2023–24 marketing-sourced new logos by CRM lead source, 30+ resolved, best win rate first; empty on older contracts. */
+  leadSources: DataRow[];
   scenarios: DataRow[];
   methodVersion: string;
   snapshotId: string;
@@ -181,9 +183,12 @@ function toLatestBrief(payload: CaseStudyData): LatestBrief | null {
   const sourceGroups = (payload.datasets?.source_group_scorecard ?? [])
     .filter((row) => row.ranked_channel === true && textValue(row, "business_motion") === "Acquisition" && /2023/.test(textValue(row, "scope")) && Number.isFinite(numberValue(row, "win_rate")))
     .sort((a, b) => numberValue(b, "win_rate") - numberValue(a, "win_rate"));
+  const leadSources = (payload.datasets?.marketing_lead_sources ?? [])
+    .filter((row) => numberValue(row, "resolved") >= 30 && Number.isFinite(numberValue(row, "win_rate")))
+    .sort((a, b) => numberValue(b, "win_rate") - numberValue(a, "win_rate"));
   const pilot = parsePilotDesign(payload.datasets?.pilot_design, numberValue(summary, "eligible_domains"));
   const pilotTreatmentAccounts = finiteOr(numberValue(summary, "pilot_treatment_accounts"), pilot?.armSize ?? NaN);
-  return { summary, findings: payload.findings ?? [], recommendations: payload.recommendations ?? [], sourceGroups, scenarios: payload.datasets?.experiment_scenarios ?? [], methodVersion: payload.meta?.method_version ?? "", snapshotId: payload.meta?.snapshot_id ?? "", pilot, pilotTreatmentAccounts, mrrAmount: mrrAmountRelationship(summary, payload.datasets?.mrr_amount_relationship) };
+  return { summary, findings: payload.findings ?? [], recommendations: payload.recommendations ?? [], sourceGroups, leadSources, scenarios: payload.datasets?.experiment_scenarios ?? [], methodVersion: payload.meta?.method_version ?? "", snapshotId: payload.meta?.snapshot_id ?? "", pilot, pilotTreatmentAccounts, mrrAmount: mrrAmountRelationship(summary, payload.datasets?.mrr_amount_relationship) };
 }
 
 /* ------------------------------------------------------------------------- *
@@ -215,6 +220,10 @@ interface StoryNumbers {
   feasibleLabel?: string; feasibleNeed?: string; zeroWins?: string; zeroMrr?: string;
   /** Pilot (all eligible, 50/50): its detectable lift on the default design's 5% baseline, e.g. "+3.1 pp". */
   pilotLift?: string; pilotTotal?: string;
+  /** Marketing's interval overlaps the next-lowest source: "lowest" is not a clear claim. */
+  nextLowest?: string; nextLowestRate?: string; lowestUnclear?: boolean;
+  /** Best marketing lead source (30+ resolved) and the lead sources with no wins. */
+  bestLead?: string; bestLeadRate?: string; zeroLeads?: string; zeroLeadResolved?: string;
 }
 /** Every figure the narrative quotes, read from the v3 brief; absent when the brief is unavailable. */
 function storyNumbers(brief: LatestBrief | null): StoryNumbers {
@@ -225,6 +234,9 @@ function storyNumbers(brief: LatestBrief | null): StoryNumbers {
   if (Number.isFinite(num("marketing_recent_win_rate"))) out.marketingRate = pct(num("marketing_recent_win_rate"));
   if (Number.isFinite(num("recent_best_win_rate"))) { out.bestRate = pct(num("recent_best_win_rate")); out.bestSource = textValue(s, "recent_best_rate_source") || "the best source"; }
   if (brief.sourceGroups.length) out.rankedSources = brief.sourceGroups.length;
+  if (Number.isFinite(num("marketing_next_lowest_win_rate"))) { out.nextLowest = textValue(s, "marketing_next_lowest_source"); out.nextLowestRate = pct(num("marketing_next_lowest_win_rate")); out.lowestUnclear = s.marketing_vs_next_clear === false; }
+  if (Number.isFinite(num("marketing_best_lead_win_rate"))) { out.bestLead = textValue(s, "marketing_best_lead_source"); out.bestLeadRate = pct(num("marketing_best_lead_win_rate")); }
+  if (textValue(s, "marketing_zero_win_sources") && num("marketing_zero_win_resolved") > 0) { out.zeroLeads = textValue(s, "marketing_zero_win_sources"); out.zeroLeadResolved = formatCount(num("marketing_zero_win_resolved")); }
   if (Number.isFinite(num("open_pipeline"))) out.openPipeline = money(num("open_pipeline"));
   if (Number.isFinite(num("zero_amount_wins"))) out.zeroWins = formatCount(num("zero_amount_wins"));
   if (Number.isFinite(num("zero_amount_win_mrr"))) out.zeroMrr = money(num("zero_amount_win_mrr"));
@@ -255,9 +267,11 @@ const CASE_QUESTION = "Which channels and content formats support acquisition, r
 
 /** The direct answer to the case question, ahead of the big idea it leads to. */
 function caseAnswer(data: DashboardData, n: StoryNumbers): string {
-  const lead = n.bestSource ? `${n.bestSource} is the strongest new-logo source, and three` : "Three";
-  const marketing = n.marketingRate ? " but converts worst" : "";
-  return `Relationships carry revenue: ${lead} relationship-led sources hold ${metric(data, "top3_pipeline_share")} of recorded pipeline. Marketing sources ${metric(data, "marketing_sourced_share")} of pipeline${marketing}, only ${metric(data, "attribution_linked_won_share")} of wins link to a tracked touch, and too few ads are fully labelled to rank content formats.`;
+  const relationships = n.bestSource && n.bestRate ? `Relationships carry revenue: ${n.bestSource} wins ${n.bestRate} of new-logo deals.` : "Relationships carry revenue.";
+  const marketing = n.bestLead && n.bestLeadRate
+    ? ` Within marketing, ${n.bestLead} works (${n.bestLeadRate})${n.zeroLeads ? `, while ${n.zeroLeads} leads won none of ${n.zeroLeadResolved}` : ""}, so marketing overall wins ${n.marketingRate ?? "less"}.`
+    : ` Marketing sources ${metric(data, "marketing_sourced_share")} of pipeline.`;
+  return `${relationships}${marketing} Tracked touches precede ${metric(data, "attribution_linked_won_share")} of 2024 wins (the only year logged), and too few ads are fully labelled to rank content formats.`;
 }
 
 interface SectionCopy { title: string; description: string; takeaway: string }
@@ -268,7 +282,7 @@ function sectionCopy(id: SectionId, data: DashboardData, n: StoryNumbers): Secti
       // Leads with the same tension as the story strip above it; the cohort decline is the fallback.
       title: n.marketingRate && n.bestRate ? `Conversion, not volume, is the gap: marketing-sourced new logos win ${n.marketingRate}, against ${n.bestRate} for ${n.bestSource}` : `Win quality fell ${m("cohort_start_win_rate")} → ${m("cohort_end_win_rate")} while ${m("unreached_pct")} of accounts went unreached`,
       description: "Three charts carry the case: what marketing contributes, how conversion is trending, and which accounts no campaign has touched.",
-      takeaway: "Decision: tighten qualification first, then test reach on unreached strong-fit accounts with a holdout.",
+      takeaway: "Decision: fix the marketing-to-sales handoff and cut the lead sources that never win, then test reach on unreached strong-fit accounts with a holdout.",
     };
     case "s-exec": return {
       title: `Three sources hold ${m("top3_pipeline_share")} of ${m("total_pipeline")} recorded pipeline`,
@@ -276,12 +290,13 @@ function sectionCopy(id: SectionId, data: DashboardData, n: StoryNumbers): Secti
       takeaway: "Context: today's revenue base is relationship-led; marketing's job is net-new pipeline that converts.",
     };
     case "s-attrib": return {
-      title: `Only ${m("attribution_linked_won_share")} of won deals link to a tracked marketing touch`,
+      title: `${m("attribution_linked_won_share")} of 2024 wins link to a tracked marketing touch; earlier years have no touch logs`,
       description: "Email, web and 6sense logs cover 2024 only. Four models show where tracked channels appear before an opportunity, not what caused it.",
       takeaway: "So what: report CRM source and linked-journey credit side by side, and use a holdout to measure lift.",
     };
     case "s-channel": return {
-      title: n.marketingRate && n.bestRate ? `Marketing-sourced new logos win ${n.marketingRate}, the lowest of ${n.rankedSources ?? "the"} sources; ${n.bestSource} wins ${n.bestRate}` : "Relationship-led sources win more often; marketing must prove lift",
+      // "Lowest" is claimed only when the intervals separate; otherwise the clear comparison is with the best source.
+      title: n.marketingRate && n.bestRate ? (n.bestLead && n.zeroLeads ? `Marketing-sourced new logos win ${n.marketingRate} against ${n.bestRate} for ${n.bestSource}; ${n.bestLead} wins ${n.bestLeadRate}, ${n.zeroLeads} leads never won` : `Marketing-sourced new logos win ${n.marketingRate}, clearly below ${n.bestSource}'s ${n.bestRate}`) : "Relationship-led sources win more often; marketing must prove lift",
       description: `New-logo opportunities created 2023–24, resolved outcomes only. Tracked spend exists for just ${m("tracked_spend_channels").split(",").filter(Boolean).length} paid channels, too few to rank ROI.`,
       takeaway: "So what: fix the marketing-to-sales handoff before buying more volume, and build referral asks into account reviews.",
     };
@@ -655,7 +670,7 @@ function LatestFindings({ brief, data }: { brief: LatestBrief; data: DashboardDa
   const withdrawnCaveat = data.context.caveats.find((caveat) => /withdrawn/i.test(caveat));
   const tiles: Array<{ key: string; label: string; value: string; context: ReactNode; status: string; tone: "risk" | "neutral" }> = [];
   // Ordered as the argument runs: the problem (the one accent), the proof point, then the two limits a CMO must know.
-  if (has("marketing_recent_win_rate")) tiles.push({ key: "marketing", label: "Marketing-sourced new-logo win rate", value: pct(numberValue(s, "marketing_recent_win_rate")), context: <>Lowest of {brief.sourceGroups.length || "the"} sources, 2023–24{has("recent_best_win_rate") && <> · {textValue(s, "recent_best_rate_source") || "best source"} wins {pct(numberValue(s, "recent_best_win_rate"))}</>}</>, status: finding("f-marketing")?.evidence_status ?? "Observed", tone: "risk" });
+  if (has("marketing_recent_win_rate")) tiles.push({ key: "marketing", label: "Marketing-sourced new-logo win rate", value: pct(numberValue(s, "marketing_recent_win_rate")), context: <>{s.marketing_vs_next_clear === false ? `Clearly below the best source; close to ${textValue(s, "marketing_next_lowest_source")}` : `Lowest of ${brief.sourceGroups.length || "the"} sources`}, 2023–24{has("recent_best_win_rate") && <> · {textValue(s, "recent_best_rate_source") || "best source"} wins {pct(numberValue(s, "recent_best_win_rate"))}</>}</>, status: finding("f-marketing")?.evidence_status ?? "Observed", tone: "risk" });
   if (textValue(s, "top_channel")) tiles.push({ key: "referral", label: "Strongest new-logo source", value: textValue(s, "top_channel"), context: <>{has("top_channel_win_rate") && <>{pct(numberValue(s, "top_channel_win_rate"))} win rate, 2018–2024 · </>}most recorded new-logo won amount</>, status: finding("f-channel")?.evidence_status ?? "Observed", tone: "neutral" });
   if (has("zero_amount_win_mrr")) tiles.push({ key: "mrr", label: "MRR on wins recorded at $0", value: `${money(numberValue(s, "zero_amount_win_mrr"))}/mo`, context: <>{has("zero_amount_wins") && has("won") ? <>{formatCount(numberValue(s, "zero_amount_wins"))} of {formatCount(numberValue(s, "won"))} wins carry no amount; </> : null}shown beside won amount, never added{brief.mrrAmount && <span className="latest-context-line">Where both are recorded, amount equals MRR on {pct(brief.mrrAmount.share)} of {formatCount(brief.mrrAmount.wins)} wins</span>}</>, status: finding("f-value")?.evidence_status ?? "Observed", tone: "neutral" });
   if (withdrawnCaveat) tiles.push({ key: "model", label: "Win-probability model", value: "Withdrawn", context: <>Holdout was near chance, so no deal scores are published</>, status: "Not used", tone: "neutral" });
@@ -768,7 +783,7 @@ function QualityTape({ data }: { data: DashboardData }) {
       <div><span>Missing create dates</span><strong>{metrics.missing_create_dates}</strong><span className="quality-count">records with no create date</span></div>
       <div><span>Won deals at $0</span><strong>{metrics.zero_amount_won_share}</strong><Progress label="Won deals with zero recorded amount" value={parseFloat(metrics.zero_amount_won_share) || 0} tone="amber" /></div>
       <div><span>Unknown channel</span><strong>{metrics.unknown_channel_pct}</strong><Progress label="Unknown channel" value={parseFloat(metrics.unknown_channel_pct) || 0} tone="amber" /></div>
-      <div><span>Linked wins</span><strong>{metrics.attribution_linked_won_share}</strong><Progress label="Linked wins" value={parseFloat(metrics.attribution_linked_won_share) || 0} tone="red" /></div>
+      <div><span>Linked 2024 wins</span><strong>{metrics.attribution_linked_won_share}</strong><Progress label="Linked 2024 wins" value={parseFloat(metrics.attribution_linked_won_share) || 0} tone="red" /></div>
     </div>
   </section>;
 }
@@ -783,7 +798,8 @@ function ArcStrip({ data, story, onOpen }: { data: DashboardData; story: StoryNu
     // Words carry the arc on screen. Each detail figure is also the headline of the section the
     // step opens, so on screen it is left to that section; screen readers and print still get it.
     { stage: "Context", target: "s-exec", line: "Revenue is relationship-led", detail: `Three sources hold ${metric(data, "top3_pipeline_share")} of recorded pipeline` },
-    { stage: "Tension", target: "s-channel", line: story.marketingRate ? "Marketing-sourced deals convert worst" : "Win quality is falling", detail: `Mature-cohort win rate ${metric(data, "cohort_start_win_rate")} → ${metric(data, "cohort_end_win_rate")}` },
+    // The win-rate fall is mostly mix (slide 7), so the tension's figure is the source comparison, not the cohort decline.
+    { stage: "Tension", target: "s-channel", line: story.marketingRate ? "Marketing-sourced deals convert worst" : "Win quality is falling", detail: story.marketingRate && story.bestRate ? `Marketing-sourced new logos win ${story.marketingRate}; ${story.bestSource} ${story.bestRate}` : `Mature-cohort win rate ${metric(data, "cohort_start_win_rate")} → ${metric(data, "cohort_end_win_rate")}` },
     { stage: "Resolution", target: "s-budget", line: "Fix the handoff; size the test to the audience", detail: story.eligible && story.defaultNeed ? `${story.eligible} eligible domains; default test needs ${story.defaultNeed}` : `${metric(data, "unreached_accounts")} account domains unreached` },
     { stage: "Ask", target: "s-conclusion", line: "Approve three decisions", detail: "Each with an owner, a measure and a stop rule" },
   ];
@@ -872,19 +888,27 @@ function AttributionSection({ data, metadata, presenting, totalPipeline, coverag
  * own accessible equivalent; the whisker is the 95% Wilson interval.
  */
 function SourceScorecard({ brief }: { brief: LatestBrief }) {
-  const rows = brief.sourceGroups;
+  return <RankCard rows={brief.sourceGroups} nameKey="source_group" id="source-scorecard-title" title="New-logo win rate by lead source, 2023–24" caption="New-logo win rate by lead source, opportunities created 2023–24, resolved outcomes only" isFocus={(name) => /marketing/i.test(name)} note="Existing-client deals are excluded from the ranking. Rates are observational; recent cohorts still have open deals." />;
+}
+
+/** Marketing-sourced new logos split by CRM lead source: which marketing channels win and which never have. */
+function MarketingLeadSources({ brief }: { brief: LatestBrief }) {
+  return <RankCard rows={brief.leadSources} nameKey="label" id="lead-sources-title" title="Inside marketing-sourced: win rate by CRM lead source, 2023–24" caption="Marketing-sourced new-logo win rate by CRM lead source, opportunities created 2023–24, lead sources with at least 30 resolved deals" isFocus={(_, row) => numberValue(row, "won") === 0} note="Lead sources with at least 30 resolved new-logo deals; smaller sources stay in the evidence export. A source with no wins is marked." />;
+}
+
+function RankCard({ rows, nameKey, id, title, caption, note, isFocus }: { rows: DataRow[]; nameKey: string; id: string; title: string; caption: string; note: string; isFocus: (name: string, row: DataRow) => boolean }) {
   if (!rows.length) return null;
   const max = Math.min(1, Math.ceil(Math.max(...rows.map((row) => numberValue(row, "win_rate_ci_high", numberValue(row, "win_rate")))) * 10) / 10);
   const x = (value: number) => `${Math.max(0, Math.min(100, (value / max) * 100))}%`;
-  return <article className="rank-card" aria-labelledby="source-scorecard-title">
-    <div className="rank-card-head"><h3 id="source-scorecard-title">New-logo win rate by lead source, 2023–24</h3><span className="chart-unit">Resolved opportunities · bar = win rate · line = 95% interval</span></div>
-    <table className="rank-table"><caption className="sr-only">New-logo win rate by lead source, opportunities created 2023–24, resolved outcomes only</caption>
+  return <article className="rank-card" aria-labelledby={id}>
+    <div className="rank-card-head"><h3 id={id}>{title}</h3><span className="chart-unit">Resolved opportunities · bar = win rate · line = 95% interval</span></div>
+    <table className="rank-table"><caption className="sr-only">{caption}</caption>
       <thead><tr><th scope="col">Source</th><th scope="col"><span className="sr-only">Win rate bar</span></th><th scope="col" className="numeric">Win rate</th><th scope="col" className="numeric">Won / resolved</th></tr></thead>
       <tbody>{rows.map((row) => {
-        const name = textValue(row, "source_group");
+        const name = textValue(row, nameKey);
         const rate = numberValue(row, "win_rate");
         const low = numberValue(row, "win_rate_ci_low"); const high = numberValue(row, "win_rate_ci_high");
-        const focus = /marketing/i.test(name);
+        const focus = isFocus(name, row);
         return <tr key={name} className={focus ? "is-focus" : undefined} title={`${name}: ${pct(rate)} (95% interval ${pct(low)}–${pct(high)}), ${formatCount(numberValue(row, "won"))} won of ${formatCount(numberValue(row, "resolved"))} resolved`}>
           <th scope="row">{name}</th>
           <td className="rank-bar-cell" aria-hidden="true"><span className="rank-track"><span className="rank-bar" style={{ width: x(rate) }} />{Number.isFinite(low) && Number.isFinite(high) && <span className="rank-ci" style={{ left: x(low), width: `calc(${x(high)} - ${x(low)})` }} />}</span></td>
@@ -893,7 +917,7 @@ function SourceScorecard({ brief }: { brief: LatestBrief }) {
         </tr>;
       })}</tbody>
     </table>
-    <p className="rank-note">Existing-client deals are excluded from the ranking. Rates are observational; recent cohorts still have open deals.</p>
+    <p className="rank-note">{note}</p>
   </article>;
 }
 
@@ -906,6 +930,7 @@ function ChannelSection({ data, metadata, presenting, totalPipeline, coverageMix
   const ratioDefinition = constantText(efficiencyRows, "ratio_definition");
   return <section id="s-channel" className="dashboard-section"><SectionIntro id="s-channel" data={data} story={story} />
     {brief && <SourceScorecard brief={brief} />}
+    {brief && <MarketingLeadSources brief={brief} />}
     <ChartGrid ids={["c-spend-pipeline", "c-funnel"]} data={data} presenting={presenting} totalPipeline={totalPipeline} coverageMix={coverageMix} metadata={metadata} resetToken={resetToken} />
     <EvidenceGrid items={[{ label: "Recorded outcome", title: "Relationship-led revenue is the strongest base", body: <>Existing-client and referral sources lead recorded won outcomes, so the current revenue story is broader than paid media.</>, tone: "high" }, { label: "Acquisition role", title: "Marketing channels build net-new pipeline", body: <>Judge acquisition channels through pipeline creation, later conversion and time-to-close together.</>, tone: "medium" }, { label: "Decision gate", title: "Separate quality from volume", body: <>Increase spend only when added reach creates incremental qualified opportunities, not simply more activity.</>, tone: "directional" }]} />
     <EvidenceTable title="Channel ROI summary" note="Multiples = same-period recorded sourced pipeline or won amount / tracked spend. Channels without measured media spend remain unavailable rather than being assigned a zero-cost return." columns={table.columns} rows={rows} />
@@ -1204,7 +1229,9 @@ function LegacyDashboard() {
   }, []);
 
   useEffect(() => {
-    const syncRoute = () => { const hash = window.location.hash.replace(/^#/, "") as SectionId; if (REQUIRED_SECTION_IDS.includes(hash)) { changeSection(hash); window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } };
+    // An empty hash (Back to the first page) or an unknown section id opens the first section;
+    // other hashes, such as the deck's #present routes, are left to their own handlers.
+    const syncRoute = () => { const raw = window.location.hash.replace(/^#/, ""); const unknownSection = raw.startsWith("s-") && !REQUIRED_SECTION_IDS.includes(raw as SectionId); if (unknownSection) window.history.replaceState(null, "", "#s-essential"); const hash = (raw === "" || unknownSection ? "s-essential" : raw) as SectionId; if (REQUIRED_SECTION_IDS.includes(hash)) { changeSection(hash); window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" })); } };
     syncRoute();
     window.addEventListener("hashchange", syncRoute);
     window.addEventListener("popstate", syncRoute);

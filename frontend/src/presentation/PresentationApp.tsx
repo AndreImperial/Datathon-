@@ -227,7 +227,10 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
     const listener = (event: KeyboardEvent) => {
       if (event.key === "Escape" && overview) { event.preventDefault(); setOverview(false); return; }
       const target = event.target as HTMLElement | null;
-      if (event.altKey || event.ctrlKey || event.metaKey || target?.closest("button,a,input,textarea,select,[contenteditable],[data-evidence-scroll]")) return;
+      // Text fields and the evidence scroller keep every key. A clicked button or link keeps focus,
+      // so it keeps only its own activation keys; arrows and paging still move the deck.
+      if (event.altKey || event.ctrlKey || event.metaKey || target?.closest("input,textarea,select,[contenteditable],[data-evidence-scroll]")) return;
+      if ((event.key === " " || event.key === "Enter") && target?.closest("button,a")) return;
       if (overview && event.key !== "Escape") return;
       const keys: Record<string, DeckCommand> = { ArrowRight: {kind:"next"}, PageDown: {kind:"next"}, " ": {kind:"next"}, ArrowLeft: {kind:"previous"}, PageUp: {kind:"previous"}, Home: {kind:"first"}, End: {kind:"last"} };
       if (keys[event.key]) { event.preventDefault(); command(keys[event.key]); }

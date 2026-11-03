@@ -35,6 +35,19 @@ test('Space keeps native button activation and PageDown keeps evidence scrolling
   await act(async()=>region.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'PageDown',bubbles:true,cancelable:true})));
   assert.equal(location.hash,'#present/main-03');
 }));
+test('arrow keys still move the deck after a navigation button was clicked',async()=>mounted('#present/main-04',async(dom)=>{
+  const previous=button('Previous'); previous.focus();
+  await act(async()=>previous.click()); assert.equal(location.hash,'#present/main-03');
+  await act(async()=>previous.dispatchEvent(new dom.window.KeyboardEvent('keydown',{key:'ArrowRight',bubbles:true,cancelable:true})));
+  assert.equal(location.hash,'#present/main-04');
+}));
+test('slide 6 names the marketing lead source that works and only claims lowest when intervals separate',async()=>mounted('#present/main-06',async()=>{
+  const s=data.datasets.summary[0];
+  const h1=document.querySelector('h1').textContent;
+  assert.ok(h1.includes(s.marketing_best_lead_source) && h1.includes(s.marketing_zero_win_sources), h1);
+  if (s.marketing_vs_next_clear===false) assert.doesNotMatch(h1,/lowest/);
+  assert.ok([...document.querySelectorAll('.deck-panel, section, article')].some(x=>/Inside marketing-sourced/.test(x.textContent)));
+}));
 test('overview makes background inert and Escape from its focused button closes it',async()=>mounted('#present/main-04',async(dom)=>{
   await act(async()=>button('Overview').click());
   assert.ok(document.querySelector('[role=dialog]'));

@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 115 checks — 115 pass (28 of them after fixes), 0 fail.**
+**Result: 121 checks — 121 pass (34 of them after fixes), 0 fail.**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -209,6 +209,19 @@ Verified on the merged build (restyle, hero and v1.1.0 motion together).
 |---|---|---|---|
 | P1 | The dashboard states the case question and answers it before the big idea | PASS (fixed) | A band above the big idea asks "Which channels and content formats support acquisition, recorded revenue and engagement?" (the deck's main-01 wording) and answers it from the snapshot: Referral strongest, three relationship-led sources hold 83.3% of pipeline, marketing sources 16.7% but converts worst, 11.9% of wins link to a tracked touch, content formats too thinly labelled to rank. Unit test locks its order and data source. Fits at 1440 and 390 px with no horizontal scroll |
 | P2 | The Essential headline matches the story strip | PASS (fixed) | Title now leads with the conversion gap (marketing-sourced new logos 10.2% against 26.8% for Referral), the same tension as story step 2; the cohort decline remains the fallback when the brief is missing. axe-core 0, CLS 0, 0 console errors; print opens 26/26 folds; 65 frontend and 44 Python tests pass |
+
+## Q. Audit fixes 1–6 (v1.4.0)
+
+Source: [FULL_AUDIT_2026-11.md](FULL_AUDIT_2026-11.md).
+
+| ID | Check | Status | Evidence |
+|---|---|---|---|
+| Q1 | Linked wins are read against the years the touch logs cover | PASS (fixed) | `build_attribution_coverage` divides linked wins by wins created once the logs begin (127 / 223 = 57.0%); the all-history share is kept as `linked_share_of_all_history_won` (11.9%). Answer band, KPI, attribution title and generated text say "2024 wins". Unit test with a four-deal fixture |
+| Q2 | Marketing-sourced is split by lead source | PASS (fixed) | New v3 dataset `marketing_lead_sources`: Website Inbound 14 / 67 (20.9%), Channel Referral: 6sense 9 / 74, 6sense 0 / 82, MQA 0 / 35. Shown in the answer band, a Channel-section rank card, the Channel title, slide 6's headline and a second slide-6 panel |
+| Q3 | Rank claims carry their uncertainty | PASS (fixed) | "Lowest" is claimed only when marketing's Wilson interval clears the next-lowest source (it overlaps Sales proactive, so it is not); "strongest" is scoped to won amount across 2018–24 |
+| Q4 | Deck arrow keys work after a button click | PASS (fixed) | Buttons and links keep only Space and Enter; arrows and paging move the deck. JSDOM test clicks Previous then presses ArrowRight |
+| Q5 | The win-rate fall is not framed as falling quality | PASS (fixed) | Story step 2 carries the marketing-vs-Referral figure; the Essential takeaway names the handoff and the never-winning lead sources, matching slide 7's mix-shift finding |
+| Q6 | Back to the first page shows the first section | PASS (fixed) | An empty hash opens Essential and unknown `s-` ids are rewritten; `#present` routes are untouched. Checked in Chromium: Attribution → Back shows Essential. axe-core 0 on 10 sections and 24 deck pages; CLS 0; 0 console errors; print opens 26/26 folds; every slide fits both cuts at 1440×900 and 1280×720; 69 frontend and 45 Python tests pass |
 
 ## Not verified anywhere
 

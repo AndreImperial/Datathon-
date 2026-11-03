@@ -4602,7 +4602,7 @@ return Plotly;
     </div>
   </header>
   <div class="status-strip" aria-label="Dashboard generation status">
-    <span class="status-chip"><i data-lucide="check-circle-2" aria-hidden="true"></i>Validated data · Nov 01, 2026 04:02 PM</span>
+    <span class="status-chip"><i data-lucide="check-circle-2" aria-hidden="true"></i>Validated data · Nov 03, 2026 12:55 PM</span>
     <span class="status-chip"><i data-lucide="database" aria-hidden="true"></i>3,245 opportunities · 8 datasets</span>
   </div>
   <details class="data-health">
@@ -4612,7 +4612,7 @@ return Plotly;
       <div class="quality-card "><strong>0</strong> opportunities missing create date</div>
       <div class="quality-card warn"><strong>34.0%</strong> unknown/other channel share</div>
       <div class="quality-card warn"><strong>65.3%</strong> won deals with zero amount</div>
-      <div class="quality-card warn"><strong>11.9%</strong> won deals linked to marketing touches</div>
+      <div class="quality-card warn"><strong>57.0%</strong> of 2024 wins linked to marketing touches (logs cover 2024 only)</div>
     </div>
   </details>
   <div class="metric-lens" aria-label="Metric lens controls">
@@ -4666,7 +4666,7 @@ return Plotly;
   <div class="story-strip">
     <div class="story-card">
       <h2>Influence is visible, but coverage is limited</h2>
-      <p><span class="evidence-badge">$6.4M influenced</span> is based on 684 linked opportunities and only 11.9% of won deals.</p>
+      <p><span class="evidence-badge">$6.4M influenced</span> is based on 684 linked opportunities, covering 57.0% of wins created since the touch logs began in 2024.</p>
     </div>
     <div class="story-card coverage">
       <h2>Coverage is the clearest test opportunity</h2>
@@ -4713,7 +4713,7 @@ return Plotly;
           <tbody>
             <tr><td><span class="priority-tag">1</span></td><td>Protect quality</td><td>Closed-deal win rate moved from 38% to 22% across cohorts at least 80% resolved.</td><td>Run a quarterly ICP and qualification review before scaling volume.</td></tr>
             <tr><td><span class="priority-tag">2</span></td><td>Expand coverage</td><td>67.7% of CRM account domains are unreached by tracked email or 6sense.</td><td>Define exposure before future outcomes; exclude customers and active pipeline, then randomize eligible strong-fit domains to treatment and holdout.</td></tr>
-            <tr><td><span class="priority-tag">3</span></td><td>Use attribution carefully</td><td>684 opportunities link to classified marketing touches; 11.9% of won deals are covered.</td><td>Use journey models for hypothesis generation, then validate lift with holdouts.</td></tr>
+            <tr><td><span class="priority-tag">3</span></td><td>Use attribution carefully</td><td>684 opportunities link to classified marketing touches; 57.0% of 2024 wins are covered (logs cover 2024 only).</td><td>Use journey models for hypothesis generation, then validate lift with holdouts.</td></tr>
           </tbody>
         </table>
       </div>
@@ -4767,7 +4767,7 @@ return Plotly;
   <div id="s-attrib" class="section">
     <h2 class="section-title">Attribution Analysis</h2>
     <div class="section-desc">How descriptive models allocate credit across classified, pre-opportunity marketing touchpoints.</div>
-    <div class="section-takeaway"><strong>Attribution takeaway:</strong> Report source credit and linked-journey credit separately. Only 684 opportunities and 11.9% of won deals have classified marketing-touch coverage. <span class="evidence-badge orange">$4.2M sourced</span><span class="evidence-badge">$6.4M linked influence</span></div>
+    <div class="section-takeaway"><strong>Attribution takeaway:</strong> Report source credit and linked-journey credit separately. 684 opportunities and 57.0% of 2024 wins have classified marketing-touch coverage; earlier years have no touch logs. <span class="evidence-badge orange">$4.2M sourced</span><span class="evidence-badge">$6.4M linked influence</span></div>
     <div class="context-box">
       <strong>The core concept:</strong> For the subset of opportunities with classified marketing touches, attribution models answer: <em>how would observed pipeline credit move under different allocation rules?</em> They do not estimate incremental lift.
       <br><br>
@@ -5595,7 +5595,7 @@ const CHART_META = {
   "c-donut-won": ["Question: which channels actually closed revenue?", "Population: closed-won opportunities only.", "Caution: low-volume channels can swing sharply."],
   "c-monthly-trend": ["Question: is pipeline creation changing over time?", "Population: opportunities with a create date; top five channels plus Other.", "Benchmark: look for sustained movement, not one-month spikes."],
   "c-attrib-comparison": ["Question: how does multi-touch credit change by model?", "Population: common touchpoint-linked channels across first-touch, last-touch, linear, and time-decay.", "Caution: sourced and influenced use different definitions and are shown separately."],
-  "c-sourced-influenced": ["Question: how do CRM source credit and linked-journey credit compare?", "Population: sourced uses CRM source mapping; influenced covers 684 opportunities linked to eligible touches.", "Caution: report the linked opportunity count and 11.9% won-opportunity coverage beside influenced credit."],
+  "c-sourced-influenced": ["Question: how do CRM source credit and linked-journey credit compare?", "Population: sourced uses CRM source mapping; influenced covers 684 opportunities linked to eligible touches.", "Caution: report the linked opportunity count and 57.0% coverage of 2024 wins beside influenced credit."],
   "c-attrib-waterfall": ["Question: which channels gain or lose credit near conversion?", "Population: first-touch vs last-touch attribution.", "Caution: this describes journey role, not causality."],
   "c-spend-pipeline": ["Question: where does tracked spend appear efficient?", "Population: channels with reliable spend.", "Caution: ROI excludes untracked channels."],
   "c-funnel": ["Question: what is the volume by channel activity and opportunity outcome?", "Population: separate activity populations, not one sequential funnel.", "Caution: do not read cross-channel bars as conversion steps."],

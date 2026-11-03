@@ -615,7 +615,11 @@ export function actionTitle(data: CaseStudyData, slide: CaseSlide): string {
         const top = num(s, "recent_best_win_rate"), mkt = num(s, "marketing_recent_win_rate");
         const rank = num(s, "marketing_recent_rank"), ranked = rankedRecent(data).length;
         if (top === null || mkt === null) break;
-        return `Marketing-sourced deals convert at ${percent(mkt)}, ${mkt < top / 2 ? "under half" : "below"} ${best}’s ${percent(top)}${rank !== null && rank === ranked ? ` and lowest of ${ranked} sources` : ""}`;
+        // "Lowest" only when marketing's interval clears the next-lowest source; the lead-source split names what works.
+        const lowest = rank !== null && rank === ranked && s.marketing_vs_next_clear !== false ? ` and lowest of ${ranked} sources` : "";
+        const lead = num(s, "marketing_best_lead_win_rate"), zero = s.marketing_zero_win_sources ? String(s.marketing_zero_win_sources) : "";
+        const split = lead !== null && zero ? `; ${text(s.marketing_best_lead_source)} wins ${percent(lead)}, ${zero} leads never won` : "";
+        return `Marketing-sourced deals convert at ${percent(mkt)}, ${mkt < top / 2 ? "under half" : "below"} ${best}’s ${percent(top)}${lowest}${split}`;
       }
       case "main-07": {
         const lead = decompositionLead(rows("conversion_decomposition"));
@@ -827,7 +831,10 @@ export function SlideVisual({ data, slide }: { data: CaseStudyData; slide: CaseS
     case "main-03": return <Panel title="Observation window by source">{<CoverageTimeline data={data} />}</Panel>;
     case "main-04": return <MotionShare data={data} />;
     case "main-05": return <Panel title="New-logo deals · 2018–2024 · recorded won amount by source"><Bars label="Recorded won amount by source group" rows={groups.filter(row => row.scope === "All history" && row.ranked_channel === true).sort(byDesc("recorded_won_amount"))} name={row => displayName(row.source_group)} value="recorded_won_amount" format={money} detail={row => `${text(row.won)} new-logo wins`} /></Panel>;
-    case "main-06": return <Panel title="New-logo deals · 2023–24 · resolved win rate by source"><Bars label="Resolved win rate by source group" rows={groups.filter(row => row.scope === "2023–2024" && row.ranked_channel === true).sort(byDesc("win_rate"))} emphasis={(row, index) => /marketing/i.test(displayName(row.source_group)) ? "accent" : index === 0 ? "reference" : undefined} name={row => displayName(row.source_group)} value="win_rate" format={percent} detail={row => `${text(row.won)} of ${text(row.resolved)} resolved · 95% CI ${numeric(row.win_rate_ci_low) === null ? "unavailable" : `${percent(Number(row.win_rate_ci_low))}–${percent(Number(row.win_rate_ci_high))}`}`} /></Panel>;
+    case "main-06": return <div className="deck-two">
+      <Panel title="New-logo deals · 2023–24 · resolved win rate by source"><Bars label="Resolved win rate by source group" rows={groups.filter(row => row.scope === "2023–2024" && row.ranked_channel === true).sort(byDesc("win_rate"))} emphasis={(row, index) => /marketing/i.test(displayName(row.source_group)) ? "accent" : index === 0 ? "reference" : undefined} name={row => displayName(row.source_group)} value="win_rate" format={percent} detail={row => `${text(row.won)} of ${text(row.resolved)} resolved · 95% CI ${numeric(row.win_rate_ci_low) === null ? "unavailable" : `${percent(Number(row.win_rate_ci_low))}–${percent(Number(row.win_rate_ci_high))}`}`} /></Panel>
+      <Panel title="Inside marketing-sourced · 2023–24 · win rate by CRM lead source (30+ resolved)"><Bars label="Marketing-sourced win rate by lead source" rows={rows("marketing_lead_sources").filter(row => (numeric(row.resolved) ?? 0) >= 30).sort(byDesc("win_rate"))} emphasis={row => numeric(row.won) === 0 ? "accent" : undefined} name={row => text(row.label)} value="win_rate" format={percent} detail={row => `${text(row.won)} of ${text(row.resolved)} resolved`} /></Panel>
+    </div>;
     case "main-07": return <Decomposition rows={rows("conversion_decomposition")} slide={slide} />;
     case "main-08": return <CreativeBundles rows={rows("creative_bundles")} />;
     case "main-09": return <div className="deck-two">

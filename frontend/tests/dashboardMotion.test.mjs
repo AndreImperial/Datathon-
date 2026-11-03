@@ -71,6 +71,16 @@ test("the case question and its answer come before the big idea", () => {
   assert.match(app, /<p className="case-answer"><b>The answer<\/b> \{caseAnswer\(data, story\)\}<\/p>/, "the answer is built from the snapshot, not hard-coded");
 });
 
+test("Back to an empty hash returns to the first section, and deck routes are left alone", () => {
+  assert.match(app, /const hash = \(raw === "" \|\| unknownSection \? "s-essential" : raw\) as SectionId;/);
+  assert.match(app, /const unknownSection = raw\.startsWith\("s-"\)/, "only unknown section ids are rewritten, never #present routes");
+});
+
+test("linked wins are read against 2024, the only year with touch logs", () => {
+  assert.match(app, /of 2024 wins link to a tracked marketing touch/);
+  assert.doesNotMatch(app, /of won deals link to a tracked marketing touch/);
+});
+
 test("folded text stays in the page and always prints", () => {
   assert.match(app, /querySelectorAll<HTMLDetailsElement>\("details\.evidence-details, details\.text-fold"\)\.forEach\(\(node\) => \{ node\.open = true; \}\)/, "print opens every text fold");
   assert.match(app, /className=\{`chart-takeaway\$\{details \? "" : " is-folded"\}`\}/, "a folded chart summary stays in the DOM as the chart's description");

@@ -396,8 +396,13 @@ def build_comparison(model_results: dict) -> pd.DataFrame:
     return pivot.reset_index()
 
 
-def build_attribution_coverage(linked: pd.DataFrame, opps: pd.DataFrame, lookback_days: int = ATTRIBUTION_WINDOW_DAYS, persist: bool = True) -> pd.DataFrame:
-    """Document the exact eligible and linked attribution populations."""
+def build_attribution_coverage(linked: pd.DataFrame, opps: pd.DataFrame, lookback_days: int = ATTRIBUTION_WINDOW_DAYS, persist: bool = True, logs_start=None) -> pd.DataFrame:
+    """Document the exact eligible and linked attribution populations.
+
+    The linked share of wins is read against wins created once the touch logs
+    begin (``logs_start``): an opportunity created before any log exists can
+    never link, so counting it would understate linkage.
+    """
     iswon_col = "iswon" if "iswon" in opps.columns else ("_iswon" if "_iswon" in opps.columns else None)
     eligible = opps[
         opps.get("opp_domain", pd.Series(index=opps.index, dtype="object")).fillna("").astype(str).str.strip().ne("")
@@ -408,6 +413,9 @@ def build_attribution_coverage(linked: pd.DataFrame, opps: pd.DataFrame, lookbac
     linked_opps = eligible[eligible["_opportunity_id"].isin(linked_ids)].copy()
     total_won = int(opps[iswon_col].eq(True).sum()) if iswon_col else 0
     eligible_won = int(eligible[iswon_col].eq(True).sum()) if iswon_col else 0
+    created = opps.get("_opp_create_date", pd.Series(pd.NaT, index=opps.index))
+    in_window = created.ge(logs_start) if logs_start is not None else pd.Series(True, index=opps.index)
+    window_won = int((opps[iswon_col].eq(True) & in_window).sum()) if iswon_col else 0
     linked_won = int(linked_opps[iswon_col].eq(True).sum()) if iswon_col else 0
     coverage = pd.DataFrame([{
         "lookback_days": lookback_days,
@@ -418,7 +426,10 @@ def build_attribution_coverage(linked: pd.DataFrame, opps: pd.DataFrame, lookbac
         "all_won_opportunities": total_won,
         "eligible_won_opportunities": eligible_won,
         "linked_won_opportunities": linked_won,
-        "linked_share_of_won_opportunities": linked_won / total_won if total_won else np.nan,
+        "logs_start": logs_start.date().isoformat() if logs_start is not None else None,
+        "observed_window_won_opportunities": window_won,
+        "linked_share_of_won_opportunities": linked_won / window_won if window_won else np.nan,
+        "linked_share_of_all_history_won": linked_won / total_won if total_won else np.nan,
         "linked_pipeline": float(linked_opps["_amount"].sum()),
         "linked_won_revenue": float(linked_opps.loc[linked_opps[iswon_col].eq(True), "_amount"].sum()) if iswon_col else 0.0,
         "touchpoint_grain": "one account-channel presence per ISO week",
@@ -429,7 +440,7 @@ def build_attribution_coverage(linked: pd.DataFrame, opps: pd.DataFrame, lookbac
     return coverage
 
 
-def build_attribution_sensitivity(linked: pd.DataFrame, opps: pd.DataFrame) -> pd.DataFrame:
+def build_attribution_sensitivity(linked: pd.DataFrame, opps: pd.DataFrame, logs_start=None) -> pd.DataFrame:
     """Show how linked opportunity coverage changes under shorter lookbacks.
 
     The primary model remains the 365-day view.  Since the normalized 365-day
@@ -439,7 +450,7 @@ def build_attribution_sensitivity(linked: pd.DataFrame, opps: pd.DataFrame) -> p
     rows = []
     for window_days in [30, 90, 180, 365]:
         window_linked = linked[linked["days_before_opp"].between(0, window_days)].copy()
-        coverage = build_attribution_coverage(window_linked, opps, lookback_days=window_days, persist=False)
+        coverage = build_attribution_coverage(window_linked, opps, lookback_days=window_days, persist=False, logs_start=logs_start)
         rows.append(coverage.iloc[0].to_dict())
     sensitivity = pd.DataFrame(rows)
     sensitivity.to_parquet(os.path.join(INTEGRATED_DATA_DIR, "attribution_sensitivity.parquet"), index=False)
@@ -468,8 +479,9 @@ def main():
 
     print("\n[3/4] Applying attribution models ...")
     model_results = apply_attribution_models(linked, opps_full)
-    coverage = build_attribution_coverage(linked, opps_full)
-    sensitivity = build_attribution_sensitivity(linked, opps_full)
+    logs_start = tp_df["touchpoint_date"].min()
+    coverage = build_attribution_coverage(linked, opps_full, logs_start=logs_start)
+    sensitivity = build_attribution_sensitivity(linked, opps_full, logs_start=logs_start)
 
     print("\n[4/4] Writing outputs ...")
     out_path = os.path.join(ANALYSIS_DIR, "attribution_models.xlsx")
