@@ -86,3 +86,9 @@ test("folded text stays in the page and always prints", () => {
   assert.match(app, /className=\{`chart-takeaway\$\{details \? "" : " is-folded"\}`\}/, "a folded chart summary stays in the DOM as the chart's description");
   assert.match(css, /@media print \{\s*\.chart-heading p\.chart-takeaway\.is-folded \{ display: block; \}/, "a folded chart summary prints");
 });
+
+test("CSV exports carry a byte-order mark and the deck loads on demand", () => {
+  assert.match(app, /new Blob\(\["\uFEFF", csv\]/, "Excel on Windows reads the export as UTF-8");
+  assert.match(app, /const PresentationApp = lazy\(\(\) => import\("\.\/presentation\/PresentationApp"\)/, "the deck is not in the dashboard's entry chunk");
+  assert.doesNotMatch(app, /^import \{ PresentationApp \}/m);
+});

@@ -52,7 +52,7 @@
     ]
   },
   "index.html": {
-    "file": "assets/index-Dqe_O_9e.js",
+    "file": "assets/index-BmmSzrvd.js",
     "name": "index",
     "src": "index.html",
     "isEntry": true,
@@ -62,10 +62,11 @@
     ],
     "dynamicImports": [
       "src/hero/ProductHero.tsx",
-      "src/components/Charts.tsx"
+      "src/components/Charts.tsx",
+      "src/presentation/PresentationApp.tsx"
     ],
     "css": [
-      "assets/index-DunAgfvu.css"
+      "assets/index-B8ZesIzD.css"
     ],
     "assets": [
       "assets/manrope-cyrillic-wght-normal-Dvxsihut.woff2",
@@ -79,7 +80,7 @@
     ]
   },
   "src/components/Charts.tsx": {
-    "file": "assets/Charts-C0_HkP1Q.js",
+    "file": "assets/Charts-BCe9ZVga.js",
     "name": "Charts",
     "src": "src/components/Charts.tsx",
     "isDynamicEntry": true,
@@ -92,7 +93,7 @@
     ]
   },
   "src/hero/ProductHero.tsx": {
-    "file": "assets/ProductHero-MiZK4odu.js",
+    "file": "assets/ProductHero-HDdiA4e8.js",
     "name": "ProductHero",
     "src": "src/hero/ProductHero.tsx",
     "isDynamicEntry": true,
@@ -103,6 +104,20 @@
     ],
     "css": [
       "assets/ProductHero-DttqH31G.css"
+    ]
+  },
+  "src/presentation/PresentationApp.tsx": {
+    "file": "assets/PresentationApp-KI3a-gMn.js",
+    "name": "PresentationApp",
+    "src": "src/presentation/PresentationApp.tsx",
+    "isDynamicEntry": true,
+    "imports": [
+      "_react-C2C9EsrB.js",
+      "index.html",
+      "_motion-qPypwiJ-.js"
+    ],
+    "css": [
+      "assets/PresentationApp-ZrMlhQ0P.css"
     ]
   }
 }

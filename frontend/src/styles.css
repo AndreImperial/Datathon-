@@ -1207,6 +1207,8 @@ footer p { margin: 0; max-width: 110ch; }
   .chart-card { display: flex; flex-direction: column; padding: var(--pad); }
   .chart-grid { align-items: stretch; }
   .chart-card > .chart-visual { display: flex; flex: 1 0 auto; flex-direction: column; justify-content: center; margin-bottom: 12px; }
+  /* Two ROI rows read best right under the title; centring them in a tall card left a gap above. */
+  .chart-card > .chart-visual:has(> .roi-compare) { justify-content: flex-start; }
   .chart-card > .chart-explanation { margin-top: auto; }
   .chart-card:hover, .chart-card:focus-within, .rank-card:hover, .rank-card:focus-within, .decision-card:hover, .decision-card:focus-within { border-color: transparent; background: var(--surface-soft); box-shadow: var(--edge), 0 18px 40px -18px rgba(0,0,0,.8); }
   .decision-card.is-focus:hover, .decision-card.is-focus:focus-within { background: var(--raised); box-shadow: var(--edge), 0 18px 40px -18px rgba(0,0,0,.8); }

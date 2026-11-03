@@ -12,8 +12,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import type { ChartMetadata, DashboardData, DataRow, SectionId } from "./types";
 import { numberValue, REQUIRED_SECTION_IDS, textValue, type CaseStudyData } from "./types";
 import { AnimatedNavIndicator } from "./components/AceternityMotion";
-import { PresentationApp } from "./presentation/PresentationApp";
-import { chartPlacementIds, tableIds, validateCaseStudyPayload, validateDashboardPayload } from "./dataContract";
+import { validateCaseStudyPayload, validateDashboardPayload } from "./dataContract";
 import { applyMotionTokens, countUpDisplayed, DURATION, EASE, ENTER, flash, motionAllowed, STAGGER } from "./motion";
 import { EXAMPLE_COST, HERO_NUMBERS } from "./hero/numbers";
 
@@ -520,7 +519,8 @@ function interpolate(text: string, data: DashboardData) {
 function downloadRows(filename: string, rows: DataRow[], provenance: DataRow = {}) {
   if (!rows.length) return;
   const csv = serializeEvidenceCsv(rows, provenance);
-  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  // The byte-order mark makes Excel on Windows read the file as UTF-8, so ×, – and € survive.
+  const url = URL.createObjectURL(new Blob(["﻿", csv], { type: "text/csv;charset=utf-8" }));
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
@@ -548,7 +548,7 @@ function formatContractCell(column: string, value: unknown): string {
   if (column === "Closed Win Rate") return pct(Number(value));
   if (column.includes("ROI")) {
     const numeric = Number(value);
-    return Number.isFinite(numeric) && true ? `${numeric.toFixed(1)}×` : "—";
+    return Number.isFinite(numeric) ? `${numeric.toFixed(1)}×` : "—";
   }
   if (typeof value === "number") return Number.isInteger(value) ? value.toLocaleString() : value.toLocaleString(undefined, { maximumFractionDigits: 3 });
   return String(value);
@@ -1538,6 +1538,9 @@ function LegacyDashboard() {
   </div>;
 }
 
+// The deck is only used on #present and #presenter routes, so it loads on demand instead of with the dashboard.
+const PresentationApp = lazy(() => import("./presentation/PresentationApp").then((module) => ({ default: module.PresentationApp })));
+
 /** Last line of defence: a render error shows a way back instead of unmounting to a blank page. */
 class RouteBoundary extends Component<{ label: string; children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
@@ -1560,7 +1563,7 @@ function CaseStudyPresentation({ presenter = false }: { presenter?: boolean }) {
   }, []);
   if (error) return <main className="load-state" role="alert"><CircleAlert size={24} /><h1>Presentation evidence did not load.</h1><p>{error}</p><a className="button" href="#s-essential">Return to dashboard</a></main>;
   if (!data) return <main className="load-state" aria-live="polite"><span className="loader" /><p>Loading case-study evidence…</p></main>;
-  return <PresentationApp data={data} presenter={presenter} />;
+  return <Suspense fallback={<main className="load-state" aria-live="polite"><span className="loader" /><p>Loading the presentation…</p></main>}><PresentationApp data={data} presenter={presenter} /></Suspense>;
 }
 
 function App() {

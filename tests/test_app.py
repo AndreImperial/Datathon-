@@ -184,6 +184,8 @@ class HealthEndpointTests(unittest.TestCase):
         try:
             self.assertEqual(asset.headers["Cache-Control"], "public, max-age=31536000, immutable")
             self.assertEqual(asset.headers["X-Content-Type-Options"], "nosniff")
+            self.assertEqual(asset.headers["X-Frame-Options"], "DENY")
+            self.assertEqual(asset.headers["Content-Security-Policy"], "frame-ancestors 'none'")
         finally:
             asset.close()
 

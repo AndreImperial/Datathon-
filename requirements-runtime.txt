@@ -1,0 +1,4 @@
+-c constraints.txt
+# The server only serves the built files; the analytics stack stays in the build stage.
+Flask>=3.0.0
+gunicorn>=21.2.0

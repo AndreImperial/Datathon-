@@ -20,7 +20,7 @@ export function validateDashboardPayload(value: unknown): DashboardData {
   const missing = required.filter((key) => !Array.isArray(datasets[key]));
   if (missing.length) throw new Error(`Dashboard data is missing datasets: ${missing.join(", ")}`);
   const metadataIds = payload.chart_metadata.map((item) => item.chart_id);
-  if (metadataIds.length !== chartPlacementIds.length || chartPlacementIds.some((id) => !metadataIds.includes(id))) throw new Error("Dashboard chart metadata does not match the 24-placement preservation contract.");
+  if (metadataIds.length !== chartPlacementIds.length || chartPlacementIds.some((id) => !metadataIds.includes(id))) throw new Error("Dashboard chart metadata does not match the chart-placement preservation contract.");
   const metadataErrors = payload.chart_metadata.filter((item) => !item.title || !item.subtitle || !item.source_dataset || !item.caveat || !item.accessible_summary || !Array.isArray(item.fields) || !item.fields.length);
   if (metadataErrors.length) throw new Error(`Dashboard chart metadata is incomplete: ${metadataErrors.map((item) => item.chart_id).join(", ")}`);
   const chartData = payload.chart_data as Record<string, unknown>;

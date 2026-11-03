@@ -78,6 +78,9 @@ def cache_and_security_headers(response):
         response.headers["Cache-Control"] = "no-cache"
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    # Nobody else may frame the dashboard (clickjacking); the deck's presenter window is a link, not a frame.
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Content-Security-Policy"] = "frame-ancestors 'none'"
     return response
 
 
@@ -106,11 +109,6 @@ def health():
 def full_analysis():
     """Serve the original complete Plotly dashboard without changing its content."""
     return send_from_directory(PUBLIC_DIR / "full-analysis", "index.html")
-
-
-@app.route("/<path:path>")
-def static_files(path):
-    return send_from_directory(PUBLIC_DIR, path)
 
 
 if __name__ == "__main__":

@@ -175,7 +175,9 @@ export function PresentationApp({ data, presenter = false }: { data: CaseStudyDa
       if (!p || p.session !== session || p.snapshotId !== data.meta.snapshot_id) return;
       if (presenter && p.type === "state" && validState(p.state, identities)) {
         lastContact.current = Date.now(); setConnection("connected");
-        setState(previous => p.state.revision >= previous.revision ? p.state : previous);
+        // The audience window is the single source of truth and the channel delivers in order, so its
+        // latest state always wins; comparing revisions froze the console when an audience reload reset to 0.
+        setState(p.state);
       } else if (!presenter && p.type === "hello") { publish(); }
       else if (!presenter && p.type === "command" && typeof p.controllerId === "string" && Number.isSafeInteger(p.commandId) && validCommand(p.command)) {
         const seen = lastCommands.current.get(p.controllerId) ?? 0;

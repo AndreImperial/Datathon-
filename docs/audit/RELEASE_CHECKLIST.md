@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 127 checks — 127 pass (40 of them after fixes), 0 fail.**
+**Result: 131 checks — 131 pass (44 of them after fixes), 0 fail.**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -233,6 +233,15 @@ Source: [FULL_AUDIT_2026-11.md](FULL_AUDIT_2026-11.md).
 | R4 | The pilot's detectable lift is shown as relative too | PASS (fixed) | `relative_lift` in `pilot_design`; Budget title, power card and slide 14 say "+3.1 pp (+62% relative)" |
 | R5 | No high-confidence label on reverse-causal evidence | PASS (fixed) | "Expand coverage to unreached CRM account domains" is a Hypothesis in the v1 confidence table and the legacy archive |
 | R6 | Docs, README and hosting guidance are current | PASS (fixed) | Malformed schema-3 files are rejected with the missing fields named (unit test); route error boundaries replace blank pages. README opens with question, answer and the Pages link, notes the Render cold start; slide guide headlines regenerated from `actionTitle`; stale RUBRIC, PRODUCT, METHODOLOGY and BACKLOG lines corrected; process PDFs archived. axe-core 0 on 10 sections and 24 deck pages; CLS 0; print 26/26 folds; every slide fits both cuts at both sizes; 70 frontend and 45 Python tests pass |
+
+## S. Lower-priority fixes (v1.5.1)
+
+| ID | Check | Status | Evidence |
+|---|---|---|---|
+| S1 | CSV exports open cleanly in Excel on Windows | PASS (fixed) | The download prepends a UTF-8 byte-order mark; source test |
+| S2 | The deck is not in the dashboard's first download | PASS (fixed) | `PresentationApp` is lazy-loaded: entry JS 213 → 136 kB, entry CSS 173 → 120 kB; every slide still fits both cuts at both sizes, axe-core 0 on 24 deck pages |
+| S3 | Presenter console follows the audience after a reload | PASS (fixed) | The console takes the audience window's latest state instead of comparing revisions |
+| S4 | Server and image hardening | PASS (fixed) | `X-Frame-Options: DENY` and `frame-ancestors 'none'` on every response (unit test); unreachable `static_files` route removed; runtime image installs only `requirements-runtime.txt` (Flask, gunicorn) and runs as a non-root user; Node 22 in Docker and CI. ROI card rows top-aligned. axe-core 0, CLS 0, 0 console errors; 71 frontend and 45 Python tests pass |
 
 ## Not verified anywhere
 

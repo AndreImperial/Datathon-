@@ -119,7 +119,7 @@ On every push to `main`, CI regenerates the full pipeline from `data/raw/`, runs
 
 ## Reproducibility and evidence limits
 
-`constraints.txt` pins the Python 3.11 dependency versions and `requirements.txt` applies them; Node uses `package-lock.json`. A clean Python 3.11 install from these files has been verified, and two pipeline runs produce identical contract values. `outputs/run_metadata.json` records package versions, input file hashes and run times.
+`constraints.txt` pins the Python 3.11 dependency versions and `requirements.txt` applies them (`requirements-runtime.txt` is the Flask and gunicorn subset the server image installs); Node uses `package-lock.json`. A clean Python 3.11 install from these files has been verified, and two pipeline runs produce identical contract values. `outputs/run_metadata.json` records package versions, input file hashes and run times.
 
 Public contracts contain aggregates only: no opportunity IDs, names, stages or individual amounts. `artifact_safety.py` enforces that denylist. It does not establish publication rights.
 
