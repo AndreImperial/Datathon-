@@ -7,7 +7,7 @@ Every item is a concrete check with a stated method. Status is **PASS**, **PASS 
 - Surfaces: Python pipeline and data contracts, React dashboard (`/`), browser deck (`/#present/...`), legacy Plotly archive (`/full-analysis/`), live Render site, GitHub CI and Pages, the Claude Dashboard artifact, and the documentation.
 - Method: data checks were recomputed independently from `data/raw/` with separate pandas code. UI checks were run in headless Chromium at 1440, 960 and 375 px, plus the in-app browser.
 
-**Result: 131 checks — 131 pass (44 of them after fixes), 0 fail.**
+**Result: 135 checks — 135 pass (48 of them after fixes), 0 fail.**
 
 ## A. Data correctness (recomputed independently from the raw Excel files)
 
@@ -242,6 +242,17 @@ Source: [FULL_AUDIT_2026-11.md](FULL_AUDIT_2026-11.md).
 | S2 | The deck is not in the dashboard's first download | PASS (fixed) | `PresentationApp` is lazy-loaded: entry JS 213 → 136 kB, entry CSS 173 → 120 kB; every slide still fits both cuts at both sizes, axe-core 0 on 24 deck pages |
 | S3 | Presenter console follows the audience after a reload | PASS (fixed) | The console takes the audience window's latest state instead of comparing revisions |
 | S4 | Server and image hardening | PASS (fixed) | `X-Frame-Options: DENY` and `frame-ancestors 'none'` on every response (unit test); unreachable `static_files` route removed; runtime image installs only `requirements-runtime.txt` (Flask, gunicorn) and runs as a non-root user; Node 22 in Docker and CI. ROI card rows top-aligned. axe-core 0, CLS 0, 0 console errors; 71 frontend and 45 Python tests pass |
+
+## T. Hallmark polish (v1.5.2)
+
+Source: [HALLMARK_AUDIT_2026-11.md](HALLMARK_AUDIT_2026-11.md).
+
+| ID | Check | Status | Evidence |
+|---|---|---|---|
+| T1 | Focus rings appear instantly | PASS (fixed) | `transition: none` on `:focus-visible`; Chromium reports `transition-property: none` with the ring present on four controls and after a Tab press |
+| T2 | Disabled controls differ in more than opacity | PASS (fixed) | Deck Previous reads `cursor: not-allowed`, dashed edge, muted ink at 0.45 opacity; a disabled primary loses its fill; lint gate 39a 3 → 0 |
+| T3 | Deck buttons have a pressed state | PASS (fixed) | `:active` scale under `prefers-reduced-motion: no-preference` |
+| T4 | Prose measure stays within 45–75 characters | PASS (fixed) | `.method-panel-copy` and `.conclusion-hero p` capped at 72ch. axe-core 0 on 10 sections and 24 deck pages; CLS 0; 0 console errors; print opens 26/26 folds; every slide fits both cuts at both sizes; 71 frontend and 45 Python tests pass |
 
 ## Not verified anywhere
 

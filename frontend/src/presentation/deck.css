@@ -47,13 +47,19 @@
   display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 44px; min-height: 44px; padding: 8px 14px;
   border: 1px solid var(--deck-line-strong); border-radius: 8px; color: var(--deck-ink); background: var(--deck-surface);
   font: inherit; font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer;
-  transition: background-color 160ms var(--deck-ease), border-color 160ms var(--deck-ease);
+  transition: background-color 160ms var(--deck-ease), border-color 160ms var(--deck-ease), transform 90ms var(--deck-ease);
 }
 .deck.presentation-shell button svg, .deck.presenter-console button svg, .deck .presentation-header a svg { width: 18px; height: 18px; flex: none; }
 .deck.presentation-shell button:hover:not(:disabled), .deck.presenter-console button:hover:not(:disabled), .deck .presentation-header a[aria-label]:hover { border-color: var(--deck-muted); background: var(--deck-surface-2); }
-.deck.presentation-shell button:disabled, .deck.presenter-console button:disabled { opacity: .4; cursor: default; }
+.deck.presentation-shell button:disabled, .deck.presenter-console button:disabled { opacity: .45; cursor: not-allowed; border-style: dashed; color: var(--deck-muted); }
 .deck.presentation-shell button.red, .deck.presenter-console button.red { border-color: var(--deck-accent); color: #fff; background: var(--deck-accent); }
 .deck.presentation-shell button.red:hover:not(:disabled), .deck.presenter-console button.red:hover:not(:disabled) { background: var(--deck-accent-pressed); }
+/* A disabled primary loses its fill and ink as well as its opacity, so it never reads as a dimmed live button. */
+.deck.presentation-shell button.red:disabled, .deck.presenter-console button.red:disabled { border-color: var(--deck-line-strong); color: var(--deck-muted); background: var(--deck-surface); }
+/* Pressed state: a small, quick press that reduced-motion visitors skip. */
+@media (prefers-reduced-motion: no-preference) {
+  .deck.presentation-shell button:active:not(:disabled), .deck.presenter-console button:active:not(:disabled) { transform: scale(.98); }
+}
 .deck button:focus-visible, .deck a:focus-visible, .deck select:focus-visible, .deck [tabindex]:focus-visible { outline: 2px solid #fff; outline-offset: 2px; box-shadow: 0 0 0 5px var(--deck-accent); }
 .deck.presentation-shell:focus-visible { outline: none; box-shadow: none; }
 .deck .deck-status { margin: 0; padding: 8px 20px; color: var(--deck-ink-soft); background: var(--deck-tint); font-size: 14px; }
